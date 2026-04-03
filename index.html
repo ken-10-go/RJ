@@ -197,16 +197,32 @@ select.inp { cursor: pointer; }
           <div class="temp-card"><div class="temp-val ror-val" id="cur-ror">—</div><div class="temp-unit">°C/30s ROR</div></div>
           <div class="temp-card"><div class="temp-val" id="cur-dev">—</div><div class="temp-unit">% DT</div></div>
         </div>
-        <label class="camera-btn" for="cam-inp">
-          <span style="font-size:24px;">📷</span>
-          <span style="font-weight:500;">カメラで温度を読み取る</span>
-          <span style="font-size:9px;color:var(--c-muted);">Claude AI が温度計の数値を認識します</span>
-        </label>
-        <input type="file" id="cam-inp" accept="image/*" capture="environment" style="display:none;" onchange="captureTemp(this)">
-        <div class="ocr-res" id="ocr-res">
-          <div class="label">読み取り温度</div>
-          <div class="ocr-temp" id="ocr-temp">—</div>
-          <button class="btn btn-sm btn-outline" style="margin-top:5px;" onclick="useOcr()">この温度を使用</button>
+        <div id="camera-section">
+          <div id="camera-preview-wrap" style="display:none;margin-bottom:8px;position:relative;">
+            <video id="camera-video" autoplay playsinline muted style="width:100%;border-radius:9px;border:1px solid var(--border);background:#000;max-height:180px;object-fit:cover;"></video>
+            <canvas id="camera-canvas" style="display:none;"></canvas>
+            <div id="ocr-overlay" style="position:absolute;bottom:8px;left:8px;right:8px;background:rgba(26,15,7,0.85);border-radius:7px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.08em;">読み取り温度</div>
+                <div id="ocr-temp" style="font-family:'DM Mono',monospace;font-size:24px;color:var(--c-accent);">—</div>
+              </div>
+              <div style="text-align:right;">
+                <div id="ocr-countdown" style="font-family:'DM Mono',monospace;font-size:20px;color:var(--c-cream);">10</div>
+                <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-muted);">次の読み取り</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px;">
+            <button class="camera-btn" id="cam-start-btn" onclick="startCameraOCR()" style="padding:11px;">
+              <span style="font-size:20px;">📷</span>
+              <span style="font-weight:500;font-size:11px;">自動読み取り開始</span>
+              <span style="font-size:9px;color:var(--c-muted);">10秒ごとに自動記録</span>
+            </button>
+            <button class="camera-btn" id="cam-stop-btn" onclick="stopCameraOCR()" style="padding:11px;display:none;border-color:var(--c-danger);color:var(--c-danger);">
+              <span style="font-size:20px;">⏹</span>
+              <span style="font-weight:500;font-size:11px;">自動読み取り停止</span>
+            </button>
+          </div>
         </div>
         <div class="inp-row" style="margin-top:8px;">
           <div class="inp-w"><div class="label">手動入力 (°C)</div><input class="inp" id="manual-temp" type="number" placeholder="180"></div>
@@ -573,37 +589,85 @@ function updateRoastChart() {
   roastChart.update('none');
 }
 
-// ===== OCR =====
-async function captureTemp(input) {
-  const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const b64 = e.target.result.split(',')[1];
-    document.getElementById('ocr-res').style.display = 'block';
-    document.getElementById('ocr-temp').textContent = '読み取り中...';
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514', max_tokens: 100,
-          messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: file.type, data: b64 } },
-            { type: 'text', text: 'この画像に写っているデジタル温度計の数値を読み取ってください。数値のみ返してください。例: 185.3' }
-          ]}]
-        })
-      });
-      const data = await res.json();
-      const num = parseFloat(data.content[0].text.trim().replace(/[^0-9.]/g, ''));
-      if (!isNaN(num)) { S.ocrTemp = num; document.getElementById('ocr-temp').textContent = num + '°C'; }
-      else { document.getElementById('ocr-temp').textContent = '読み取り失敗'; }
-    } catch (e) { document.getElementById('ocr-temp').textContent = 'エラー: ' + e.message; }
-  };
-  reader.readAsDataURL(file);
+// ===== CAMERA AUTO OCR =====
+let cameraStream = null, ocrInterval = null, ocrCountdownInterval = null, ocrCountdown = 10, ocrBusy = false;
+
+async function startCameraOCR() {
+  if (!S.roastRunning) { toast('焙煎を開始してからカメラを起動してください'); return; }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
+    const video = document.getElementById('camera-video');
+    video.srcObject = cameraStream;
+    document.getElementById('camera-preview-wrap').style.display = 'block';
+    document.getElementById('cam-start-btn').style.display = 'none';
+    document.getElementById('cam-stop-btn').style.display = 'block';
+    ocrCountdown = 3;
+    ocrCountdownInterval = setInterval(() => {
+      ocrCountdown--;
+      document.getElementById('ocr-countdown').textContent = ocrCountdown;
+      if (ocrCountdown <= 0) {
+        ocrCountdown = 10;
+        runOCRCapture();
+      }
+    }, 1000);
+    toast('カメラ自動読み取り開始（10秒ごと）');
+  } catch (e) {
+    toast('カメラアクセスエラー: ' + e.message);
+  }
 }
 
-function useOcr() {
-  if (S.ocrTemp) { document.getElementById('manual-temp').value = S.ocrTemp; toast(S.ocrTemp + '°C をセットしました'); }
+function stopCameraOCR() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  clearInterval(ocrCountdownInterval); ocrCountdownInterval = null;
+  document.getElementById('camera-preview-wrap').style.display = 'none';
+  document.getElementById('cam-start-btn').style.display = 'block';
+  document.getElementById('cam-stop-btn').style.display = 'none';
+  document.getElementById('ocr-temp').textContent = '—';
+  toast('カメラ自動読み取りを停止しました');
+}
+
+async function runOCRCapture() {
+  if (ocrBusy || !cameraStream) return;
+  ocrBusy = true;
+  document.getElementById('ocr-temp').textContent = '読み取り中...';
+  try {
+    const video = document.getElementById('camera-video');
+    const canvas = document.getElementById('camera-canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const b64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 50,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+          { type: 'text', text: 'この画像に写っているデジタル温度計の数値を読み取ってください。数値のみ返してください。読み取れない場合は "NG" とだけ返してください。例: 185.3' }
+        ]}]
+      })
+    });
+    const data = await res.json();
+    const txt = data.content[0].text.trim();
+    if (txt === 'NG' || txt === '') {
+      document.getElementById('ocr-temp').textContent = '読取失敗';
+    } else {
+      const num = parseFloat(txt.replace(/[^0-9.]/g, ''));
+      if (!isNaN(num)) {
+        document.getElementById('ocr-temp').textContent = num + '°C';
+        S.ocrTemp = num;
+        if (S.roastRunning) {
+          recordTemp(num);
+        }
+      } else {
+        document.getElementById('ocr-temp').textContent = '読取失敗';
+      }
+    }
+  } catch (e) {
+    document.getElementById('ocr-temp').textContent = 'エラー';
+  }
+  ocrBusy = false;
 }
 
 // ===== TASTE =====
@@ -693,11 +757,37 @@ function renderAnalysisChart() {
 }
 
 // ===== GOOGLE DRIVE =====
+function saveDriveStorage() {
+  localStorage.setItem('rj_clientId', S.clientId || '');
+  localStorage.setItem('rj_driveToken', S.driveToken || '');
+  localStorage.setItem('rj_driveUser', S.driveUser || '');
+  localStorage.setItem('rj_driveFileId', S.driveFileId || '');
+  localStorage.setItem('rj_tokenExpiry', S.tokenExpiry || '');
+}
+
+function loadDriveStorage() {
+  S.clientId = localStorage.getItem('rj_clientId') || null;
+  S.driveToken = localStorage.getItem('rj_driveToken') || null;
+  S.driveUser = localStorage.getItem('rj_driveUser') || null;
+  S.driveFileId = localStorage.getItem('rj_driveFileId') || null;
+  S.tokenExpiry = parseInt(localStorage.getItem('rj_tokenExpiry')) || null;
+  if (S.clientId) document.getElementById('client-id-inp').value = S.clientId;
+  if (S.driveToken && S.tokenExpiry && Date.now() < S.tokenExpiry) {
+    document.getElementById('drive-dot').classList.add('connected');
+    document.getElementById('drive-status-txt').textContent = '接続中';
+    document.getElementById('drive-status-txt').style.color = '#8cbf6a';
+  } else if (S.driveToken) {
+    S.driveToken = null;
+    toast('トークンが期限切れです。再接続してください');
+  }
+}
+
 function connectDrive() {
   const cid = document.getElementById('client-id-inp').value.trim();
   if (!cid) { toast('Client ID を入力してください'); return; }
   if (!cid.includes('.apps.googleusercontent.com')) { toast('正しい Client ID を入力してください'); return; }
   S.clientId = cid;
+  localStorage.setItem('rj_clientId', cid);
   const params = new URLSearchParams({
     client_id: cid,
     redirect_uri: window.location.origin + window.location.pathname,
@@ -714,6 +804,8 @@ function connectDrive() {
         clearInterval(poll); w.close();
         const p = new URLSearchParams(hash.substring(1));
         S.driveToken = p.get('access_token');
+        const expiresIn = parseInt(p.get('expires_in') || '3600');
+        S.tokenExpiry = Date.now() + expiresIn * 1000;
         fetchDriveUser();
       }
     } catch (e) {}
@@ -728,6 +820,7 @@ async function fetchDriveUser() {
     document.getElementById('drive-dot').classList.add('connected');
     document.getElementById('drive-status-txt').textContent = '接続中';
     document.getElementById('drive-status-txt').style.color = '#8cbf6a';
+    saveDriveStorage();
     updateDriveUI();
     toast('Google Drive に接続しました');
   } catch (e) { toast('接続エラー: ' + e.message); }
@@ -797,7 +890,8 @@ async function loadFromDrive() {
 }
 
 function disconnectDrive() {
-  S.driveToken = null; S.driveFileId = null; S.driveUser = null; S.lastSync = null;
+  S.driveToken = null; S.driveFileId = null; S.driveUser = null; S.lastSync = null; S.tokenExpiry = null;
+  ['rj_driveToken','rj_driveUser','rj_driveFileId','rj_tokenExpiry'].forEach(k => localStorage.removeItem(k));
   document.getElementById('drive-dot').classList.remove('connected', 'syncing');
   document.getElementById('drive-status-txt').textContent = '未接続';
   document.getElementById('drive-status-txt').style.color = 'var(--c-muted)';
@@ -814,6 +908,7 @@ function autoSync() {
 }
 
 // ===== INIT =====
+loadDriveStorage();
 renderBeans();
 </script>
 </body>
