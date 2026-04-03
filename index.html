@@ -1,1 +1,820 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Roast Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --c-espresso: #1a0f07;
+  --c-dark: #2c1a0e;
+  --c-roast: #4a2c1a;
+  --c-caramel: #c47a3a;
+  --c-cream: #f5e6c8;
+  --c-accent: #e8841e;
+  --c-green: #5a8a3a;
+  --c-muted: #a07850;
+  --c-danger: #c04040;
+  --border: rgba(196,122,58,0.25);
+  --card: rgba(74,44,26,0.35);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'DM Sans', sans-serif; background: var(--c-espresso); color: var(--c-cream); }
+#app { max-width: 430px; margin: 0 auto; background: var(--c-dark); height: 100vh; display: flex; flex-direction: column; }
+.topbar { background: var(--c-espresso); padding: 14px 18px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.topbar-row { display: flex; justify-content: space-between; align-items: center; }
+.topbar-title { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--c-cream); }
+.topbar-sub { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--c-muted); text-transform: uppercase; letter-spacing: .12em; margin-top: 2px; }
+.drive-status { display: flex; align-items: center; gap: 6px; font-family: 'DM Mono', monospace; font-size: 10px; }
+.drive-dot { width: 7px; height: 7px; border-radius: 50%; background: #555; flex-shrink: 0; }
+.drive-dot.connected { background: #5a8a3a; }
+.drive-dot.syncing { background: var(--c-accent); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;}50%{opacity:.4;} }
+.tabs { display: flex; background: #231208; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.tab { flex: 1; padding: 10px 2px; text-align: center; font-size: 9px; font-weight: 500; color: var(--c-muted); cursor: pointer; border: none; background: none; text-transform: uppercase; letter-spacing: .07em; transition: all .2s; }
+.tab.active { color: var(--c-accent); border-bottom: 2px solid var(--c-accent); }
+.content { flex: 1; overflow-y: auto; padding: 14px; -webkit-overflow-scrolling: touch; }
+.section { display: none; }
+.section.active { display: block; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+.card-title { font-family: 'Playfair Display', serif; font-size: 14px; color: var(--c-cream); margin-bottom: 8px; }
+.label { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--c-muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 3px; }
+.inp { width: 100%; background: rgba(26,15,7,.6); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; color: var(--c-cream); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border .2s; -webkit-appearance: none; }
+.inp:focus { border-color: var(--c-accent); }
+textarea.inp { resize: vertical; }
+select.inp { cursor: pointer; }
+.inp-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 7px; }
+.inp-w { margin-bottom: 7px; }
+.btn { padding: 9px 14px; border-radius: 8px; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; transition: all .2s; -webkit-appearance: none; }
+.btn-primary { background: var(--c-accent); color: var(--c-espresso); width: 100%; margin-top: 6px; }
+.btn-primary:active { opacity: .85; transform: scale(.98); }
+.btn-sm { padding: 5px 10px; font-size: 11px; border-radius: 6px; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--c-cream); }
+.btn-danger { background: transparent; border: 1px solid var(--c-danger); color: var(--c-danger); }
+.btn-drive { background: rgba(66,133,244,.15); border: 1px solid rgba(66,133,244,.4); color: #7ab3f5; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border-radius: 8px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; }
+.btn-sync { background: rgba(196,122,58,.2); border: 1px solid var(--border); color: var(--c-accent); width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 9px; font-size: 12px; border-radius: 8px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; }
+.bean-list { display: flex; flex-direction: column; gap: 7px; }
+.bean-item { background: rgba(26,15,7,.7); border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px; display: flex; justify-content: space-between; align-items: flex-start; }
+.bean-name { font-weight: 500; font-size: 13px; color: var(--c-cream); }
+.bean-origin { font-size: 10px; color: var(--c-muted); margin-top: 1px; }
+.bean-badges { display: flex; gap: 3px; margin-top: 5px; flex-wrap: wrap; }
+.badge { font-family: 'DM Mono', monospace; font-size: 9px; padding: 2px 6px; border-radius: 20px; text-transform: uppercase; }
+.badge-p { background: rgba(90,138,58,.25); color: #8cbf6a; border: 1px solid rgba(90,138,58,.4); }
+.badge-r { background: rgba(196,122,58,.2); color: var(--c-accent); border: 1px solid rgba(196,122,58,.3); }
+.roast-timer { text-align: center; padding: 6px 0; }
+.timer-display { font-family: 'DM Mono', monospace; font-size: 48px; color: var(--c-cream); letter-spacing: .04em; line-height: 1; }
+.timer-lbl { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--c-muted); text-transform: uppercase; letter-spacing: .12em; margin-top: 3px; }
+.temp-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin: 10px 0; }
+.temp-card { background: rgba(26,15,7,.6); border: 1px solid var(--border); border-radius: 8px; padding: 9px; text-align: center; }
+.temp-val { font-family: 'DM Mono', monospace; font-size: 20px; color: var(--c-cream); font-weight: 500; }
+.temp-unit { font-size: 10px; color: var(--c-muted); }
+.ror-val { color: var(--c-accent); }
+.chart-wrap { background: rgba(26,15,7,.7); border: 1px solid var(--border); border-radius: 9px; padding: 8px; margin: 7px 0; }
+.roast-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 8px 0; }
+.ctrl { padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; font-weight: 500; transition: all .2s; }
+.c1 { background: rgba(200,140,40,.25); color: #e8a040; border: 1px solid rgba(200,140,40,.4); }
+.c2 { background: rgba(200,80,40,.25); color: #e06040; border: 1px solid rgba(200,80,40,.4); }
+.c3 { background: rgba(90,138,58,.2); color: #8cbf6a; border: 1px solid rgba(90,138,58,.35); }
+.c4 { background: rgba(192,64,64,.25); color: #e06060; border: 1px solid rgba(192,64,64,.4); }
+.event-log { max-height: 100px; overflow-y: auto; }
+.ev { font-family: 'DM Mono', monospace; font-size: 9px; padding: 3px 0; border-bottom: 1px solid rgba(196,122,58,.08); display: flex; gap: 6px; }
+.ev-t { color: var(--c-accent); min-width: 42px; }
+.ev-x { color: var(--c-muted); }
+.camera-btn { background: rgba(196,122,58,.15); border: 1px dashed var(--c-accent); border-radius: 9px; padding: 14px; width: 100%; cursor: pointer; color: var(--c-accent); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; }
+.ocr-res { background: rgba(26,15,7,.7); border: 1px solid var(--border); border-radius: 8px; padding: 8px; text-align: center; margin-top: 7px; display: none; }
+.ocr-temp { font-family: 'DM Mono', monospace; font-size: 32px; color: var(--c-accent); }
+.taste-stars { display: flex; gap: 3px; margin: 3px 0 8px; }
+.star { font-size: 20px; cursor: pointer; opacity: .3; transition: opacity .15s; color: #e8a040; }
+.star.on { opacity: 1; }
+.taste-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.ta { background: rgba(26,15,7,.5); border: 1px solid var(--border); border-radius: 8px; padding: 7px; }
+.ta-name { font-size: 10px; color: var(--c-muted); margin-bottom: 5px; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+.slider { width: 100%; accent-color: var(--c-accent); }
+.records-list { display: flex; flex-direction: column; gap: 7px; }
+.rec { background: rgba(26,15,7,.7); border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px; }
+.rec-hd { display: flex; justify-content: space-between; align-items: center; }
+.rec-date { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--c-muted); }
+.rec-bean { font-size: 13px; color: var(--c-cream); font-weight: 500; }
+.rec-stats { display: flex; gap: 7px; margin-top: 5px; flex-wrap: wrap; }
+.rec-s { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--c-muted); }
+.rec-s span { color: var(--c-accent); }
+.a-stat { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(196,122,58,.08); }
+.a-lbl { font-size: 11px; color: var(--c-muted); }
+.a-val { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--c-cream); }
+.empty { text-align: center; padding: 36px 18px; color: var(--c-muted); font-size: 12px; }
+.sync-info { background: rgba(26,15,7,.7); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.sync-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(196,122,58,.08); }
+.sync-row:last-child { border-bottom: none; }
+.sync-label { font-size: 11px; color: var(--c-muted); }
+.sync-val { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--c-cream); }
+.file-badge { font-family: 'DM Mono', monospace; font-size: 9px; padding: 1px 5px; border-radius: 4px; background: rgba(90,138,58,.2); color: #8cbf6a; border: 1px solid rgba(90,138,58,.3); }
+.client-id-hint { font-size: 10px; color: var(--c-muted); line-height: 1.6; margin: 6px 0 10px; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--c-roast); border: 1px solid var(--c-accent); border-radius: 8px; padding: 8px 16px; font-size: 11px; color: var(--c-cream); z-index: 999; opacity: 0; transition: opacity .3s; pointer-events: none; max-width: 280px; text-align: center; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="topbar-title">Roast Journal</div>
+      <div class="drive-status">
+        <div class="drive-dot" id="drive-dot"></div>
+        <span id="drive-status-txt" style="color:var(--c-muted);">未接続</span>
+      </div>
+    </div>
+    <div class="topbar-sub">Coffee Roasting Tracker</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('beans')">生豆</button>
+    <button class="tab" onclick="switchTab('roast')">焙煎</button>
+    <button class="tab" onclick="switchTab('taste')">テイスト</button>
+    <button class="tab" onclick="switchTab('records')">記録</button>
+    <button class="tab" onclick="switchTab('analysis')">分析</button>
+    <button class="tab" onclick="switchTab('drive')">Drive</button>
+  </div>
+  <div class="content">
 
+    <!-- ===== 生豆 ===== -->
+    <div id="tab-beans" class="section active">
+      <div class="card">
+        <div class="card-title">生豆を登録</div>
+        <div class="inp-row">
+          <div class="inp-w"><div class="label">豆の名前 *</div><input class="inp" id="b-name" placeholder="エチオピア イルガ"></div>
+          <div class="inp-w"><div class="label">産地</div><input class="inp" id="b-origin" placeholder="Ethiopia"></div>
+        </div>
+        <div class="inp-row">
+          <div class="inp-w"><div class="label">農園 / 農協</div><input class="inp" id="b-farm" placeholder="Yirgacheffe"></div>
+          <div class="inp-w"><div class="label">品種</div><input class="inp" id="b-variety" placeholder="Heirloom"></div>
+        </div>
+        <div class="inp-row">
+          <div class="inp-w"><div class="label">精製方法</div>
+            <select class="inp" id="b-process">
+              <option>ウォッシュド</option><option>ナチュラル</option><option>ハニー</option><option>アナエロビック</option><option>その他</option>
+            </select>
+          </div>
+          <div class="inp-w"><div class="label">推奨焙煎度</div>
+            <select class="inp" id="b-rl">
+              <option>ライト</option><option>シナモン</option><option>ミディアム</option><option>ハイ</option><option>シティ</option><option>フルシティ</option><option>フレンチ</option><option>イタリアン</option>
+            </select>
+          </div>
+        </div>
+        <div class="inp-row">
+          <div class="inp-w"><div class="label">購入元</div><input class="inp" id="b-shop" placeholder="ショップ名"></div>
+          <div class="inp-w"><div class="label">購入量 (g)</div><input class="inp" id="b-amount" type="number" placeholder="500"></div>
+        </div>
+        <div class="inp-w"><div class="label">テイストノート</div><input class="inp" id="b-taste" placeholder="フローラル、ベリー、ピーチ"></div>
+        <div class="inp-row">
+          <div class="inp-w"><div class="label">SCA スコア</div><input class="inp" id="b-score" type="number" placeholder="86.5" step="0.5"></div>
+          <div class="inp-w"><div class="label">価格 (円 / 100g)</div><input class="inp" id="b-price" type="number" placeholder="1200"></div>
+        </div>
+        <button class="btn btn-primary" onclick="saveBean()">生豆を登録する</button>
+      </div>
+      <div id="bean-list" class="bean-list"></div>
+    </div>
+
+    <!-- ===== 焙煎 ===== -->
+    <div id="tab-roast" class="section">
+      <div class="card">
+        <div class="label" style="margin-bottom:5px;">使用する生豆</div>
+        <select class="inp" id="r-bean" style="margin-bottom:7px;"></select>
+        <div class="inp-row">
+          <div class="inp-w"><div class="label">投入量 (g)</div><input class="inp" id="r-amount" type="number" placeholder="200"></div>
+          <div class="inp-w"><div class="label">投入温度 (°C)</div><input class="inp" id="r-chargetemp" type="number" placeholder="200"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="roast-timer">
+          <div class="timer-display" id="timer-display">00:00</div>
+          <div class="timer-lbl" id="timer-status">待機中</div>
+        </div>
+        <div class="temp-row">
+          <div class="temp-card"><div class="temp-val" id="cur-temp">—</div><div class="temp-unit">°C 現在</div></div>
+          <div class="temp-card"><div class="temp-val ror-val" id="cur-ror">—</div><div class="temp-unit">°C/30s ROR</div></div>
+          <div class="temp-card"><div class="temp-val" id="cur-dev">—</div><div class="temp-unit">% DT</div></div>
+        </div>
+        <label class="camera-btn" for="cam-inp">
+          <span style="font-size:24px;">📷</span>
+          <span style="font-weight:500;">カメラで温度を読み取る</span>
+          <span style="font-size:9px;color:var(--c-muted);">Claude AI が温度計の数値を認識します</span>
+        </label>
+        <input type="file" id="cam-inp" accept="image/*" capture="environment" style="display:none;" onchange="captureTemp(this)">
+        <div class="ocr-res" id="ocr-res">
+          <div class="label">読み取り温度</div>
+          <div class="ocr-temp" id="ocr-temp">—</div>
+          <button class="btn btn-sm btn-outline" style="margin-top:5px;" onclick="useOcr()">この温度を使用</button>
+        </div>
+        <div class="inp-row" style="margin-top:8px;">
+          <div class="inp-w"><div class="label">手動入力 (°C)</div><input class="inp" id="manual-temp" type="number" placeholder="180"></div>
+          <div style="display:flex;align-items:flex-end;padding-bottom:1px;">
+            <button class="btn btn-outline" style="width:100%;padding:8px;font-size:12px;" onclick="logManualTemp()">記録</button>
+          </div>
+        </div>
+        <div class="roast-controls">
+          <button class="ctrl c1" onclick="markEvent('1st Crack')">1st Crack</button>
+          <button class="ctrl c2" onclick="markEvent('2nd Crack')">2nd Crack</button>
+          <button class="ctrl c3" onclick="toggleRoast()" id="roast-btn">焙煎開始</button>
+          <button class="ctrl c4" onclick="finishRoast()">排出・完了</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">温度カーブ</div>
+        <div class="chart-wrap"><canvas id="roast-chart" height="150"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">イベントログ</div>
+        <div class="event-log" id="event-log">
+          <div class="ev"><span class="ev-x" style="font-style:italic;">焙煎を開始するとイベントが記録されます</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== テイスト ===== -->
+    <div id="tab-taste" class="section">
+      <div class="card">
+        <div class="card-title">焙煎後テイスト記録</div>
+        <div class="label" style="margin-bottom:3px;">対象の焙煎記録</div>
+        <select class="inp" id="t-record" style="margin-bottom:8px;"></select>
+        <div class="label" style="margin-bottom:3px;">総合評価</div>
+        <div class="taste-stars" id="taste-stars">
+          <span class="star" onclick="setStar(1)">★</span>
+          <span class="star" onclick="setStar(2)">★</span>
+          <span class="star" onclick="setStar(3)">★</span>
+          <span class="star" onclick="setStar(4)">★</span>
+          <span class="star" onclick="setStar(5)">★</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">フレーバー属性</div>
+        <div class="taste-grid">
+          <div class="ta"><div class="ta-name">Acidity</div><input type="range" class="slider" id="t-acidity" min="0" max="10" value="5" step="1"><div id="t-acidity-v" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-accent);">5</div></div>
+          <div class="ta"><div class="ta-name">Sweetness</div><input type="range" class="slider" id="t-sweet" min="0" max="10" value="5" step="1"><div id="t-sweet-v" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-accent);">5</div></div>
+          <div class="ta"><div class="ta-name">Body</div><input type="range" class="slider" id="t-body" min="0" max="10" value="5" step="1"><div id="t-body-v" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-accent);">5</div></div>
+          <div class="ta"><div class="ta-name">Bitterness</div><input type="range" class="slider" id="t-bitter" min="0" max="10" value="5" step="1"><div id="t-bitter-v" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-accent);">5</div></div>
+          <div class="ta"><div class="ta-name">Aroma</div><input type="range" class="slider" id="t-aroma" min="0" max="10" value="5" step="1"><div id="t-aroma-v" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-accent);">5</div></div>
+          <div class="ta"><div class="ta-name">Aftertaste</div><input type="range" class="slider" id="t-after" min="0" max="10" value="5" step="1"><div id="t-after-v" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-accent);">5</div></div>
+        </div>
+        <div class="inp-w" style="margin-top:8px;"><div class="label">フレーバーノート</div><input class="inp" id="t-notes" placeholder="ジャスミン、マンゴー、ブラウンシュガー..."></div>
+        <div class="inp-w"><div class="label">抽出方法</div>
+          <select class="inp" id="t-brew">
+            <option>ハンドドリップ</option><option>フレンチプレス</option><option>エアロプレス</option><option>エスプレッソ</option><option>コールドブリュー</option><option>その他</option>
+          </select>
+        </div>
+        <div class="inp-w"><div class="label">メモ</div><textarea class="inp" id="t-memo" rows="3" placeholder="次回への改善点..."></textarea></div>
+        <button class="btn btn-primary" onclick="saveTaste()">テイストを記録する</button>
+      </div>
+    </div>
+
+    <!-- ===== 記録 ===== -->
+    <div id="tab-records" class="section">
+      <div id="records-list" class="records-list"></div>
+    </div>
+
+    <!-- ===== 分析 ===== -->
+    <div id="tab-analysis" class="section">
+      <div class="card">
+        <div class="card-title">焙煎サマリー</div>
+        <div id="analysis-stats"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">豆別焙煎回数</div>
+        <div class="chart-wrap"><canvas id="analysis-chart" height="180"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ===== Drive ===== -->
+    <div id="tab-drive" class="section">
+      <div class="card">
+        <div class="card-title">Google Drive 連携</div>
+
+        <!-- 未接続 -->
+        <div id="drive-connect-area">
+          <div class="inp-w">
+            <div class="label">Google OAuth Client ID</div>
+            <input class="inp" id="client-id-inp" placeholder="xxxxx.apps.googleusercontent.com" style="font-size:11px;">
+            <div class="client-id-hint">
+              Google Cloud Console でプロジェクトを作成し、<br>
+              OAuth 2.0 クライアント ID（ウェブアプリ）を取得してください。<br>
+              スコープ: <code style="color:var(--c-accent);">drive.file</code><br>
+              承認済みの JavaScript 生成元に、このページの URL を追加してください。
+            </div>
+          </div>
+          <button class="btn btn-drive" onclick="connectDrive()">
+            <svg width="16" height="16" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+              <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+              <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+              <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+              <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+              <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+              <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+            </svg>
+            Google アカウントで接続する
+          </button>
+        </div>
+
+        <!-- 接続済み -->
+        <div id="drive-connected-area" style="display:none;">
+          <div class="sync-info" style="margin-bottom:10px;">
+            <div class="sync-row"><span class="sync-label">接続アカウント</span><span class="sync-val" id="drive-user">—</span></div>
+            <div class="sync-row"><span class="sync-label">保存ファイル</span><span class="sync-val"><span class="file-badge">roast_journal.json</span></span></div>
+            <div class="sync-row"><span class="sync-label">最終同期</span><span class="sync-val" id="last-sync-time">—</span></div>
+            <div class="sync-row"><span class="sync-label">生豆データ</span><span class="sync-val" id="sync-beans-count">0 件</span></div>
+            <div class="sync-row"><span class="sync-label">焙煎記録</span><span class="sync-val" id="sync-roast-count">0 件</span></div>
+            <div class="sync-row"><span class="sync-label">テイスト記録</span><span class="sync-val" id="sync-taste-count">0 件</span></div>
+          </div>
+          <button class="btn btn-sync" onclick="syncToDrive()" id="sync-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Drive に保存する
+          </button>
+          <button class="btn btn-outline" style="width:100%;margin-top:6px;font-size:12px;" onclick="loadFromDrive()">Drive から読み込む</button>
+          <button class="btn btn-danger" style="width:100%;margin-top:6px;font-size:12px;" onclick="disconnectDrive()">接続を解除する</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">自動同期設定</div>
+        <div class="sync-info">
+          <div class="sync-row">
+            <span class="sync-label">焙煎完了・記録時に自動保存</span>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="checkbox" id="auto-sync" style="accent-color:var(--c-accent);width:16px;height:16px;">
+              <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-accent);" id="auto-sync-lbl">OFF</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">セットアップ手順</div>
+        <div style="font-size:11px;color:var(--c-muted);line-height:1.8;">
+          1. <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--c-accent);">Google Cloud Console</a> を開く<br>
+          2. 新しいプロジェクトを作成<br>
+          3. 「APIとサービス」→「認証情報」<br>
+          4. 「認証情報を作成」→「OAuth 2.0 クライアント ID」<br>
+          5. アプリの種類:「ウェブアプリケーション」<br>
+          6. 承認済みの JavaScript 生成元にこのページの URL を追加<br>
+          7. 取得した Client ID を上の欄に入力
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+// ===== STATE =====
+const S = {
+  beans: [], roastRecords: [], tasteRecords: [],
+  currentRoast: null, timerInterval: null, elapsed: 0,
+  roastRunning: false, tempData: [], timeData: [], events: [],
+  stars: 0, ocrTemp: null,
+  driveToken: null, driveFileId: null, driveUser: null, clientId: null, lastSync: null
+};
+let roastChart = null, analysisChart = null;
+
+// ===== NAV =====
+function switchTab(t) {
+  const names = ['beans','roast','taste','records','analysis','drive'];
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', names[i] === t));
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + t).classList.add('active');
+  if (t === 'records') renderRecords();
+  if (t === 'analysis') renderAnalysis();
+  if (t === 'roast') updateBeanSelect();
+  if (t === 'taste') updateTasteSelect();
+  if (t === 'drive') updateDriveUI();
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity = '1';
+  setTimeout(() => t.style.opacity = '0', 2400);
+}
+
+// ===== BEANS =====
+function saveBean() {
+  const name = document.getElementById('b-name').value.trim();
+  if (!name) { toast('豆の名前を入力してください'); return; }
+  S.beans.push({
+    id: Date.now(), name,
+    origin: document.getElementById('b-origin').value,
+    farm: document.getElementById('b-farm').value,
+    variety: document.getElementById('b-variety').value,
+    process: document.getElementById('b-process').value,
+    roastLevel: document.getElementById('b-rl').value,
+    shop: document.getElementById('b-shop').value,
+    amount: document.getElementById('b-amount').value,
+    taste: document.getElementById('b-taste').value,
+    score: document.getElementById('b-score').value,
+    price: document.getElementById('b-price').value
+  });
+  renderBeans(); updateBeanSelect();
+  ['b-name','b-origin','b-farm','b-variety','b-amount','b-taste','b-score','b-price','b-shop'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  toast('生豆「' + name + '」を登録しました');
+  autoSync();
+}
+
+function renderBeans() {
+  const el = document.getElementById('bean-list');
+  if (!S.beans.length) { el.innerHTML = '<div class="empty">まだ生豆が登録されていません</div>'; return; }
+  el.innerHTML = S.beans.map(b => `
+    <div class="bean-item">
+      <div>
+        <div class="bean-name">${b.name}</div>
+        <div class="bean-origin">${b.origin}${b.farm ? ' / ' + b.farm : ''}</div>
+        <div class="bean-badges">
+          <span class="badge badge-p">${b.process}</span>
+          <span class="badge badge-r">${b.roastLevel}</span>
+          ${b.score ? '<span class="badge badge-r">SCA ' + b.score + '</span>' : ''}
+        </div>
+      </div>
+      <button class="btn btn-sm btn-outline" onclick="deleteBean(${b.id})">削除</button>
+    </div>`).join('');
+}
+
+function deleteBean(id) {
+  S.beans = S.beans.filter(b => b.id !== id);
+  renderBeans(); updateBeanSelect(); toast('削除しました');
+}
+
+function updateBeanSelect() {
+  const s = document.getElementById('r-bean');
+  s.innerHTML = S.beans.length
+    ? S.beans.map(b => `<option value="${b.id}">${b.name}</option>`).join('')
+    : '<option>生豆を先に登録してください</option>';
+}
+
+// ===== ROAST =====
+function toggleRoast() { if (!S.roastRunning) startRoast(); else pauseRoast(); }
+
+function startRoast() {
+  if (!S.beans.length) { toast('生豆を先に登録してください'); return; }
+  S.roastRunning = true;
+  if (!S.currentRoast) {
+    S.elapsed = 0; S.tempData = []; S.timeData = []; S.events = [];
+    document.getElementById('event-log').innerHTML = '';
+    S.currentRoast = {
+      id: Date.now(),
+      beanId: parseInt(document.getElementById('r-bean').value),
+      amount: document.getElementById('r-amount').value,
+      chargeTemp: document.getElementById('r-chargetemp').value,
+      startTime: new Date().toISOString()
+    };
+  }
+  document.getElementById('roast-btn').textContent = '一時停止';
+  document.getElementById('timer-status').textContent = '焙煎中';
+  S.timerInterval = setInterval(() => { S.elapsed++; updateTimer(); }, 1000);
+  if (!roastChart) initRoastChart();
+  toast('焙煎を開始しました');
+}
+
+function pauseRoast() {
+  S.roastRunning = false;
+  clearInterval(S.timerInterval);
+  document.getElementById('roast-btn').textContent = '再開';
+  document.getElementById('timer-status').textContent = '一時停止中';
+}
+
+function finishRoast() {
+  if (!S.currentRoast) { toast('焙煎を開始してください'); return; }
+  clearInterval(S.timerInterval); S.roastRunning = false;
+  const rec = {
+    ...S.currentRoast,
+    endTime: new Date().toISOString(),
+    duration: S.elapsed,
+    tempData: [...S.tempData],
+    timeData: [...S.timeData],
+    events: [...S.events],
+    finalTemp: S.tempData.length ? S.tempData[S.tempData.length - 1] : null
+  };
+  S.roastRecords.push(rec);
+  S.currentRoast = null; S.elapsed = 0; S.tempData = []; S.timeData = []; S.events = [];
+  document.getElementById('timer-display').textContent = '00:00';
+  document.getElementById('timer-status').textContent = '完了';
+  document.getElementById('roast-btn').textContent = '焙煎開始';
+  document.getElementById('event-log').innerHTML = '';
+  ['cur-temp','cur-ror','cur-dev'].forEach(id => document.getElementById(id).textContent = '—');
+  if (roastChart) { roastChart.destroy(); roastChart = null; }
+  updateTasteSelect();
+  toast('焙煎完了！テイストタブで記録できます');
+  autoSync();
+}
+
+function updateTimer() {
+  const m = Math.floor(S.elapsed / 60).toString().padStart(2, '0');
+  const s = (S.elapsed % 60).toString().padStart(2, '0');
+  document.getElementById('timer-display').textContent = m + ':' + s;
+}
+
+function logManualTemp() {
+  const v = parseFloat(document.getElementById('manual-temp').value);
+  if (isNaN(v)) { toast('温度を入力してください'); return; }
+  recordTemp(v);
+  document.getElementById('manual-temp').value = '';
+}
+
+function recordTemp(temp) {
+  if (!S.roastRunning) { toast('焙煎を開始してください'); return; }
+  S.tempData.push(temp); S.timeData.push(S.elapsed);
+  document.getElementById('cur-temp').textContent = temp;
+  const n = S.tempData.length;
+  if (n >= 2) {
+    const ror = parseFloat((temp - S.tempData[n - 2]).toFixed(1));
+    document.getElementById('cur-ror').textContent = (ror > 0 ? '+' : '') + ror;
+  }
+  if (n >= 2 && S.tempData[0] > 0) {
+    document.getElementById('cur-dev').textContent = parseFloat(((temp - S.tempData[0]) / S.tempData[0] * 100).toFixed(1)) + '%';
+  }
+  updateRoastChart();
+  addEventLog(ft(S.elapsed), temp + '°C 記録');
+}
+
+function ft(s) { return Math.floor(s / 60).toString().padStart(2, '0') + ':' + (s % 60).toString().padStart(2, '0'); }
+
+function markEvent(label) {
+  if (!S.roastRunning) { toast('焙煎中にマークしてください'); return; }
+  const ev = { time: S.elapsed, label, temp: S.tempData.length ? S.tempData[S.tempData.length - 1] : null };
+  S.events.push(ev);
+  addEventLog(ft(S.elapsed), label + (ev.temp ? ' @ ' + ev.temp + '°C' : ''));
+  toast(label + ' をマークしました');
+}
+
+function addEventLog(time, text) {
+  const el = document.getElementById('event-log');
+  const d = document.createElement('div'); d.className = 'ev';
+  d.innerHTML = `<span class="ev-t">${time}</span><span class="ev-x">${text}</span>`;
+  el.insertBefore(d, el.firstChild);
+}
+
+function initRoastChart() {
+  const ctx = document.getElementById('roast-chart').getContext('2d');
+  roastChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: '温度', data: [], borderColor: '#c47a3a', backgroundColor: 'rgba(196,122,58,0.1)', borderWidth: 2, pointRadius: 3, pointBackgroundColor: 'rgba(196,122,58,0.7)', tension: 0.4, fill: true }] },
+    options: { animation: false, responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#a07850', font: { size: 8 }, maxTicksLimit: 7 }, grid: { color: 'rgba(196,122,58,0.08)' } }, y: { ticks: { color: '#a07850', font: { size: 8 } }, grid: { color: 'rgba(196,122,58,0.08)' } } } }
+  });
+}
+
+function updateRoastChart() {
+  if (!roastChart) return;
+  roastChart.data.labels = S.timeData.map(t => ft(t));
+  roastChart.data.datasets[0].data = S.tempData;
+  roastChart.update('none');
+}
+
+// ===== OCR =====
+async function captureTemp(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const b64 = e.target.result.split(',')[1];
+    document.getElementById('ocr-res').style.display = 'block';
+    document.getElementById('ocr-temp').textContent = '読み取り中...';
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514', max_tokens: 100,
+          messages: [{ role: 'user', content: [
+            { type: 'image', source: { type: 'base64', media_type: file.type, data: b64 } },
+            { type: 'text', text: 'この画像に写っているデジタル温度計の数値を読み取ってください。数値のみ返してください。例: 185.3' }
+          ]}]
+        })
+      });
+      const data = await res.json();
+      const num = parseFloat(data.content[0].text.trim().replace(/[^0-9.]/g, ''));
+      if (!isNaN(num)) { S.ocrTemp = num; document.getElementById('ocr-temp').textContent = num + '°C'; }
+      else { document.getElementById('ocr-temp').textContent = '読み取り失敗'; }
+    } catch (e) { document.getElementById('ocr-temp').textContent = 'エラー: ' + e.message; }
+  };
+  reader.readAsDataURL(file);
+}
+
+function useOcr() {
+  if (S.ocrTemp) { document.getElementById('manual-temp').value = S.ocrTemp; toast(S.ocrTemp + '°C をセットしました'); }
+}
+
+// ===== TASTE =====
+function setStar(n) {
+  S.stars = n;
+  document.querySelectorAll('.star').forEach((s, i) => s.classList.toggle('on', i < n));
+}
+
+['acidity','sweet','body','bitter','aroma','after'].forEach(k => {
+  document.getElementById('t-' + k).addEventListener('input', function () {
+    document.getElementById('t-' + k + '-v').textContent = this.value;
+  });
+});
+
+function updateTasteSelect() {
+  const s = document.getElementById('t-record');
+  s.innerHTML = S.roastRecords.length
+    ? S.roastRecords.map(r => {
+        const b = S.beans.find(b => b.id === r.beanId);
+        return `<option value="${r.id}">${b ? b.name : '不明'} (${new Date(r.startTime).toLocaleDateString('ja-JP')})</option>`;
+      }).join('')
+    : '<option>焙煎記録がありません</option>';
+}
+
+function saveTaste() {
+  if (!S.roastRecords.length) { toast('焙煎記録がありません'); return; }
+  S.tasteRecords.push({
+    id: Date.now(),
+    roastId: parseInt(document.getElementById('t-record').value),
+    stars: S.stars,
+    acidity: document.getElementById('t-acidity').value,
+    sweetness: document.getElementById('t-sweet').value,
+    body: document.getElementById('t-body').value,
+    bitterness: document.getElementById('t-bitter').value,
+    aroma: document.getElementById('t-aroma').value,
+    aftertaste: document.getElementById('t-after').value,
+    notes: document.getElementById('t-notes').value,
+    brew: document.getElementById('t-brew').value,
+    memo: document.getElementById('t-memo').value
+  });
+  toast('テイストを記録しました');
+  autoSync();
+}
+
+// ===== RECORDS =====
+function renderRecords() {
+  const el = document.getElementById('records-list');
+  if (!S.roastRecords.length) { el.innerHTML = '<div class="empty">焙煎記録がありません</div>'; return; }
+  el.innerHTML = S.roastRecords.slice().reverse().map(r => {
+    const b = S.beans.find(b => b.id === r.beanId);
+    const t = S.tasteRecords.find(t => t.roastId === r.id);
+    return `<div class="rec">
+      <div class="rec-hd">
+        <div class="rec-bean">${b ? b.name : '不明の豆'}</div>
+        <div class="rec-date">${new Date(r.startTime).toLocaleDateString('ja-JP')}</div>
+      </div>
+      <div class="rec-stats">
+        <span class="rec-s">時間: <span>${Math.floor(r.duration / 60)}分${r.duration % 60}秒</span></span>
+        ${r.finalTemp ? `<span class="rec-s">仕上がり: <span>${r.finalTemp}°C</span></span>` : ''}
+        ${t ? `<span class="rec-s">評価: <span>${'★'.repeat(t.stars)}</span></span>` : ''}
+        <span class="rec-s">データ点: <span>${r.tempData.length}</span></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== ANALYSIS =====
+function renderAnalysis() {
+  document.getElementById('analysis-stats').innerHTML = `
+    <div class="a-stat"><span class="a-lbl">総焙煎回数</span><span class="a-val">${S.roastRecords.length} 回</span></div>
+    <div class="a-stat"><span class="a-lbl">登録生豆数</span><span class="a-val">${S.beans.length} 種</span></div>
+    <div class="a-stat"><span class="a-lbl">テイスト記録数</span><span class="a-val">${S.tasteRecords.length} 件</span></div>
+    <div class="a-stat"><span class="a-lbl">平均焙煎時間</span><span class="a-val">${S.roastRecords.length ? Math.round(S.roastRecords.reduce((a, r) => a + r.duration, 0) / S.roastRecords.length) + ' 秒' : '—'}</span></div>`;
+  renderAnalysisChart();
+}
+
+function renderAnalysisChart() {
+  const ctx = document.getElementById('analysis-chart').getContext('2d');
+  if (analysisChart) { analysisChart.destroy(); }
+  const labels = S.beans.map(b => b.name);
+  const counts = S.beans.map(b => S.roastRecords.filter(r => r.beanId === b.id).length);
+  analysisChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels.length ? labels : ['データなし'], datasets: [{ label: '焙煎回数', data: counts.length ? counts : [0], backgroundColor: 'rgba(196,122,58,0.5)', borderColor: '#c47a3a', borderWidth: 1 }] },
+    options: { responsive: true, plugins: { legend: { labels: { color: '#a07850', font: { size: 10 } } } }, scales: { x: { ticks: { color: '#a07850', font: { size: 9 } }, grid: { color: 'rgba(196,122,58,0.08)' } }, y: { ticks: { color: '#a07850', font: { size: 9 } }, grid: { color: 'rgba(196,122,58,0.08)' } } } }
+  });
+}
+
+// ===== GOOGLE DRIVE =====
+function connectDrive() {
+  const cid = document.getElementById('client-id-inp').value.trim();
+  if (!cid) { toast('Client ID を入力してください'); return; }
+  if (!cid.includes('.apps.googleusercontent.com')) { toast('正しい Client ID を入力してください'); return; }
+  S.clientId = cid;
+  const params = new URLSearchParams({
+    client_id: cid,
+    redirect_uri: window.location.origin + window.location.pathname,
+    response_type: 'token',
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    prompt: 'select_account'
+  });
+  const w = window.open('https://accounts.google.com/o/oauth2/v2/auth?' + params.toString(), 'google-auth', 'width=500,height=600,scrollbars=yes');
+  const poll = setInterval(() => {
+    try {
+      if (!w || w.closed) { clearInterval(poll); return; }
+      const hash = w.location.hash;
+      if (hash && hash.includes('access_token')) {
+        clearInterval(poll); w.close();
+        const p = new URLSearchParams(hash.substring(1));
+        S.driveToken = p.get('access_token');
+        fetchDriveUser();
+      }
+    } catch (e) {}
+  }, 500);
+}
+
+async function fetchDriveUser() {
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + S.driveToken } });
+    const d = await r.json();
+    S.driveUser = d.email || d.name || '接続済み';
+    document.getElementById('drive-dot').classList.add('connected');
+    document.getElementById('drive-status-txt').textContent = '接続中';
+    document.getElementById('drive-status-txt').style.color = '#8cbf6a';
+    updateDriveUI();
+    toast('Google Drive に接続しました');
+  } catch (e) { toast('接続エラー: ' + e.message); }
+}
+
+function updateDriveUI() {
+  const c = !!S.driveToken;
+  document.getElementById('drive-connect-area').style.display = c ? 'none' : 'block';
+  document.getElementById('drive-connected-area').style.display = c ? 'block' : 'none';
+  if (c) {
+    document.getElementById('drive-user').textContent = S.driveUser || '接続済み';
+    document.getElementById('last-sync-time').textContent = S.lastSync ? new Date(S.lastSync).toLocaleString('ja-JP') : '—';
+    document.getElementById('sync-beans-count').textContent = S.beans.length + ' 件';
+    document.getElementById('sync-roast-count').textContent = S.roastRecords.length + ' 件';
+    document.getElementById('sync-taste-count').textContent = S.tasteRecords.length + ' 件';
+  }
+}
+
+async function syncToDrive() {
+  if (!S.driveToken) { toast('まず Google Drive に接続してください'); return; }
+  const btn = document.getElementById('sync-btn');
+  btn.textContent = '保存中...';
+  document.getElementById('drive-dot').classList.add('syncing');
+  const payload = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), beans: S.beans, roastRecords: S.roastRecords, tasteRecords: S.tasteRecords });
+  try {
+    if (S.driveFileId) {
+      await fetch('https://www.googleapis.com/upload/drive/v3/files/' + S.driveFileId + '?uploadType=media', {
+        method: 'PATCH', headers: { Authorization: 'Bearer ' + S.driveToken, 'Content-Type': 'application/json' }, body: payload
+      });
+    } else {
+      const meta = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + S.driveToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'roast_journal.json', mimeType: 'application/json' })
+      });
+      const mdata = await meta.json(); S.driveFileId = mdata.id;
+      await fetch('https://www.googleapis.com/upload/drive/v3/files/' + S.driveFileId + '?uploadType=media', {
+        method: 'PATCH', headers: { Authorization: 'Bearer ' + S.driveToken, 'Content-Type': 'application/json' }, body: payload
+      });
+    }
+    S.lastSync = new Date().toISOString();
+    updateDriveUI();
+    toast('Drive に保存しました');
+  } catch (e) { toast('保存エラー: ' + e.message); }
+  finally {
+    document.getElementById('drive-dot').classList.remove('syncing');
+    btn.textContent = 'Drive に保存する';
+  }
+}
+
+async function loadFromDrive() {
+  if (!S.driveToken) { toast('まず Google Drive に接続してください'); return; }
+  toast('Drive から検索中...');
+  try {
+    const r = await fetch("https://www.googleapis.com/drive/v3/files?q=name='roast_journal.json'&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc", { headers: { Authorization: 'Bearer ' + S.driveToken } });
+    const d = await r.json();
+    if (!d.files || !d.files.length) { toast('Drive に保存データが見つかりません'); return; }
+    S.driveFileId = d.files[0].id;
+    const fr = await fetch('https://www.googleapis.com/drive/v3/files/' + S.driveFileId + '?alt=media', { headers: { Authorization: 'Bearer ' + S.driveToken } });
+    const data = await fr.json();
+    if (data.beans) S.beans = data.beans;
+    if (data.roastRecords) S.roastRecords = data.roastRecords;
+    if (data.tasteRecords) S.tasteRecords = data.tasteRecords;
+    S.lastSync = new Date().toISOString();
+    renderBeans(); updateBeanSelect(); updateTasteSelect(); updateDriveUI();
+    toast('Drive から読み込みました（' + S.beans.length + '豆、' + S.roastRecords.length + '焙煎）');
+  } catch (e) { toast('読み込みエラー: ' + e.message); }
+}
+
+function disconnectDrive() {
+  S.driveToken = null; S.driveFileId = null; S.driveUser = null; S.lastSync = null;
+  document.getElementById('drive-dot').classList.remove('connected', 'syncing');
+  document.getElementById('drive-status-txt').textContent = '未接続';
+  document.getElementById('drive-status-txt').style.color = 'var(--c-muted)';
+  updateDriveUI();
+  toast('接続を解除しました');
+}
+
+document.getElementById('auto-sync').addEventListener('change', function () {
+  document.getElementById('auto-sync-lbl').textContent = this.checked ? 'ON' : 'OFF';
+});
+
+function autoSync() {
+  if (document.getElementById('auto-sync').checked && S.driveToken) syncToDrive();
+}
+
+// ===== INIT =====
+renderBeans();
+</script>
+</body>
+</html>
