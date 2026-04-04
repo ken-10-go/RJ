@@ -188,8 +188,11 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup></div>
-      <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-muted);">未接続</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-muted);margin-left:8px;vertical-align:middle;">v1.0</span></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button id="undo-btn" onclick="undo()" style="background:rgba(196,122,58,.15);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
+        <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-muted);">未接続</span></div>
+      </div>
     </div>
     <div class="topbar-sub">Coffee Roasting Tracker</div>
   </div>
@@ -419,7 +422,6 @@ select.inp{cursor:pointer;}
         <div class="radar-wrap"><canvas id="radar-chart" width="320" height="280"></canvas></div>
         <div class="radar-hint">各頂点をドラッグしてスコアを調整（1〜5）</div>
         <!-- スライダー補助 -->
-        <div id="radar-sliders" style="margin-top:10px;display:flex;flex-direction:column;gap:6px;"></div>
       </div>
       <div class="card">
         <div class="card-title">フレーバーノート</div>
@@ -502,16 +504,7 @@ select.inp{cursor:pointer;}
           </div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title">Anthropic API キー</div>
-        <div class="inp-w">
-          <div class="label">API Key</div>
-          <input class="inp" id="anthropic-api-key" type="password" placeholder="sk-ant-..." autocomplete="off" style="font-size:var(--fs-xs);">
-          <div style="font-size:var(--fs-xs);color:var(--c-muted);line-height:1.6;margin-top:6px;">カメラOCR・URL取り込みに使用します。<br>キーは localStorage に保存されます。<a href="https://console.anthropic.com/" target="_blank" style="color:var(--c-accent);">Anthropic Console</a> で取得できます。</div>
-        </div>
-        <button class="btn btn-primary" onclick="saveApiKey()" style="margin-top:4px;">保存する</button>
-        <div id="api-key-status" style="font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-muted);margin-top:6px;"></div>
-      </div>
+
     </div>
   </div>
 </div>
@@ -555,6 +548,7 @@ select.inp{cursor:pointer;}
       <div class="modal-title">焙煎記録を編集</div>
       <button class="btn btn-sm btn-outline" onclick="closeEditRoastModal()">✕</button>
     </div>
+    <!-- 基本情報 -->
     <div class="inp-w">
       <div class="label">焙煎度</div>
       <select class="inp" id="er-rl"></select>
@@ -565,6 +559,14 @@ select.inp{cursor:pointer;}
     </div>
     <div id="er-weight-loss" style="font-family:'DM Mono',monospace;font-size:var(--fs-sm);color:var(--c-accent);margin-bottom:10px;"></div>
     <div class="inp-w"><div class="label">メモ</div><textarea class="inp" id="er-memo" rows="2"></textarea></div>
+    <!-- イベント編集 -->
+    <div class="label" style="margin-bottom:6px;">イベント編集</div>
+    <div id="er-events" style="background:rgba(26,15,7,.5);border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;max-height:180px;overflow-y:auto;"></div>
+    <button class="btn btn-outline btn-sm" onclick="erAddEvent()" style="width:100%;margin-bottom:10px;">＋ イベントを追加</button>
+    <!-- 温度データ編集 -->
+    <div class="label" style="margin-bottom:6px;">温度データ編集</div>
+    <div style="font-size:var(--fs-xs);color:var(--c-muted);margin-bottom:6px;">誤読み取りの行を削除できます</div>
+    <div id="er-temps" style="background:rgba(26,15,7,.5);border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:10px;max-height:160px;overflow-y:auto;font-family:'DM Mono',monospace;font-size:var(--fs-xs);"></div>
     <input type="hidden" id="er-id">
     <button class="btn btn-primary" onclick="saveEditRoast()">更新する</button>
   </div>
@@ -615,6 +617,35 @@ const S={
   roastSetupOpen:true,
 };
 let roastChart=null,analysisChart=null,radarChart=null,compareChart=null;
+
+// ===== UNDO STACK (5回分) =====
+const UNDO_STACK=[];
+const UNDO_MAX=5;
+function pushUndo(){
+  UNDO_STACK.push({
+    beans:JSON.parse(JSON.stringify(S.beans)),
+    roastRecords:JSON.parse(JSON.stringify(S.roastRecords)),
+    tasteRecords:JSON.parse(JSON.stringify(S.tasteRecords)),
+    master:JSON.parse(JSON.stringify(S.master)),
+  });
+  if(UNDO_STACK.length>UNDO_MAX)UNDO_STACK.shift();
+  updateUndoBtn();
+}
+function undo(){
+  if(!UNDO_STACK.length){toast('これ以上戻れません');return;}
+  const prev=UNDO_STACK.pop();
+  S.beans=prev.beans;S.roastRecords=prev.roastRecords;S.tasteRecords=prev.tasteRecords;S.master=prev.master;
+  renderBeans();updateBeanSelect();renderRecords();updateTasteSelect();
+  updateUndoBtn();
+  toast('元に戻しました（残り'+UNDO_STACK.length+'回）');
+  autoSync();
+}
+function updateUndoBtn(){
+  const btn=document.getElementById('undo-btn');
+  if(!btn)return;
+  btn.textContent='↩ UNDO'+(UNDO_STACK.length?` (${UNDO_STACK.length})`:'');
+  btn.style.opacity=UNDO_STACK.length?'1':'0.4';
+}
 let activeMultiSelect=null;
 
 // ===== NAV =====
@@ -782,6 +813,7 @@ function saveBean(){
     memo:document.getElementById('b-memo').value,
     photo:S.beanPhotoData||null,
   };
+  pushUndo();
   if(editId){const i=S.beans.findIndex(b=>b.id===parseInt(editId));if(i>=0)S.beans[i]=bean;}
   else S.beans.push(bean);
   clearBeanForm();renderBeans();updateBeanSelect();
@@ -839,6 +871,7 @@ function cancelEditBean(){clearBeanForm();}
 
 function deleteBean(id){
   if(!confirm('この豆を削除しますか？'))return;
+  pushUndo();
   S.beans=S.beans.filter(b=>b.id!==id);renderBeans();updateBeanSelect();toast('削除しました');autoSync();
 }
 
@@ -1004,6 +1037,7 @@ function finishRoast(){
   const wb=parseFloat(document.getElementById('finish-weight-before').value)||null;
   const wa=parseFloat(document.getElementById('finish-weight-after').value)||null;
   const yieldPct=wb&&wa?parseFloat((wa/wb*100).toFixed(1)):null;
+  pushUndo();
   S.roastRecords.push({...S.currentRoast,endTime:new Date().toISOString(),duration:S.elapsed,tempData:[...S.tempData],timeData:[...S.timeData],events:[...S.events],finalTemp:S.tempData.length?S.tempData[S.tempData.length-1]:null,roastLevel:rl,weightBefore:wb,weightAfter:wa,yieldPct,memo:''});
   S.currentRoast=null;S.elapsed=0;S.tempData=[];S.timeData=[];S.events=[];
   document.getElementById('timer-display').textContent='00:00';
@@ -1357,42 +1391,88 @@ function renderRadarChart(){
       label:'味わい',data:[...S.radarVals],
       backgroundColor:'rgba(196,122,58,0.22)',borderColor:'#c47a3a',borderWidth:2,
       pointBackgroundColor:'#e8841e',pointBorderColor:'#f5e6c8',
-      pointRadius:10,pointHoverRadius:13,pointBorderWidth:2,
+      pointRadius:12,pointHoverRadius:14,pointBorderWidth:2,
     }]},
     options:{
-      responsive:false,animation:{duration:200},
-      onClick:(e,els)=>{
-        if(els.length){const idx=els[0].index;S.radarVals[idx]=(S.radarVals[idx]%5)+1;radarChart.data.datasets[0].data=[...S.radarVals];radarChart.update();renderRadarSliders();}
-      },
+      responsive:false,animation:{duration:150},
       scales:{r:{
         min:0,max:5,
         ticks:{stepSize:1,color:'#a07850',font:{size:9},backdropColor:'transparent'},
         grid:{color:'rgba(196,122,58,0.2)'},
-        pointLabels:{color:'#f5e6c8',font:{size:11},callback:(label,i)=>label+' ('+S.radarVals[i]+')'},
+        pointLabels:{color:'#f5e6c8',font:{size:11},
+          callback:(label,i)=>label+' ('+S.radarVals[i]+')'},
       }},
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>RADAR_LABELS[c.dataIndex]+': '+S.radarVals[c.dataIndex]+'/5'}}}
+      plugins:{legend:{display:false},tooltip:{display:false}}
     }
   });
+  // ドラッグで頂点を動かす
+  attachRadarDrag(canvas);
 }
 
-function renderRadarSliders(){
-  const container=document.getElementById('radar-sliders');
-  if(!container)return;
-  container.innerHTML=RADAR_LABELS.map((lb,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-muted);width:72px;text-transform:uppercase;">${lb}</div>
-      <input type="range" min="1" max="5" step="1" value="${S.radarVals[i]}"
-        style="-webkit-appearance:none;flex:1;height:5px;border-radius:3px;background:linear-gradient(to right,var(--c-accent) ${(S.radarVals[i]-1)/4*100}%,rgba(196,122,58,.2) ${(S.radarVals[i]-1)/4*100}%);outline:none;cursor:pointer;"
-        oninput="setRadarVal(${i},this.value)">
-      <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--c-cream);min-width:16px;text-align:right;">${S.radarVals[i]}</div>
-    </div>`
-  ).join('');
+function attachRadarDrag(canvas){
+  const N=RADAR_LABELS.length;
+  let dragging=-1;
+
+  function getPointPositions(){
+    // Chart.jsの内部スケールから各頂点のcanvas座標を取得
+    const scale=radarChart.scales.r;
+    return RADAR_LABELS.map((_,i)=>{
+      const angle=scale.getIndexAngle(i)-Math.PI/2;
+      const r=scale.getDistanceFromCenterForValue(S.radarVals[i]);
+      return{x:scale.xCenter+Math.cos(angle)*r, y:scale.yCenter+Math.sin(angle)*r};
+    });
+  }
+  function getAngleAndValue(cx,cy,mx,my,i){
+    const scale=radarChart.scales.r;
+    const dx=mx-scale.xCenter, dy=my-scale.yCenter;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const maxR=scale.getDistanceFromCenterForValue(5);
+    const minR=scale.getDistanceFromCenterForValue(1);
+    const clamped=Math.max(minR,Math.min(maxR,dist));
+    // 距離を1-5にマッピング
+    return Math.round(1+(clamped-minR)/(maxR-minR)*4);
+  }
+  function getXY(e){
+    const r=canvas.getBoundingClientRect();
+    const src=e.touches?e.touches[0]:e;
+    return{x:(src.clientX-r.left)*(canvas.width/r.width),
+           y:(src.clientY-r.top)*(canvas.height/r.height)};
+  }
+  function onStart(e){
+    const {x,y}=getXY(e);
+    const pts=getPointPositions();
+    dragging=-1;
+    pts.forEach((p,i)=>{
+      if(Math.hypot(p.x-x,p.y-y)<22){dragging=i;}
+    });
+    if(dragging>=0)e.preventDefault();
+  }
+  function onMove(e){
+    if(dragging<0)return;
+    e.preventDefault();
+    const {x,y}=getXY(e);
+    const scale=radarChart.scales.r;
+    const v=getAngleAndValue(scale.xCenter,scale.yCenter,x,y,dragging);
+    if(v!==S.radarVals[dragging]){
+      S.radarVals[dragging]=v;
+      radarChart.data.datasets[0].data=[...S.radarVals];
+      radarChart.update('none');
+    }
+  }
+  function onEnd(){dragging=-1;}
+  canvas.addEventListener('mousedown',onStart);
+  canvas.addEventListener('mousemove',onMove);
+  canvas.addEventListener('mouseup',onEnd);
+  canvas.addEventListener('touchstart',onStart,{passive:false});
+  canvas.addEventListener('touchmove',onMove,{passive:false});
+  canvas.addEventListener('touchend',onEnd);
 }
 
+// スライダー関連（互換用、空実装）
+function renderRadarSliders(){}
 function setRadarVal(idx,val){
   S.radarVals[idx]=parseInt(val);
   if(radarChart){radarChart.data.datasets[0].data=[...S.radarVals];radarChart.update();}
-  renderRadarSliders();
 }
 
 function initFlavorWheel(){
@@ -1455,6 +1535,7 @@ function saveTaste(){
     memo:document.getElementById('t-memo').value,
     recordedAt:new Date().toISOString()
   };
+  pushUndo();
   if(idx>=0)S.tasteRecords[idx]=record;else S.tasteRecords.push(record);
   toast('味わいを記録しました');autoSync();
 }
@@ -1538,11 +1619,17 @@ function openRecordModal(id){
 
 function deleteRoastRecord(id){
   if(!confirm('この焙煎記録を削除しますか？\n関連する味わい記録も削除されます。'))return;
+  pushUndo();
   S.roastRecords=S.roastRecords.filter(r=>r.id!==id);
   S.tasteRecords=S.tasteRecords.filter(t=>t.roastId!==id);
   closeRecordModal();renderRecords();updateTasteSelect();
   toast('削除しました');autoSync();
 }
+
+// 編集中イベント/温度の一時バッファ
+let erTempBuf=[], erEventBuf=[];
+
+function erFmt(s){return Math.floor(s/60).toString().padStart(2,'0')+':'+(s%60).toString().padStart(2,'0');}
 
 function openEditRoastModal(id){
   const r=S.roastRecords.find(r=>r.id===id);if(!r)return;
@@ -1553,6 +1640,11 @@ function openEditRoastModal(id){
   document.getElementById('er-memo').value=r.memo||'';
   document.getElementById('er-id').value=id;
   calcEditWeightLoss();
+  // バッファに複製
+  erEventBuf=JSON.parse(JSON.stringify(r.events||[]));
+  erTempBuf=r.tempData.map((t,i)=>({temp:t,time:r.timeData[i]}));
+  renderErEvents();
+  renderErTemps();
   closeRecordModal();
   document.getElementById('edit-roast-modal').classList.add('open');
 }
@@ -1564,14 +1656,69 @@ function calcEditWeightLoss(){
   if(!isNaN(b)&&!isNaN(a)&&b>0){const pct=parseFloat((a/b*100).toFixed(1));el.textContent=`歩留まり: ${pct}%（${b}g → ${a}g）`;}
   else el.textContent='';
 }
+
+function renderErEvents(){
+  const el=document.getElementById('er-events');
+  if(!erEventBuf.length){el.innerHTML='<div style="color:var(--c-muted);font-size:var(--fs-xs);padding:4px;">イベントなし</div>';return;}
+  el.innerHTML=erEventBuf.map((ev,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(196,122,58,.1);">
+      <input type="text" value="${erFmt(ev.time)}" style="width:46px;background:rgba(26,15,7,.8);border:1px solid var(--border);border-radius:4px;padding:3px 5px;color:var(--c-cream);font-family:'DM Mono',monospace;font-size:10px;" onchange="erUpdateEventTime(${i},this.value)">
+      <input type="text" value="${ev.label}" style="flex:1;background:rgba(26,15,7,.8);border:1px solid var(--border);border-radius:4px;padding:3px 5px;color:var(--c-cream);font-size:11px;" onchange="erUpdateEventLabel(${i},this.value)">
+      <input type="number" value="${ev.temp||''}" placeholder="°C" style="width:52px;background:rgba(26,15,7,.8);border:1px solid var(--border);border-radius:4px;padding:3px 5px;color:var(--c-cream);font-family:'DM Mono',monospace;font-size:10px;" onchange="erUpdateEventTemp(${i},this.value)">
+      <button onclick="erDeleteEvent(${i})" style="background:none;border:none;color:var(--c-danger);cursor:pointer;font-size:14px;padding:0 2px;">✕</button>
+    </div>`).join('');
+}
+function erUpdateEventTime(i,val){
+  const parts=val.split(':');if(parts.length!==2)return;
+  erEventBuf[i].time=parseInt(parts[0])*60+parseInt(parts[1]);
+}
+function erUpdateEventLabel(i,val){erEventBuf[i].label=val;}
+function erUpdateEventTemp(i,val){erEventBuf[i].temp=val?parseFloat(val):null;}
+function erDeleteEvent(i){
+  pushUndo();
+  erEventBuf.splice(i,1);renderErEvents();
+}
+function erAddEvent(){
+  erEventBuf.push({time:0,label:'',temp:null,rlVal:null});
+  renderErEvents();
+  // スクロール
+  const el=document.getElementById('er-events');
+  setTimeout(()=>{el.scrollTop=el.scrollHeight;},50);
+}
+
+function renderErTemps(){
+  const el=document.getElementById('er-temps');
+  if(!erTempBuf.length){el.innerHTML='<div style="color:var(--c-muted);padding:4px;">温度データなし</div>';return;}
+  el.innerHTML=erTempBuf.map((td,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(196,122,58,.06);">
+      <span style="color:var(--c-accent);min-width:38px;">${erFmt(td.time)}</span>
+      <input type="number" value="${td.temp}" style="width:60px;background:rgba(26,15,7,.8);border:1px solid var(--border);border-radius:4px;padding:2px 5px;color:var(--c-cream);font-family:'DM Mono',monospace;font-size:10px;" onchange="erUpdateTemp(${i},this.value)">
+      <span style="color:var(--c-muted);font-size:10px;">°C</span>
+      <button onclick="erDeleteTemp(${i})" style="background:none;border:none;color:var(--c-danger);cursor:pointer;font-size:13px;padding:0 2px;margin-left:auto;">✕</button>
+    </div>`).join('');
+}
+function erUpdateTemp(i,val){erTempBuf[i].temp=parseFloat(val);}
+function erDeleteTemp(i){
+  pushUndo();
+  erTempBuf.splice(i,1);renderErTemps();
+}
+
 function saveEditRoast(){
   const id=parseInt(document.getElementById('er-id').value);
   const idx=S.roastRecords.findIndex(r=>r.id===id);if(idx<0)return;
+  pushUndo();
   const rl=parseFloat(document.getElementById('er-rl').value);
   const wb=parseFloat(document.getElementById('er-weight-before').value)||null;
   const wa=parseFloat(document.getElementById('er-weight-after').value)||null;
   const yieldPct=wb&&wa?parseFloat((wa/wb*100).toFixed(1)):null;
-  S.roastRecords[idx]={...S.roastRecords[idx],roastLevel:rl,weightBefore:wb,weightAfter:wa,yieldPct,memo:document.getElementById('er-memo').value};
+  S.roastRecords[idx]={
+    ...S.roastRecords[idx],
+    roastLevel:rl,weightBefore:wb,weightAfter:wa,yieldPct,
+    memo:document.getElementById('er-memo').value,
+    events:JSON.parse(JSON.stringify(erEventBuf)),
+    tempData:erTempBuf.map(t=>t.temp),
+    timeData:erTempBuf.map(t=>t.time),
+  };
   closeEditRoastModal();renderRecords();
   toast('焙煎記録を更新しました');autoSync();
 }
@@ -1786,6 +1933,35 @@ function loadApiKey(){
 document.getElementById('record-modal').addEventListener('click',function(e){if(e.target===this)closeRecordModal();});
 document.getElementById('edit-roast-modal').addEventListener('click',function(e){if(e.target===this)closeEditRoastModal();});
 
+// ===== OFFLINE STORAGE =====
+const LS_KEY='rj_offline_data';
+const LS_PENDING='rj_pending_sync';
+
+function saveLocal(){
+  try{
+    localStorage.setItem(LS_KEY,JSON.stringify({
+      version:4,savedAt:new Date().toISOString(),
+      master:S.master,beans:S.beans,
+      roastRecords:S.roastRecords,tasteRecords:S.tasteRecords
+    }));
+    localStorage.setItem(LS_PENDING,'1');
+  }catch(e){console.warn('saveLocal failed:',e);}
+}
+function loadLocal(){
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    if(!raw)return false;
+    const data=JSON.parse(raw);
+    if(data.master)S.master={...{varieties:[...DEFAULT_VARIETIES]},...data.master};
+    if(data.beans)S.beans=data.beans;
+    if(data.roastRecords)S.roastRecords=data.roastRecords;
+    if(data.tasteRecords)S.tasteRecords=data.tasteRecords;
+    return true;
+  }catch(e){return false;}
+}
+function hasPendingSync(){return localStorage.getItem(LS_PENDING)==='1';}
+function clearPending(){localStorage.removeItem(LS_PENDING);}
+
 // ===== DRIVE =====
 const DRIVE_FOLDER_PATH=['Coffee','App'];
 const DRIVE_FILE_NAME='roast_journal.json';
@@ -1882,6 +2058,11 @@ async function fetchDriveUser(){
     saveDriveStorage();updateDriveUI();
     toast('Drive に接続しました。データを読み込んでいます...');
     await loadFromDrive();
+    // オフライン中の変更があれば同期
+    if(hasPendingSync()){
+      await syncToDrive();clearPending();
+      toast('オフライン中の変更をDriveに同期しました ✓');
+    }
   }catch(e){toast('接続エラー: '+e.message);}
 }
 function updateDriveUI(){
@@ -1946,16 +2127,27 @@ document.addEventListener('DOMContentLoaded',()=>{
     document.getElementById('auto-sync-lbl').textContent=this.checked?'ON':'OFF';
   });
 });
-function autoSync(){if(document.getElementById('auto-sync').checked&&S.driveToken)syncToDrive();}
+function autoSync(){
+  // 常にローカルに保存
+  if(document.getElementById('auto-sync').checked){
+    saveLocal();
+    if(S.driveToken)syncToDrive().then(()=>clearPending());
+  }
+}
 
 // ===== INIT =====
 loadDriveStorage();
-loadApiKey();
+// まずローカルストレージから読み込み（オフライン対応）
+if(loadLocal()){
+  console.log('Loaded from localStorage');
+}
 renderBeanForm();
 initOcrBox();
 initFilterButtons();
 initFlavorWheel();
 renderBeans();
+updateUndoBtn();
+// Drive接続済みなら最新データをDriveから取得
 if(S.driveToken)loadFromDrive();
 </script>
 </body>
