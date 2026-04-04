@@ -872,7 +872,7 @@ async function importFromUrl(){
   const url=document.getElementById('import-url').value.trim();if(!url){toast('URLを入力してください');return;}
   const st=document.getElementById('import-status');st.style.display='block';st.textContent='Claude AIが情報を取得中...';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({
       model:'claude-sonnet-4-20250514',max_tokens:800,
       tools:[{type:'web_search_20250305',name:'web_search'}],
       messages:[{role:'user',content:`このURLのコーヒー豆の商品ページを検索して、以下のJSON形式のみで返してください。情報不明は空文字。URL: ${url}\n{"name":"","country":"","farm":"","variety":"","process":"","score":"","taste":"","price":""}`}]
@@ -1123,7 +1123,7 @@ async function runOCRCapture(){
     ocrLog('Claude API 送信中...');
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',max_tokens:60,
         messages:[{role:'user',content:[
