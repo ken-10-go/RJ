@@ -492,6 +492,16 @@ select.inp{cursor:pointer;}
           </div>
         </div>
       </div>
+      <div class="card">
+        <div class="card-title">Anthropic API キー</div>
+        <div class="inp-w">
+          <div class="label">API Key</div>
+          <input class="inp" id="anthropic-api-key" type="password" placeholder="sk-ant-..." autocomplete="off" style="font-size:var(--fs-xs);">
+          <div style="font-size:var(--fs-xs);color:var(--c-muted);line-height:1.6;margin-top:6px;">カメラOCR・URL取り込みに使用します。<br>キーは localStorage に保存されます。<a href="https://console.anthropic.com/" target="_blank" style="color:var(--c-accent);">Anthropic Console</a> で取得できます。</div>
+        </div>
+        <button class="btn btn-primary" onclick="saveApiKey()" style="margin-top:4px;">保存する</button>
+        <div id="api-key-status" style="font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-muted);margin-top:6px;"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -870,9 +880,10 @@ function updateRoastLevelHint(){
 // ===== URL IMPORT =====
 async function importFromUrl(){
   const url=document.getElementById('import-url').value.trim();if(!url){toast('URLを入力してください');return;}
+  if(!getApiKey()){toast('DRIVEタブでAnthropic APIキーを設定してください');return;}
   const st=document.getElementById('import-status');st.style.display='block';st.textContent='Claude AIが情報を取得中...';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({
       model:'claude-sonnet-4-20250514',max_tokens:800,
       tools:[{type:'web_search_20250305',name:'web_search'}],
       messages:[{role:'user',content:`このURLのコーヒー豆の商品ページを検索して、以下のJSON形式のみで返してください。情報不明は空文字。URL: ${url}\n{"name":"","country":"","farm":"","variety":"","process":"","score":"","taste":"","price":""}`}]
@@ -1102,6 +1113,13 @@ function stopCameraOCR(){
 
 async function runOCRCapture(){
   if(ocrBusy||!cameraStream)return;
+  if(!getApiKey()){
+    ocrLog('APIキーが未設定です。DriveタブでAPIキーを設定してください。','err');
+    document.getElementById('ocr-temp').textContent='APIキー未設定';
+    stopCameraOCR();
+    toast('DRIVEタブでAnthropic APIキーを設定してください');
+    return;
+  }
   ocrBusy=true;
   document.getElementById('ocr-temp').textContent='読み取り中...';
   ocrLog('--- キャプチャ開始 ---');
@@ -1123,7 +1141,7 @@ async function runOCRCapture(){
     ocrLog('Claude API 送信中...');
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',max_tokens:60,
         messages:[{role:'user',content:[
@@ -1539,8 +1557,29 @@ function disconnectDrive(){
 document.getElementById('auto-sync').addEventListener('change',function(){document.getElementById('auto-sync-lbl').textContent=this.checked?'ON':'OFF';});
 function autoSync(){if(document.getElementById('auto-sync').checked&&S.driveToken)syncToDrive();}
 
+// ===== API KEY =====
+function getApiKey(){return localStorage.getItem('rj_anthropic_key')||'';}
+function saveApiKey(){
+  const v=document.getElementById('anthropic-api-key').value.trim();
+  if(!v){toast('APIキーを入力してください');return;}
+  localStorage.setItem('rj_anthropic_key',v);
+  document.getElementById('api-key-status').textContent='保存しました ✓';
+  document.getElementById('api-key-status').style.color='#8cbf6a';
+  toast('APIキーを保存しました');
+}
+function loadApiKey(){
+  const k=getApiKey();
+  if(k){
+    // show masked
+    document.getElementById('anthropic-api-key').placeholder='sk-ant-****** (保存済み)';
+    document.getElementById('api-key-status').textContent='APIキー: 設定済み ✓';
+    document.getElementById('api-key-status').style.color='#8cbf6a';
+  }
+}
+
 // ===== INIT =====
 loadDriveStorage();
+loadApiKey();
 renderBeanForm();
 initFilterButtons();
 initFlavorWheel();
