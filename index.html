@@ -129,7 +129,7 @@ select.inp{cursor:pointer;}
 .collapsible-arrow.open{transform:rotate(180deg);}
 .collapsible-body{overflow:hidden;transition:max-height .3s ease;}
 /* radar */
-.radar-wrap{display:flex;justify-content:center;margin:8px 0;}
+.radar-wrap{display:flex;justify-content:center;margin:8px 0;touch-action:none;}
 .radar-hint{font-size:var(--fs-xs);color:var(--c-muted);text-align:center;margin-top:4px;}
 /* flavor wheel */
 .flavor-cat-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
@@ -419,7 +419,7 @@ select.inp{cursor:pointer;}
       </div>
       <div class="card">
         <div class="card-title">フレーバー属性</div>
-        <div class="radar-wrap"><canvas id="radar-chart" width="320" height="280"></canvas></div>
+        <div class="radar-wrap"><canvas id="radar-chart" width="320" height="280" style="touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;"></canvas></div>
         <div class="radar-hint">各頂点をドラッグしてスコアを調整（1〜5）</div>
         <!-- スライダー補助 -->
       </div>
@@ -1450,17 +1450,20 @@ function attachRadarDrag(canvas){
   }
 
   function onStart(e){
+    e.preventDefault(); // スクロール横取りを常に防止
+    e.stopPropagation();
     const {x,y}=getXY(e);
     radarDragIdx=-1;
     for(let i=0;i<N;i++){
       const p=pointXY(i);
-      if(Math.hypot(p.x-x,p.y-y)<36){radarDragIdx=i;break;}
+      if(Math.hypot(p.x-x,p.y-y)<40){radarDragIdx=i;break;}
     }
-    if(radarDragIdx>=0){radarDragActive=true;e.preventDefault();}
+    if(radarDragIdx>=0){radarDragActive=true;}
   }
   function onMove(e){
     if(!radarDragActive||radarDragIdx<0)return;
     e.preventDefault();
+    e.stopPropagation();
     const {x,y}=getXY(e);
     const v=valueFromXY(radarDragIdx,x,y);
     if(v!==S.radarVals[radarDragIdx]){
