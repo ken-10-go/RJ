@@ -1914,26 +1914,7 @@ function autoSync(){
 document.getElementById('record-modal').addEventListener('click',function(e){if(e.target===this)closeRecordModal();});
 document.getElementById('edit-roast-modal').addEventListener('click',function(e){if(e.target===this)closeEditRoastModal();});
 
-// ===== UNDO STACK =====
-const UNDO_STACK=[];
-const UNDO_MAX=5;
-function pushUndo(){
-  UNDO_STACK.push({beans:JSON.parse(JSON.stringify(S.beans)),roastRecords:JSON.parse(JSON.stringify(S.roastRecords)),tasteRecords:JSON.parse(JSON.stringify(S.tasteRecords)),master:JSON.parse(JSON.stringify(S.master))});
-  if(UNDO_STACK.length>UNDO_MAX)UNDO_STACK.shift();
-  updateUndoBtn();
-}
-function undo(){
-  if(!UNDO_STACK.length){toast('これ以上戻れません');return;}
-  const prev=UNDO_STACK.pop();
-  S.beans=prev.beans;S.roastRecords=prev.roastRecords;S.tasteRecords=prev.tasteRecords;S.master=prev.master;
-  renderBeans();updateBeanSelect();renderRecords();updateTasteSelect();
-  updateUndoBtn();toast('元に戻しました（残り'+UNDO_STACK.length+'回）');autoSync();
-}
-function updateUndoBtn(){
-  const btn=document.getElementById('undo-btn');if(!btn)return;
-  btn.textContent='↩ UNDO'+(UNDO_STACK.length?` (${UNDO_STACK.length})`:'');
-  btn.style.opacity=UNDO_STACK.length?'1':'0.4';
-}
+
 
 // ===== INIT =====
 loadDriveStorage();
