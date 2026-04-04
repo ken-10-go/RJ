@@ -14,7 +14,7 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
 body{font-family:'DM Sans',sans-serif;background:var(--c-espresso);color:var(--c-cream);font-size:var(--fs-base);}
-#app{max-width:430px;margin:0 auto;background:var(--c-dark);height:100vh;display:flex;flex-direction:column;}
+#app{max-width:430px;margin:0 auto;background:var(--c-dark);height:100vh;height:100dvh;display:flex;flex-direction:column;}
 .topbar{background:var(--c-espresso);padding:14px 18px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
 .topbar-row{display:flex;justify-content:space-between;align-items:center;}
 .topbar-title{font-family:'Playfair Display',serif;font-size:22px;color:var(--c-cream);}
@@ -1409,63 +1409,100 @@ function renderRadarChart(){
   attachRadarDrag(canvas);
 }
 
-function attachRadarDrag(canvas){
-  const N=RADAR_LABELS.length;
-  let dragging=-1;
+// レーダードラッグ: 頂点への当たり判定＋ドラッグでスコア変更
+let radarDragIdx=-1;
+let radarDragActive=false;
 
-  function getPointPositions(){
-    // Chart.jsの内部スケールから各頂点のcanvas座標を取得
-    const scale=radarChart.scales.r;
-    return RADAR_LABELS.map((_,i)=>{
-      const angle=scale.getIndexAngle(i)-Math.PI/2;
-      const r=scale.getDistanceFromCenterForValue(S.radarVals[i]);
-      return{x:scale.xCenter+Math.cos(angle)*r, y:scale.yCenter+Math.sin(angle)*r};
-    });
-  }
-  function getAngleAndValue(cx,cy,mx,my,i){
-    const scale=radarChart.scales.r;
-    const dx=mx-scale.xCenter, dy=my-scale.yCenter;
-    const dist=Math.sqrt(dx*dx+dy*dy);
-    const maxR=scale.getDistanceFromCenterForValue(5);
-    const minR=scale.getDistanceFromCenterForValue(1);
-    const clamped=Math.max(minR,Math.min(maxR,dist));
-    // 距離を1-5にマッピング
-    return Math.round(1+(clamped-minR)/(maxR-minR)*4);
-  }
+function getRadarPointXY(i){
+  // Chart.js 4.x: scale.getPointPositionForValue(index, value)
+  const scale=radarChart.scales.r;
+  // 各頂点の角度を計算（Chart.jsの内部と同じ計算式）
+  const count=RADAR_LABELS.length;
+  const angle=(2*Math.PI/count)*i - Math.PI/2;
+  // 値→半径の変換（drawingAreaはスケールの最大半径）
+  const drawingArea=scale.drawingArea;
+  const val=S.radarVals[i];
+  const r=drawingArea*(val/5);
+  return{x:scale.xCenter+Math.cos(angle)*r, y:scale.yCenter+Math.sin(angle)*r};
+}
+
+function getRadarValueFromXY(i, cx, cy){
+  const scale=radarChart.scales.r;
+  const count=RADAR_LABELS.length;
+  const angle=(2*Math.PI/count)*i - Math.PI/2;
+  // タッチ点から中心への距離を計算し、角度方向に投影
+  const dx=cx-scale.xCenter, dy=cy-scale.yCenter;
+  // ドラッグ点のその頂点方向への射影距離
+  const proj=dx*Math.cos(angle)+dy*Math.sin(angle);
+  const drawingArea=scale.drawingArea;
+  const raw=proj/drawingArea*5;
+  return Math.min(5,Math.max(1,Math.round(raw)));
+}
+
+function attachRadarDrag(canvas){
+  // 既存リスナーをリセット（clone）
+  const newCanvas=canvas.cloneNode(true);
+  canvas.parentNode.replaceChild(newCanvas,canvas);
+  // radarChartのcanvas参照も更新
+  // ※ Chart.jsはcanvas要素を内部保持するため、元canvasを使い続ける
+  // → cloneせず、リスナーを一度だけ登録する方式に変更
+  // 実装: AbortControllerで管理
+  if(canvas._radarAbort){canvas._radarAbort.abort();}
+  const ac=new AbortController();
+  canvas._radarAbort=ac;
+  const opt={signal:ac.signal};
+  const optPassive={signal:ac.signal,passive:false};
+
   function getXY(e){
-    const r=canvas.getBoundingClientRect();
+    const rect=canvas.getBoundingClientRect();
     const src=e.touches?e.touches[0]:e;
-    return{x:(src.clientX-r.left)*(canvas.width/r.width),
-           y:(src.clientY-r.top)*(canvas.height/r.height)};
+    // canvasの実際のピクセルサイズとCSS表示サイズの比率を考慮
+    const scaleX=canvas.width/rect.width;
+    const scaleY=canvas.height/rect.height;
+    return{x:(src.clientX-rect.left)*scaleX, y:(src.clientY-rect.top)*scaleY};
   }
-  function onStart(e){
+
+  canvas.addEventListener('mousedown',e=>{
     const {x,y}=getXY(e);
-    const pts=getPointPositions();
-    dragging=-1;
-    pts.forEach((p,i)=>{
-      if(Math.hypot(p.x-x,p.y-y)<22){dragging=i;}
+    radarDragIdx=-1;
+    RADAR_LABELS.forEach((_,i)=>{
+      const p=getRadarPointXY(i);
+      if(Math.hypot(p.x-x,p.y-y)<26){radarDragIdx=i;}
     });
-    if(dragging>=0)e.preventDefault();
-  }
+    if(radarDragIdx>=0){radarDragActive=true;e.preventDefault();}
+  },opt);
+
+  canvas.addEventListener('touchstart',e=>{
+    const {x,y}=getXY(e);
+    radarDragIdx=-1;
+    RADAR_LABELS.forEach((_,i)=>{
+      const p=getRadarPointXY(i);
+      if(Math.hypot(p.x-x,p.y-y)<30){radarDragIdx=i;}
+    });
+    if(radarDragIdx>=0){radarDragActive=true;e.preventDefault();}
+  },optPassive);
+
   function onMove(e){
-    if(dragging<0)return;
+    if(!radarDragActive||radarDragIdx<0)return;
     e.preventDefault();
     const {x,y}=getXY(e);
-    const scale=radarChart.scales.r;
-    const v=getAngleAndValue(scale.xCenter,scale.yCenter,x,y,dragging);
-    if(v!==S.radarVals[dragging]){
-      S.radarVals[dragging]=v;
+    const v=getRadarValueFromXY(radarDragIdx,x,y);
+    if(v!==S.radarVals[radarDragIdx]){
+      S.radarVals[radarDragIdx]=v;
       radarChart.data.datasets[0].data=[...S.radarVals];
+      radarChart.update('none');
+      // ラベル更新
+      radarChart.options.scales.r.pointLabels.callback=(label,i)=>label+' ('+S.radarVals[i]+')';
       radarChart.update('none');
     }
   }
-  function onEnd(){dragging=-1;}
-  canvas.addEventListener('mousedown',onStart);
-  canvas.addEventListener('mousemove',onMove);
-  canvas.addEventListener('mouseup',onEnd);
-  canvas.addEventListener('touchstart',onStart,{passive:false});
-  canvas.addEventListener('touchmove',onMove,{passive:false});
-  canvas.addEventListener('touchend',onEnd);
+  canvas.addEventListener('mousemove',onMove,opt);
+  canvas.addEventListener('touchmove',onMove,optPassive);
+
+  function onEnd(){radarDragActive=false;radarDragIdx=-1;}
+  canvas.addEventListener('mouseup',onEnd,opt);
+  canvas.addEventListener('mouseleave',onEnd,opt);
+  canvas.addEventListener('touchend',onEnd,opt);
 }
 
 // スライダー関連（互換用、空実装）
