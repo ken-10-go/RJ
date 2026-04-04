@@ -787,7 +787,13 @@ function stopCameraOCR(){
 async function runOCRCapture(){
   if(ocrBusy||!cameraStream)return;ocrBusy=true;
   document.getElementById('ocr-temp').textContent='読み取り中...';
-  // ★ここから追加（デバッグ用：カメラが捉えている画像を表示）
+  try{
+    const v=document.getElementById('camera-video'),c=document.getElementById('camera-canvas');
+    c.width=v.videoWidth||640;c.height=v.videoHeight||480;c.getContext('2d').drawImage(v,0,0);
+    const b64=c.toDataURL('image/jpeg',0.85).split(',')[1];
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:50,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'この画像のデジタル温度計の数値のみ返してください。読み取れない場合は "NG" のみ返してください。例: 185.3'}]}]})});
+    const data=await res.json();const txt=data.content[0].text.trim();
+     // ★ここから追加（デバッグ用：カメラが捉えている画像を表示）
       c.style.display = 'block';
       c.style.position = 'fixed';
       c.style.bottom = '80px'; 
@@ -798,12 +804,7 @@ async function runOCRCapture(){
       c.style.border = '3px solid #e8841e';
       c.style.background = '#000';
       // ★ここまで追加
-  try{
-    const v=document.getElementById('camera-video'),c=document.getElementById('camera-canvas');
-    c.width=v.videoWidth||640;c.height=v.videoHeight||480;c.getContext('2d').drawImage(v,0,0);
-    const b64=c.toDataURL('image/jpeg',0.85).split(',')[1];
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:50,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'この画像のデジタル温度計の数値のみ返してください。読み取れない場合は "NG" のみ返してください。例: 185.3'}]}]})});
-    const data=await res.json();const txt=data.content[0].text.trim();
+    
     if(txt!=='NG'){const num=parseFloat(txt.replace(/[^0-9.]/g,''));if(!isNaN(num)&&num>=60){document.getElementById('ocr-temp').textContent=num+'°C';if(S.roastRunning)recordTemp(num);}else document.getElementById('ocr-temp').textContent='読取失敗';}
     else document.getElementById('ocr-temp').textContent='読取失敗';
   }catch(e){document.getElementById('ocr-temp').textContent='エラー';}
