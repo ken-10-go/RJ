@@ -355,13 +355,36 @@ select.inp{cursor:pointer;}
               <span style="font-weight:500;font-size:var(--fs-sm);">自動読み取り停止</span>
             </button>
           </div>
+          <!-- OCR クロップ調整 -->
+          <div id="ocr-crop-panel" style="display:none;background:rgba(26,15,7,.5);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:6px;">
+            <div style="font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-accent);margin-bottom:8px;">📐 LCD読み取り範囲を調整</div>
+            <div style="font-size:var(--fs-xs);color:var(--c-muted);margin-bottom:8px;">プレビュー画像を見ながら、温度数字だけが映るように調整してください</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+              <div>
+                <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-muted);">上から開始 <span id="crop-y-val">20</span>%</div>
+                <input type="range" id="crop-y" min="0" max="70" value="20" style="-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--c-accent);outline:none;" oninput="updateCropPreview()">
+              </div>
+              <div>
+                <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-muted);">高さ <span id="crop-h-val">35</span>%</div>
+                <input type="range" id="crop-h" min="10" max="80" value="35" style="-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--c-accent);outline:none;" oninput="updateCropPreview()">
+              </div>
+              <div>
+                <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-muted);">左から開始 <span id="crop-x-val">5</span>%</div>
+                <input type="range" id="crop-x" min="0" max="60" value="5" style="-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--c-accent);outline:none;" oninput="updateCropPreview()">
+              </div>
+              <div>
+                <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-muted);">幅 <span id="crop-w-val">65</span>%</div>
+                <input type="range" id="crop-w" min="20" max="100" value="65" style="-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--c-accent);outline:none;" oninput="updateCropPreview()">
+              </div>
+            </div>
+            <div style="margin-top:8px;">
+              <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-muted);margin-bottom:3px;">クロップ後プレビュー（この画像でOCR）</div>
+              <canvas id="ocr-preview" style="width:100%;border-radius:4px;border:1px solid var(--c-accent);background:#000;display:block;max-height:70px;object-fit:contain;"></canvas>
+            </div>
+          </div>
           <!-- OCR デバッグパネル -->
           <div id="ocr-debug" class="ocr-debug">
             <div style="color:var(--c-accent);font-weight:500;margin-bottom:4px;">OCR デバッグログ</div>
-            <div style="margin-bottom:6px;">
-              <div style="font-size:9px;color:var(--c-muted);margin-bottom:2px;">前処理済み画像（Tesseractへの入力）</div>
-              <canvas id="ocr-preview" style="width:100%;border-radius:4px;border:1px solid var(--border);background:#000;display:block;max-height:80px;object-fit:contain;"></canvas>
-            </div>
             <div id="ocr-debug-log"></div>
           </div>
           <!-- 手動入力 -->
@@ -1080,112 +1103,56 @@ function ocrLog(msg,type=''){
   while(log.children.length>20)log.removeChild(log.lastChild);
 }
 
-// 画像前処理: LCD温度計に特化した処理
-// LCD領域を自動検出して切り出し、数字認識に最適化する
-function preprocessCanvas(srcCanvas){
-  const w=srcCanvas.width, h=srcCanvas.height;
+// 画像前処理: ユーザー指定クロップ領域 + LCD向け2値化
+// cropRect: {x,y,w,h} (0.0〜1.0の相対値)
+function preprocessCanvas(srcCanvas, cropRect){
+  const sw=srcCanvas.width, sh=srcCanvas.height;
 
-  // --- Step1: 全体をグレースケールに変換してLCDエリアを自動検出 ---
-  const full=document.createElement('canvas');
-  full.width=w; full.height=h;
-  const fctx=full.getContext('2d');
-  fctx.drawImage(srcCanvas,0,0);
-  const fid=fctx.getImageData(0,0,w,h);
-  const fd=fid.data;
+  // クロップ領域（相対値→ピクセル変換）
+  const cx=Math.floor(sw*cropRect.x);
+  const cy=Math.floor(sh*cropRect.y);
+  const cw=Math.floor(sw*cropRect.w);
+  const ch=Math.floor(sh*cropRect.h);
 
-  // 各ピクセルのグレー輝度を計算
-  const grayMap=new Float32Array(w*h);
-  for(let i=0;i<w*h;i++){
-    const p=i*4;
-    grayMap[i]=0.299*fd[p]+0.587*fd[p+1]+0.114*fd[p+2];
-  }
-
-  // --- Step2: LCD領域を検出 ---
-  // LCDの特徴: 暗い背景(輝度30〜120)が矩形に広がっている
-  // 縦方向にスキャンして暗い行を探す
-  const DARK_LO=20, DARK_HI=130;
-  const rowDarkRatio=new Float32Array(h);
-  for(let y=0;y<h;y++){
-    let darkCount=0;
-    for(let x=0;x<w;x++){
-      const v=grayMap[y*w+x];
-      if(v>=DARK_LO&&v<=DARK_HI)darkCount++;
-    }
-    rowDarkRatio[y]=darkCount/w;
-  }
-
-  // 暗い行が最も連続している帯域をLCDとみなす
-  let bestStart=0,bestLen=0,curStart=0,curLen=0;
-  const THRESH=0.25; // 25%以上の画素が暗ければ暗い行
-  for(let y=0;y<h;y++){
-    if(rowDarkRatio[y]>=THRESH){
-      if(curLen===0)curStart=y;
-      curLen++;
-      if(curLen>bestLen){bestLen=curLen;bestStart=curStart;}
-    }else{
-      curLen=0;
-    }
-  }
-
-  // LCD行帯域が見つからなければ全体中央を使う
-  let lcdY, lcdH;
-  if(bestLen>20){
-    // 少しマージンを取る
-    lcdY=Math.max(0,bestStart-Math.floor(bestLen*0.1));
-    lcdH=Math.min(h-lcdY,bestLen+Math.floor(bestLen*0.2));
-  }else{
-    lcdY=Math.floor(h*0.2);
-    lcdH=Math.floor(h*0.5);
-  }
-
-  // 横方向も同様にスキャン
-  const colDarkRatio=new Float32Array(w);
-  for(let x=0;x<w;x++){
-    let darkCount=0;
-    for(let y=lcdY;y<lcdY+lcdH;y++){
-      const v=grayMap[y*w+x];
-      if(v>=DARK_LO&&v<=DARK_HI)darkCount++;
-    }
-    colDarkRatio[x]=darkCount/lcdH;
-  }
-  let lcdX1=0,lcdX2=w;
-  for(let x=0;x<w;x++){if(colDarkRatio[x]>=THRESH){lcdX1=Math.max(0,x-10);break;}}
-  for(let x=w-1;x>=0;x--){if(colDarkRatio[x]>=THRESH){lcdX2=Math.min(w,x+10);break;}}
-  const lcdW=lcdX2-lcdX1;
-
-  ocrLog(`LCD領域検出: x=${lcdX1} y=${lcdY} w=${lcdW} h=${lcdH}`);
-
-  // 検出できなかった場合のフォールバック
-  const cropX=lcdW>50?lcdX1:Math.floor(w*0.05);
-  const cropY=lcdH>20?lcdY:Math.floor(h*0.2);
-  const cropW=lcdW>50?lcdW:Math.floor(w*0.9);
-  const cropH=lcdH>20?lcdH:Math.floor(h*0.4);
-
-  // --- Step3: 切り出し＋3倍アップスケール ---
+  // 3倍アップスケール
   const scale=3;
   const dst=document.createElement('canvas');
-  dst.width=cropW*scale; dst.height=cropH*scale;
+  dst.width=cw*scale; dst.height=ch*scale;
   const ctx=dst.getContext('2d');
   ctx.imageSmoothingEnabled=true;
   ctx.imageSmoothingQuality='high';
-  ctx.drawImage(srcCanvas, cropX, cropY, cropW, cropH, 0, 0, dst.width, dst.height);
+  ctx.drawImage(srcCanvas, cx, cy, cw, ch, 0, 0, dst.width, dst.height);
 
-  // --- Step4: LCD向けピクセル処理 ---
+  // LCD向けピクセル処理
+  // この温度計: 暗い背景(黒〜濃緑)に暗い数字セグメント
+  // → 中間輝度帯(LCD背景の緑)と暗い数字を分離
   const id=ctx.getImageData(0,0,dst.width,dst.height);
   const d=id.data;
+
+  // まず輝度ヒストグラムで閾値を自動決定
+  const hist=new Int32Array(256);
+  for(let i=0;i<d.length;i+=4){
+    const g=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+    hist[g]++;
+  }
+  // 最頻値（LCD背景色）を探す
+  let peakV=0,peakC=0;
+  for(let v=30;v<200;v++){if(hist[v]>peakC){peakC=hist[v];peakV=v;}}
+  // 閾値: 最頻値より少し暗い部分が数字
+  const threshold=Math.max(20, peakV-25);
+  ocrLog(`輝度ピーク:${peakV} 閾値:${threshold}`);
+
   for(let i=0;i<d.length;i+=4){
     const r=d[i],g=d[i+1],b=d[i+2];
-    let gray=0.299*r+0.587*g+0.114*b;
-    // LCD緑色ピクセルを強調
-    if(g>r+8&&g>b+8) gray=Math.min(255,gray*1.5);
-    // 2値化: 暗い背景→黒、数字→白
-    // LCDの数字は背景より暗いので反転して白背景黒文字にする
-    const bin=gray<110?255:0; // 暗いところが数字→白に反転
+    const gray=0.299*r+0.587*g+0.114*b;
+    // 数字（暗い部分）→ 黒、背景（明るい部分）→ 白
+    const bin=gray<threshold?0:255;
     d[i]=d[i+1]=d[i+2]=bin;
   }
   ctx.putImageData(id,0,0);
   return dst;
 }
+
 
 async function initTesseract(){
   if(tesseractWorker)return;
@@ -1222,6 +1189,7 @@ async function startCameraOCR(){
     document.getElementById('camera-preview-wrap').style.display='block';
     document.getElementById('cam-start-btn').style.display='none';
     document.getElementById('cam-stop-btn').style.display='block';
+    document.getElementById('ocr-crop-panel').style.display='block';
     // Tesseract初期化（バックグラウンド）
     initTesseract();
     ocrCD=8;
@@ -1243,6 +1211,7 @@ function stopCameraOCR(){
   const pw=document.getElementById('camera-preview-wrap');if(pw)pw.style.display='none';
   const sb=document.getElementById('cam-start-btn');const sp=document.getElementById('cam-stop-btn');
   if(sb)sb.style.display='block';if(sp)sp.style.display='none';
+  document.getElementById('ocr-crop-panel').style.display='none';
   ocrLog('カメラ停止');
 }
 
@@ -1267,8 +1236,9 @@ async function runOCRCapture(){
     canvas.getContext('2d').drawImage(video,0,0);
     ocrLog(`キャプチャ成功 ${video.videoWidth}×${video.videoHeight}`,'ok');
 
-    // Step2: 前処理
-    const processed=preprocessCanvas(canvas);
+    // Step2: 前処理（クロップ範囲を適用）
+    const cropRect=getCropRect();
+    const processed=preprocessCanvas(canvas,cropRect);
     ocrLog(`前処理完了 (${processed.width}×${processed.height}px)`,'ok');
     // プレビュー表示
     const preview=document.getElementById('ocr-preview');
@@ -1692,6 +1662,32 @@ function disconnectDrive(){
 }
 document.getElementById('auto-sync').addEventListener('change',function(){document.getElementById('auto-sync-lbl').textContent=this.checked?'ON':'OFF';});
 function autoSync(){if(document.getElementById('auto-sync').checked&&S.driveToken)syncToDrive();}
+
+// ===== OCR CROP HELPERS =====
+function getCropRect(){
+  const x=parseInt(document.getElementById('crop-x').value)/100;
+  const y=parseInt(document.getElementById('crop-y').value)/100;
+  const w=parseInt(document.getElementById('crop-w').value)/100;
+  const h=parseInt(document.getElementById('crop-h').value)/100;
+  // clamp so crop stays within image
+  return{x:Math.min(x,1-w),y:Math.min(y,1-h),w:Math.min(w,1-x),h:Math.min(h,1-y)};
+}
+function updateCropPreview(){
+  document.getElementById('crop-x-val').textContent=document.getElementById('crop-x').value;
+  document.getElementById('crop-y-val').textContent=document.getElementById('crop-y').value;
+  document.getElementById('crop-w-val').textContent=document.getElementById('crop-w').value;
+  document.getElementById('crop-h-val').textContent=document.getElementById('crop-h').value;
+  // リアルタイムプレビュー更新（カメラが動いていれば）
+  if(!cameraStream)return;
+  const video=document.getElementById('camera-video');
+  if(!video.videoWidth)return;
+  const tmp=document.createElement('canvas');
+  tmp.width=video.videoWidth;tmp.height=video.videoHeight;
+  tmp.getContext('2d').drawImage(video,0,0);
+  const processed=preprocessCanvas(tmp,getCropRect());
+  const preview=document.getElementById('ocr-preview');
+  if(preview){preview.width=processed.width;preview.height=processed.height;preview.getContext('2d').drawImage(processed,0,0);}
+}
 
 // ===== API KEY =====
 function getApiKey(){return localStorage.getItem('rj_anthropic_key')||'';}
