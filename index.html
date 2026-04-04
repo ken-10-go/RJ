@@ -1272,64 +1272,75 @@ function recognizeDisplay(canvas){
   const id=ctx.getImageData(0,0,w,h);
   const data=id.data;
 
-  // ヒストグラムで閾値と「数字が暗いか明るいか」を判定
+  // ===== Step1: 閾値と数字の明暗を判定 =====
   const hist=new Int32Array(256);
-  for(let i=0;i<data.length;i+=4){
-    hist[Math.round(getBright(data,i>>2,0,1)||getBright(data,0,0,1))||Math.round(0.299*data[i]+0.587*data[i+1]+0.114*data[i+2])]++;
-  }
-  // 修正: ヒストグラム集計
-  const hist2=new Int32Array(256);
   for(let i=0;i<w*h;i++){
     const p=i*4;
-    hist2[Math.min(255,Math.round(0.299*data[p]+0.587*data[p+1]+0.114*data[p+2]))]++;
+    hist[Math.min(255,Math.round(0.299*data[p]+0.587*data[p+1]+0.114*data[p+2]))]++;
   }
-
-  // 最頻値(背景色)と全体平均を比較
   let peakV=0,peakC=0,totalBright=0;
-  for(let v=0;v<256;v++){if(hist2[v]>peakC){peakC=hist2[v];peakV=v;}totalBright+=v*hist2[v];}
+  for(let v=0;v<256;v++){if(hist[v]>peakC){peakC=hist[v];peakV=v;}totalBright+=v*hist[v];}
   const mean=totalBright/(w*h);
   const thresh=(peakV+mean)/2;
-  // 背景が明るい(peakV>128)→数字は暗い、背景が暗い(peakV<128)→数字は明るい
-  const darkDigits=peakV<128;
+  const darkDigits=peakV<128; // 背景が暗い→数字は明るい
   ocrLog(`ピーク=${peakV} 平均=${Math.round(mean)} 閾値=${Math.round(thresh)} 数字=${darkDigits?'暗':'明'}`);
 
-  // 「数字の列」のスコア: darkDigitsなら暗い列、そうでなければ明るい列
-  const colScore=new Float32Array(w);
+  // ===== Step2: 垂直投影で桁を分割 =====
+  // 各列の「数字ピクセル率」を計算
+  const col=new Float32Array(w);
   for(let x=0;x<w;x++){
     let s=0;
     for(let y=0;y<h;y++){
       const v=getBright(data,x,y,w);
       s+=darkDigits?(v<thresh?1:0):(v>thresh?1:0);
     }
-    colScore[x]=s/h;
+    col[x]=s/h;
   }
 
-  // ギャップ検出: スコアが低い列で桁を分割
-  // まず全体スコアの平均を算出してGAP閾値を決める
-  const avgScore=colScore.reduce((a,b)=>a+b,0)/w;
-  const GAP=Math.max(0.05,avgScore*0.4); // 平均の40%以下をギャップとみなす
-  ocrLog(`列スコア平均=${avgScore.toFixed(3)} ギャップ閾値=${GAP.toFixed(3)}`);
+  // 移動平均でスムージング（ノイズ除去）
+  const smooth=new Float32Array(w);
+  const K=3;
+  for(let x=0;x<w;x++){
+    let s=0,c=0;
+    for(let dx=-K;dx<=K;dx++){if(x+dx>=0&&x+dx<w){s+=col[x+dx];c++;}}
+    smooth[x]=s/c;
+  }
 
+  // 局所的な谷（ギャップ）を検出
+  // 閾値: 近傍最大値の30%以下をギャップとみなす
   const digitRects=[];
   let inD=false,dS=0;
+  // まず全体の最大値を取得
+  const maxScore=Math.max(...smooth);
+  const gapTh=maxScore*0.25; // 最大値の25%以下=ギャップ
+  ocrLog(`列スコア最大=${maxScore.toFixed(3)} ギャップ閾値=${gapTh.toFixed(3)}`);
+
   for(let x=0;x<w;x++){
-    if(!inD&&colScore[x]>GAP){inD=true;dS=x;}
-    else if(inD&&colScore[x]<=GAP){
-      if(x-dS>w*0.03)digitRects.push({x:dS,w:x-dS});
+    if(!inD&&smooth[x]>gapTh){inD=true;dS=x;}
+    else if(inD&&smooth[x]<=gapTh){
+      if(x-dS>=w*0.02)digitRects.push({x:dS,w:x-dS});
       inD=false;
     }
   }
-  if(inD)digitRects.push({x:dS,w:w-dS});
+  if(inD&&w-dS>=w*0.02)digitRects.push({x:dS,w:w-dS});
+
   ocrLog(`桁候補: ${digitRects.length}個 幅=${digitRects.map(d=>d.w).join(',')}`);
 
-  if(!digitRects.length)return null;
+  if(!digitRects.length){
+    // フォールバック: 桁が検出できなかった場合は均等4分割で試みる
+    ocrLog('桁検出失敗→均等4分割で試行');
+    const dw=Math.floor(w/4);
+    for(let i=0;i<4;i++)digitRects.push({x:i*dw,w:dw});
+  }
 
-  // 幅でフィルタ（中央値±50%）
+  // ===== Step3: 小数点ドット(細い塊)を除外して数字桁のみ残す =====
   const ws=digitRects.map(d=>d.w).sort((a,b)=>b-a);
   const medW=ws[Math.floor(ws.length/2)];
-  const mainDigits=digitRects.filter(d=>d.w>=medW*0.4&&d.w<=medW*2.5);
+  // 中央値の35%未満は小数点ドットとみなして除外
+  const mainDigits=digitRects.filter(d=>d.w>=medW*0.35);
   ocrLog(`数字桁: ${mainDigits.length}個`);
 
+  // ===== Step4: 各桁を7セグメント認識 =====
   const results=[];
   for(const dr of mainDigits){
     const {digit,dist}=recognizeDigit(data,w,h,dr.x,0,dr.w,h,thresh,darkDigits);
@@ -1337,7 +1348,7 @@ function recognizeDisplay(canvas){
     ocrLog(`  x=${dr.x} w=${dr.w} → '${digit}' (err=${dist})`);
   }
 
-  // 小数点1桁固定で組み立て
+  // ===== Step5: 小数点1桁固定で組み立て =====
   if(results.length>=3&&results.length<=4){
     const intP=results.slice(0,-1).map(d=>d.digit).join('');
     const decP=results[results.length-1].digit;
@@ -1348,44 +1359,82 @@ function recognizeDisplay(canvas){
   }else if(results.length>4){
     const t4=results.slice(0,4);
     return t4.slice(0,-1).map(d=>d.digit).join('')+'.'+t4[t4.length-1].digit;
+  }else if(results.length===1){
+    // 1桁しか検出できない場合は認識失敗
+    ocrLog('桁数不足(1桁)→失敗');
+    return null;
   }
   return results.map(d=>d.digit).join('');
 }
 
-// クロップ＋アップスケール＋コントラスト強調
+// クロップ＋コントラスト強調＋数字行の自動垂直トリミング
 function toGrayscaleCanvas(srcCanvas, cropRect){
   const sw=srcCanvas.width, sh=srcCanvas.height;
   const cx=Math.floor(sw*cropRect.x);
   const cy=Math.floor(sh*cropRect.y);
   const cw=Math.max(1,Math.floor(sw*cropRect.w));
   const ch=Math.max(1,Math.floor(sh*cropRect.h));
-  const scale=2; // 2倍（3倍だと処理重い）
-  const dst=document.createElement('canvas');
-  dst.width=cw*scale; dst.height=ch*scale;
-  const ctx=dst.getContext('2d');
-  ctx.imageSmoothingEnabled=false; // シャープに
-  ctx.drawImage(srcCanvas, cx, cy, cw, ch, 0, 0, dst.width, dst.height);
 
-  // コントラスト強調（CLAHE簡易版: ヒストグラム均等化）
-  const id=ctx.getImageData(0,0,dst.width,dst.height);
-  const d=id.data;
-  // グレースケール化 + min/max正規化
-  const grays=new Float32Array(dst.width*dst.height);
+  // Step1: クロップのみ（等倍）
+  const tmp=document.createElement('canvas');
+  tmp.width=cw; tmp.height=ch;
+  const tctx=tmp.getContext('2d');
+  tctx.drawImage(srcCanvas,cx,cy,cw,ch,0,0,cw,ch);
+  const tid=tctx.getImageData(0,0,cw,ch);
+  const td=tid.data;
+
+  // Step2: グレースケール化＋min/max正規化
+  const grays=new Float32Array(cw*ch);
   let mn=255,mx=0;
-  for(let i=0;i<grays.length;i++){
+  for(let i=0;i<cw*ch;i++){
     const p=i*4;
-    const g=0.299*d[p]+0.587*d[p+1]+0.114*d[p+2];
-    grays[i]=g;
-    if(g<mn)mn=g;if(g>mx)mx=g;
+    const g=0.299*td[p]+0.587*td[p+1]+0.114*td[p+2];
+    grays[i]=g; if(g<mn)mn=g; if(g>mx)mx=g;
   }
   const range=mx-mn||1;
-  for(let i=0;i<grays.length;i++){
-    // 正規化して全体のコントラストを最大化
+  for(let i=0;i<cw*ch;i++){
     const v=Math.round((grays[i]-mn)/range*255);
-    const p=i*4;
-    d[p]=d[p+1]=d[p+2]=v;d[p+3]=255;
+    const p=i*4; td[p]=td[p+1]=td[p+2]=v; td[p+3]=255;
   }
-  ctx.putImageData(id,0,0);
+  tctx.putImageData(tid,0,0);
+
+  // Step3: 行スコアで数字のある縦範囲を検出して垂直トリミング
+  // ヒストグラムで閾値推定
+  const hist=new Int32Array(256);
+  for(let i=0;i<cw*ch;i++)hist[Math.round(grays[i])]++;
+  // 最頻値
+  let pV=0,pC=0;
+  for(let v=0;v<256;v++){if(hist[v]>pC){pC=hist[v];pV=v;}}
+  const darkDigits=pV>128; // 正規化後: 背景が明るい→数字は暗い
+  const rowThresh=pV>128?pV*0.6:pV*1.5;
+
+  // 各行で「数字っぽいピクセル」の割合
+  const rowScore=new Float32Array(ch);
+  for(let y=0;y<ch;y++){
+    let s=0;
+    for(let x=0;x<cw;x++){
+      const v=grays[y*cw+x];
+      s+=darkDigits?(v<rowThresh?1:0):(v>rowThresh?1:0);
+    }
+    rowScore[y]=s/cw;
+  }
+  const maxRS=Math.max(...rowScore);
+  const rowGap=maxRS*0.15;
+  let y1=0,y2=ch-1;
+  for(let y=0;y<ch;y++){if(rowScore[y]>rowGap){y1=y;break;}}
+  for(let y=ch-1;y>=0;y--){if(rowScore[y]>rowGap){y2=y;break;}}
+  // 最低でも元の高さの20%確保
+  if(y2-y1<ch*0.2){y1=0;y2=ch-1;}
+  const trimH=y2-y1+1;
+  ocrLog(`垂直トリム: y=${y1}~${y2} (${trimH}px / 元${ch}px)`);
+
+  // Step4: トリムした領域を2倍アップスケール
+  const scale=2;
+  const dst=document.createElement('canvas');
+  dst.width=cw*scale; dst.height=trimH*scale;
+  const dctx=dst.getContext('2d');
+  dctx.imageSmoothingEnabled=false;
+  dctx.drawImage(tmp,0,y1,cw,trimH,0,0,dst.width,dst.height);
   return dst;
 }
 
