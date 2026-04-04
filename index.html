@@ -1216,167 +1216,176 @@ function ocrLog(msg,type=''){
 }
 
 // ===== 7セグメント認識エンジン =====
-// セグメント配置:
-//  _
-// |_|
-// |_|
-// セグメント: top, top-left, top-right, middle, bottom-left, bottom-right, bottom
-// 各桁を縦3区間×横2区間に分割してセグメントのオン/オフを判定
-
-const SEG_PATTERNS = {
-  // [top, tl, tr, mid, bl, br, bot]
-  '0': [1,1,1,0,1,1,1],
-  '1': [0,0,1,0,0,1,0],
-  '2': [1,0,1,1,1,0,1],
-  '3': [1,0,1,1,0,1,1],
-  '4': [0,1,1,1,0,1,0],
-  '5': [1,1,0,1,0,1,1],
-  '6': [1,1,0,1,1,1,1],
-  '7': [1,0,1,0,0,1,0],
-  '8': [1,1,1,1,1,1,1],
-  '9': [1,1,1,1,0,1,1],
+const SEG_PATTERNS={
+  '0':[1,1,1,0,1,1,1],
+  '1':[0,0,1,0,0,1,0],
+  '2':[1,0,1,1,1,0,1],
+  '3':[1,0,1,1,0,1,1],
+  '4':[0,1,1,1,0,1,0],
+  '5':[1,1,0,1,0,1,1],
+  '6':[1,1,0,1,1,1,1],
+  '7':[1,0,1,0,0,1,0],
+  '8':[1,1,1,1,1,1,1],
+  '9':[1,1,1,1,0,1,1],
 };
 
-function getPixelBrightness(imgData, x, y, w){
+function getBright(data,x,y,w){
   const i=(y*w+x)*4;
-  return 0.299*imgData.data[i]+0.587*imgData.data[i+1]+0.114*imgData.data[i+2];
+  return 0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
+}
+function sampleRegion(data,x1,y1,x2,y2,iw,ih){
+  let s=0,c=0;
+  const sx=Math.max(0,Math.floor(x1)),ex=Math.min(iw-1,Math.floor(x2));
+  const sy=Math.max(0,Math.floor(y1)),ey=Math.min(ih-1,Math.floor(y2));
+  for(let y=sy;y<=ey;y++)for(let x=sx;x<=ex;x++){s+=getBright(data,x,y,iw);c++;}
+  return c>0?s/c:128;
 }
 
-function sampleRegion(imgData, x1, y1, x2, y2, w, h){
-  // 領域の平均輝度を返す
-  let sum=0, cnt=0;
-  const sx=Math.max(0,Math.floor(x1)), ex=Math.min(w-1,Math.floor(x2));
-  const sy=Math.max(0,Math.floor(y1)), ey=Math.min(h-1,Math.floor(y2));
-  for(let y=sy;y<=ey;y++){
-    for(let x=sx;x<=ex;x++){
-      sum+=getPixelBrightness(imgData,x,y,w);
-      cnt++;
-    }
+// セグメントがONかどうか判定（segValがthresh より"数字側"なら1）
+// darkDigits=true: 数字が暗い(セグメントが暗い=ON), false: 数字が明るい
+function recognizeDigit(data,iw,ih,x0,y0,dw,dh,thresh,darkDigits){
+  const x1=x0,x2=x0+dw/2,x3=x0+dw;
+  const y1=y0,y2=y0+dh/3,y3=y0*2/3+dh/3*2,y4=y0+dh;
+  const m=Math.max(2,Math.floor(dw*0.04));
+  const seg=[
+    sampleRegion(data,x1+m,y1,      x3-m,y1+dh*0.15,  iw,ih), // top
+    sampleRegion(data,x1,  y1+m,    x2-m,y2-m,         iw,ih), // tl
+    sampleRegion(data,x2+m,y1+m,    x3,  y2-m,         iw,ih), // tr
+    sampleRegion(data,x1+m,y2+m,    x3-m,y3-m,         iw,ih), // mid
+    sampleRegion(data,x1,  y3+m,    x2-m,y4-m,         iw,ih), // bl
+    sampleRegion(data,x2+m,y3+m,    x3,  y4-m,         iw,ih), // br
+    sampleRegion(data,x1+m,y3+dh*0.85,x3-m,y4,         iw,ih), // bot
+  ];
+  const ON=darkDigits?(v=>v<thresh?1:0):(v=>v>thresh?1:0);
+  const det=seg.map(ON);
+  let best=null,bestD=99;
+  for(const [d,p] of Object.entries(SEG_PATTERNS)){
+    const dist=p.reduce((s,v,i)=>s+(v!==det[i]?1:0),0);
+    if(dist<bestD){bestD=dist;best=d;}
   }
-  return cnt>0?sum/cnt:0;
-}
-
-function recognizeDigit(imgData, x0, y0, dw, dh, darkThresh){
-  // 1桁の7セグメント認識
-  // 縦3区間・横2区間でセグメントをサンプリング
-  const x1=x0, x2=x0+dw/2, x3=x0+dw;
-  const y1=y0, y2=y0+dh/3, y3=y0+2*dh/3, y4=y0+dh;
-  const m=4; // サンプリングマージン
-
-  // 各セグメントの輝度サンプル
-  const seg={
-    top:   sampleRegion(imgData, x1+m, y1,   x3-m, y1+dh*0.12, imgData.width, imgData.height),
-    tl:    sampleRegion(imgData, x1,   y1+m,  x2-m, y2-m,       imgData.width, imgData.height),
-    tr:    sampleRegion(imgData, x2+m, y1+m,  x3,   y2-m,       imgData.width, imgData.height),
-    mid:   sampleRegion(imgData, x1+m, y2+m,  x3-m, y3-m,       imgData.width, imgData.height),
-    bl:    sampleRegion(imgData, x1,   y3+m,  x2-m, y4-m,       imgData.width, imgData.height),
-    br:    sampleRegion(imgData, x2+m, y3+m,  x3,   y4-m,       imgData.width, imgData.height),
-    bot:   sampleRegion(imgData, x1+m, y3+dh*0.88, x3-m, y4,    imgData.width, imgData.height),
-  };
-
-  // セグメントON/OFF (暗い=ONのLCD)
-  const ON = v => v < darkThresh ? 1 : 0;
-  const detected = [ON(seg.top),ON(seg.tl),ON(seg.tr),ON(seg.mid),ON(seg.bl),ON(seg.br),ON(seg.bot)];
-
-  // パターンマッチング（ハミング距離最小）
-  let best=null, bestDist=99;
-  for(const [digit, pattern] of Object.entries(SEG_PATTERNS)){
-    const dist = pattern.reduce((s,v,i)=>s+(v!==detected[i]?1:0), 0);
-    if(dist < bestDist){ bestDist=dist; best=digit; }
-  }
-  return {digit: bestDist<=2 ? best : '?', dist: bestDist, segs: detected};
+  return{digit:bestD<=2?best:'?',dist:bestD};
 }
 
 function recognizeDisplay(canvas){
-  // クロップ済みcanvasから数字全体を認識
   const ctx=canvas.getContext('2d');
-  const w=canvas.width, h=canvas.height;
-  const imgData=ctx.getImageData(0,0,w,h);
+  const w=canvas.width,h=canvas.height;
+  const id=ctx.getImageData(0,0,w,h);
+  const data=id.data;
 
-  // 輝度ヒストグラムで暗い部分(数字)の閾値を決定
+  // ヒストグラムで閾値と「数字が暗いか明るいか」を判定
   const hist=new Int32Array(256);
-  for(let i=0;i<imgData.data.length;i+=4){
-    hist[Math.round(0.299*imgData.data[i]+0.587*imgData.data[i+1]+0.114*imgData.data[i+2])]++;
+  for(let i=0;i<data.length;i+=4){
+    hist[Math.round(getBright(data,i>>2,0,1)||getBright(data,0,0,1))||Math.round(0.299*data[i]+0.587*data[i+1]+0.114*data[i+2])]++;
   }
-  // 暗い側のピーク（数字の色）
-  let darkPeak=0, darkPeakV=0;
-  for(let v=0;v<150;v++){if(hist[v]>darkPeak){darkPeak=hist[v];darkPeakV=v;}}
-  // 明るい側のピーク（LCD背景の色）  
-  let brightPeak=0, brightPeakV=200;
-  for(let v=100;v<256;v++){if(hist[v]>brightPeak){brightPeak=hist[v];brightPeakV=v;}}
-  const thresh=(darkPeakV+brightPeakV)/2;
-  ocrLog(`輝度: 暗=${darkPeakV} 明=${brightPeakV} 閾値=${Math.round(thresh)}`);
+  // 修正: ヒストグラム集計
+  const hist2=new Int32Array(256);
+  for(let i=0;i<w*h;i++){
+    const p=i*4;
+    hist2[Math.min(255,Math.round(0.299*data[p]+0.587*data[p+1]+0.114*data[p+2]))]++;
+  }
 
-  // 暗い列を探して桁の境界を検出
-  const colDark=new Float32Array(w);
+  // 最頻値(背景色)と全体平均を比較
+  let peakV=0,peakC=0,totalBright=0;
+  for(let v=0;v<256;v++){if(hist2[v]>peakC){peakC=hist2[v];peakV=v;}totalBright+=v*hist2[v];}
+  const mean=totalBright/(w*h);
+  const thresh=(peakV+mean)/2;
+  // 背景が明るい(peakV>128)→数字は暗い、背景が暗い(peakV<128)→数字は明るい
+  const darkDigits=peakV<128;
+  ocrLog(`ピーク=${peakV} 平均=${Math.round(mean)} 閾値=${Math.round(thresh)} 数字=${darkDigits?'暗':'明'}`);
+
+  // 「数字の列」のスコア: darkDigitsなら暗い列、そうでなければ明るい列
+  const colScore=new Float32Array(w);
   for(let x=0;x<w;x++){
     let s=0;
-    for(let y=0;y<h;y++) s+=getPixelBrightness(imgData,x,y,w)<thresh?1:0;
-    colDark[x]=s/h;
+    for(let y=0;y<h;y++){
+      const v=getBright(data,x,y,w);
+      s+=darkDigits?(v<thresh?1:0):(v>thresh?1:0);
+    }
+    colScore[x]=s/h;
   }
 
-  // 連続した暗い列の塊を桁として認識
+  // ギャップ検出: スコアが低い列で桁を分割
+  // まず全体スコアの平均を算出してGAP閾値を決める
+  const avgScore=colScore.reduce((a,b)=>a+b,0)/w;
+  const GAP=Math.max(0.05,avgScore*0.4); // 平均の40%以下をギャップとみなす
+  ocrLog(`列スコア平均=${avgScore.toFixed(3)} ギャップ閾値=${GAP.toFixed(3)}`);
+
   const digitRects=[];
-  let inDigit=false, dStart=0;
-  const COL_THRESH=0.08; // 8%以上の行が暗ければ「数字の列」
+  let inD=false,dS=0;
   for(let x=0;x<w;x++){
-    if(!inDigit && colDark[x]>COL_THRESH){ inDigit=true; dStart=x; }
-    else if(inDigit && colDark[x]<=COL_THRESH){
-      if(x-dStart>w*0.04){ // 最小幅 4%
-        digitRects.push({x:dStart, w:x-dStart});
-      }
-      inDigit=false;
+    if(!inD&&colScore[x]>GAP){inD=true;dS=x;}
+    else if(inD&&colScore[x]<=GAP){
+      if(x-dS>w*0.03)digitRects.push({x:dS,w:x-dS});
+      inD=false;
     }
   }
-  if(inDigit) digitRects.push({x:dStart, w:w-dStart});
-
+  if(inD)digitRects.push({x:dS,w:w-dS});
   ocrLog(`桁候補: ${digitRects.length}個 幅=${digitRects.map(d=>d.w).join(',')}`);
 
-  if(digitRects.length===0) return null;
-  const widths=digitRects.map(d=>d.w).sort((a,b)=>b-a);
-  const medW=widths[Math.floor(widths.length/2)];
-  // 通常桁のみ（細すぎる小数点ドットは除外）
-  const mainDigits=digitRects.filter(d=>d.w>=medW*0.45);
+  if(!digitRects.length)return null;
+
+  // 幅でフィルタ（中央値±50%）
+  const ws=digitRects.map(d=>d.w).sort((a,b)=>b-a);
+  const medW=ws[Math.floor(ws.length/2)];
+  const mainDigits=digitRects.filter(d=>d.w>=medW*0.4&&d.w<=medW*2.5);
   ocrLog(`数字桁: ${mainDigits.length}個`);
 
-  // 各桁を認識
-  const digitResults=[];
+  const results=[];
   for(const dr of mainDigits){
-    const {digit,dist}=recognizeDigit(imgData, dr.x, 0, dr.w, h, thresh);
-    digitResults.push({digit,dist,x:dr.x});
+    const {digit,dist}=recognizeDigit(data,w,h,dr.x,0,dr.w,h,thresh,darkDigits);
+    results.push({digit,dist,x:dr.x});
     ocrLog(`  x=${dr.x} w=${dr.w} → '${digit}' (err=${dist})`);
   }
-  // 小数点1桁固定で組み立て (XXX.X or XX.X)
-  if(digitResults.length>=3 && digitResults.length<=4){
-    const intPart=digitResults.slice(0,-1).map(d=>d.digit).join('');
-    const decPart=digitResults[digitResults.length-1].digit;
-    const result=intPart+'.'+decPart;
-    ocrLog('組み立て: '+intPart+'.'+decPart+' = '+result);
-    return result;
-  }else if(digitResults.length===2){
-    return digitResults[0].digit+'.'+digitResults[1].digit;
-  }else if(digitResults.length>4){
-    const top4=digitResults.slice(0,4);
-    const intPart=top4.slice(0,-1).map(d=>d.digit).join('');
-    return intPart+'.'+top4[top4.length-1].digit;
+
+  // 小数点1桁固定で組み立て
+  if(results.length>=3&&results.length<=4){
+    const intP=results.slice(0,-1).map(d=>d.digit).join('');
+    const decP=results[results.length-1].digit;
+    ocrLog('組み立て: '+intP+'.'+decP);
+    return intP+'.'+decP;
+  }else if(results.length===2){
+    return results[0].digit+'.'+results[1].digit;
+  }else if(results.length>4){
+    const t4=results.slice(0,4);
+    return t4.slice(0,-1).map(d=>d.digit).join('')+'.'+t4[t4.length-1].digit;
   }
-  return digitResults.map(d=>d.digit).join('');
+  return results.map(d=>d.digit).join('');
 }
 
-// キャンバスをグレースケール変換
+// クロップ＋アップスケール＋コントラスト強調
 function toGrayscaleCanvas(srcCanvas, cropRect){
   const sw=srcCanvas.width, sh=srcCanvas.height;
   const cx=Math.floor(sw*cropRect.x);
   const cy=Math.floor(sh*cropRect.y);
-  const cw=Math.floor(sw*cropRect.w);
-  const ch=Math.floor(sh*cropRect.h);
-  const scale=3;
+  const cw=Math.max(1,Math.floor(sw*cropRect.w));
+  const ch=Math.max(1,Math.floor(sh*cropRect.h));
+  const scale=2; // 2倍（3倍だと処理重い）
   const dst=document.createElement('canvas');
   dst.width=cw*scale; dst.height=ch*scale;
   const ctx=dst.getContext('2d');
-  ctx.imageSmoothingEnabled=true;
-  ctx.imageSmoothingQuality='high';
+  ctx.imageSmoothingEnabled=false; // シャープに
   ctx.drawImage(srcCanvas, cx, cy, cw, ch, 0, 0, dst.width, dst.height);
+
+  // コントラスト強調（CLAHE簡易版: ヒストグラム均等化）
+  const id=ctx.getImageData(0,0,dst.width,dst.height);
+  const d=id.data;
+  // グレースケール化 + min/max正規化
+  const grays=new Float32Array(dst.width*dst.height);
+  let mn=255,mx=0;
+  for(let i=0;i<grays.length;i++){
+    const p=i*4;
+    const g=0.299*d[p]+0.587*d[p+1]+0.114*d[p+2];
+    grays[i]=g;
+    if(g<mn)mn=g;if(g>mx)mx=g;
+  }
+  const range=mx-mn||1;
+  for(let i=0;i<grays.length;i++){
+    // 正規化して全体のコントラストを最大化
+    const v=Math.round((grays[i]-mn)/range*255);
+    const p=i*4;
+    d[p]=d[p+1]=d[p+2]=v;d[p+3]=255;
+  }
+  ctx.putImageData(id,0,0);
   return dst;
 }
 
