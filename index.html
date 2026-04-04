@@ -774,17 +774,7 @@ async function startCameraOCR(){
     ocrCD=3;
     ocrCDInterval=setInterval(()=>{ocrCD--;document.getElementById('ocr-countdown').textContent=ocrCD;if(ocrCD<=0){ocrCD=10;runOCRCapture();}},1000);
     toast('カメラ自動読み取り開始');
-    // ★ここから追加（デバッグ用：カメラが捉えている画像を表示）
-      c.style.display = 'block';
-      c.style.position = 'fixed';
-      c.style.bottom = '80px'; 
-      c.style.left = '10px';
-      c.style.zIndex = '10000';
-      c.style.width = '140px';
-      c.style.height = 'auto';
-      c.style.border = '3px solid #e8841e';
-      c.style.background = '#000';
-      // ★ここまで追加
+    
   }catch(e){toast('カメラエラー: '+e.message);}
 }
 function stopCameraOCR(){
@@ -797,6 +787,17 @@ function stopCameraOCR(){
 async function runOCRCapture(){
   if(ocrBusy||!cameraStream)return;ocrBusy=true;
   document.getElementById('ocr-temp').textContent='読み取り中...';
+  // ★ここから追加（デバッグ用：カメラが捉えている画像を表示）
+      c.style.display = 'block';
+      c.style.position = 'fixed';
+      c.style.bottom = '80px'; 
+      c.style.left = '10px';
+      c.style.zIndex = '10000';
+      c.style.width = '140px';
+      c.style.height = 'auto';
+      c.style.border = '3px solid #e8841e';
+      c.style.background = '#000';
+      // ★ここまで追加
   try{
     const v=document.getElementById('camera-video'),c=document.getElementById('camera-canvas');
     c.width=v.videoWidth||640;c.height=v.videoHeight||480;c.getContext('2d').drawImage(v,0,0);
