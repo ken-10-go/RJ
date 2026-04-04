@@ -1482,6 +1482,169 @@ function loadApiKey(){
   }
 }
 
+
+// ===== DRIVE =====
+const DRIVE_FOLDER_PATH=['Coffee','App'];
+const DRIVE_FILE_NAME='roast_journal.json';
+const BOUNDARY='rj_boundary_xyz';
+
+async function ensureFolderPath(token){
+  let pid='root';
+  for(const name of DRIVE_FOLDER_PATH){
+    const q=`name='${name}' and mimeType='application/vnd.google-apps.folder' and '${pid}' in parents and trashed=false`;
+    const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`,{headers:{Authorization:'Bearer '+token}});
+    const d=await r.json();
+    if(d.files&&d.files.length>0){pid=d.files[0].id;}
+    else{
+      const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[pid]})});
+      const cd=await cr.json();
+      if(!cd.id)throw new Error('フォルダ作成失敗: '+JSON.stringify(cd));
+      pid=cd.id;
+    }
+  }
+  return pid;
+}
+
+function buildMultipart(meta,jsonBody){
+  return`--${BOUNDARY}
+Content-Type: application/json; charset=UTF-8
+
+${JSON.stringify(meta)}
+--${BOUNDARY}
+Content-Type: application/json; charset=UTF-8
+
+${jsonBody}
+--${BOUNDARY}--`;
+}
+
+async function saveOrUpdateFile(token,folderId,jsonBody){
+  if(S.driveFileId){
+    const r=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${S.driveFileId}?uploadType=media`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:jsonBody});
+    const d=await r.json();
+    if(d.error){if(d.error.code===404){S.driveFileId=null;return saveOrUpdateFile(token,folderId,jsonBody);}throw new Error(d.error.message);}
+    return d.id;
+  }else{
+    const q=`name='${DRIVE_FILE_NAME}' and '${folderId}' in parents and trashed=false`;
+    const sr=await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`,{headers:{Authorization:'Bearer '+token}});
+    const sd=await sr.json();
+    if(sd.files&&sd.files.length>0){S.driveFileId=sd.files[0].id;return saveOrUpdateFile(token,folderId,jsonBody);}
+    const body=buildMultipart({name:DRIVE_FILE_NAME,mimeType:'application/json',parents:[folderId]},jsonBody);
+    const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':`multipart/related; boundary=${BOUNDARY}`},body});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message);
+    S.driveFileId=d.id;return d.id;
+  }
+}
+
+function saveDriveStorage(){
+  ['clientId','driveToken','driveUser','driveFileId','tokenExpiry'].forEach(k=>localStorage.setItem('rj_'+k,S[k]||''));
+}
+function loadDriveStorage(){
+  ['clientId','driveToken','driveUser','driveFileId'].forEach(k=>{S[k]=localStorage.getItem('rj_'+k)||null;});
+  S.tokenExpiry=parseInt(localStorage.getItem('rj_tokenExpiry'))||null;
+  if(S.clientId)document.getElementById('client-id-inp').value=S.clientId;
+  if(S.driveToken&&S.tokenExpiry&&Date.now()<S.tokenExpiry){
+    document.getElementById('drive-dot').classList.add('connected');
+    document.getElementById('drive-status-txt').textContent='接続中';
+    document.getElementById('drive-status-txt').style.color='#8cbf6a';
+  }else if(S.driveToken){S.driveToken=null;toast('トークンが期限切れです。再接続してください');}
+}
+function connectDrive(){
+  const cid=document.getElementById('client-id-inp').value.trim();
+  if(!cid){toast('Client ID を入力してください');return;}
+  S.clientId=cid;localStorage.setItem('rj_clientId',cid);
+  const params=new URLSearchParams({client_id:cid,redirect_uri:window.location.origin+window.location.pathname,response_type:'token',scope:'https://www.googleapis.com/auth/drive.file',prompt:'select_account'});
+  const w=window.open('https://accounts.google.com/o/oauth2/v2/auth?'+params,'google-auth','width=500,height=600,scrollbars=yes');
+  const poll=setInterval(()=>{
+    try{
+      if(!w||w.closed){clearInterval(poll);return;}
+      const hash=w.location.hash;
+      if(hash&&hash.includes('access_token')){
+        clearInterval(poll);w.close();
+        const p=new URLSearchParams(hash.substring(1));
+        S.driveToken=p.get('access_token');
+        S.tokenExpiry=Date.now()+(parseInt(p.get('expires_in')||'3600'))*1000;
+        fetchDriveUser();
+      }
+    }catch(e){}
+  },500);
+}
+async function fetchDriveUser(){
+  try{
+    const r=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+S.driveToken}});
+    const d=await r.json();S.driveUser=d.email||d.name||'接続済み';
+    document.getElementById('drive-dot').classList.add('connected');
+    document.getElementById('drive-status-txt').textContent='接続中';
+    document.getElementById('drive-status-txt').style.color='#8cbf6a';
+    saveDriveStorage();updateDriveUI();
+    toast('Drive に接続しました。データを読み込んでいます...');
+    await loadFromDrive();
+  }catch(e){toast('接続エラー: '+e.message);}
+}
+function updateDriveUI(){
+  const c=!!S.driveToken;
+  document.getElementById('drive-connect-area').style.display=c?'none':'block';
+  document.getElementById('drive-connected-area').style.display=c?'block':'none';
+  if(c){
+    document.getElementById('drive-user').textContent=S.driveUser||'接続済み';
+    document.getElementById('last-sync-time').textContent=S.lastSync?new Date(S.lastSync).toLocaleString('ja-JP'):'—';
+    document.getElementById('sync-beans-count').textContent=S.beans.length+' 件';
+    document.getElementById('sync-roast-count').textContent=S.roastRecords.length+' 件';
+    document.getElementById('sync-taste-count').textContent=S.tasteRecords.length+' 件';
+  }
+}
+async function syncToDrive(){
+  if(!S.driveToken)return;
+  const btn=document.getElementById('sync-btn');if(btn)btn.textContent='保存中...';
+  document.getElementById('drive-dot').classList.add('syncing');
+  try{
+    const fid=await ensureFolderPath(S.driveToken);
+    const body=JSON.stringify({version:4,exportedAt:new Date().toISOString(),master:S.master,beans:S.beans,roastRecords:S.roastRecords,tasteRecords:S.tasteRecords});
+    await saveOrUpdateFile(S.driveToken,fid,body);
+    S.lastSync=new Date().toISOString();saveDriveStorage();updateDriveUI();toast('Drive に保存しました ✓');
+  }catch(e){console.error('syncToDrive',e);toast('保存エラー: '+e.message);}
+  finally{
+    document.getElementById('drive-dot').classList.remove('syncing');
+    if(btn)btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Drive に保存する';
+  }
+}
+async function loadFromDrive(){
+  if(!S.driveToken){toast('まずGoogle Driveに接続してください');return;}
+  toast('Drive から読み込み中...');
+  try{
+    const fid=await ensureFolderPath(S.driveToken);
+    const q=`name='${DRIVE_FILE_NAME}' and '${fid}' in parents and trashed=false`;
+    const sr=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)',{headers:{Authorization:'Bearer '+S.driveToken}});
+    const sd=await sr.json();
+    if(!sd.files||!sd.files.length){toast('保存データがありません（新規スタート）');return;}
+    S.driveFileId=sd.files[0].id;
+    const fr=await fetch('https://www.googleapis.com/drive/v3/files/'+S.driveFileId+'?alt=media',{headers:{Authorization:'Bearer '+S.driveToken}});
+    if(!fr.ok){toast('保存データがありません（新規スタート）');return;}
+    const data=await fr.json();
+    if(data.master)S.master={...{varieties:[...DEFAULT_VARIETIES]},...data.master};
+    if(data.beans)S.beans=data.beans;
+    if(data.roastRecords)S.roastRecords=data.roastRecords;
+    if(data.tasteRecords)S.tasteRecords=data.tasteRecords;
+    S.lastSync=new Date().toISOString();saveDriveStorage();
+    renderBeanForm();renderBeans();updateBeanSelect();updateTasteSelect();updateDriveUI();initFilterButtons();
+    toast('読み込みました（豆:'+S.beans.length+' 焙煎:'+S.roastRecords.length+'）');
+  }catch(e){console.error('loadFromDrive',e);toast('読み込みエラー: '+e.message);}
+}
+function disconnectDrive(){
+  S.driveToken=null;S.driveFileId=null;S.driveUser=null;S.lastSync=null;S.tokenExpiry=null;
+  ['rj_driveToken','rj_driveUser','rj_driveFileId','rj_tokenExpiry'].forEach(k=>localStorage.removeItem(k));
+  document.getElementById('drive-dot').classList.remove('connected','syncing');
+  document.getElementById('drive-status-txt').textContent='未接続';
+  document.getElementById('drive-status-txt').style.color='var(--c-muted)';
+  updateDriveUI();toast('接続を解除しました');
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('auto-sync').addEventListener('change',function(){
+    document.getElementById('auto-sync-lbl').textContent=this.checked?'ON':'OFF';
+  });
+});
+function autoSync(){if(document.getElementById('auto-sync').checked&&S.driveToken)syncToDrive();}
+
 // ===== INIT =====
 loadDriveStorage();
 loadApiKey();
