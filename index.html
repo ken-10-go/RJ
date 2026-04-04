@@ -358,6 +358,10 @@ select.inp{cursor:pointer;}
           <!-- OCR デバッグパネル -->
           <div id="ocr-debug" class="ocr-debug">
             <div style="color:var(--c-accent);font-weight:500;margin-bottom:4px;">OCR デバッグログ</div>
+            <div style="margin-bottom:6px;">
+              <div style="font-size:9px;color:var(--c-muted);margin-bottom:2px;">前処理済み画像（Tesseractへの入力）</div>
+              <canvas id="ocr-preview" style="width:100%;border-radius:4px;border:1px solid var(--border);background:#000;display:block;max-height:80px;object-fit:contain;"></canvas>
+            </div>
             <div id="ocr-debug-log"></div>
           </div>
           <!-- 手動入力 -->
@@ -1076,29 +1080,69 @@ function ocrLog(msg,type=''){
   while(log.children.length>20)log.removeChild(log.lastChild);
 }
 
-// 画像前処理: グレースケール化・コントラスト強調・数字領域クロップ
+// 画像前処理: LCD温度計に特化した処理
+// カメラを横向きに向けることを想定（温度計が横長に映る）
 function preprocessCanvas(srcCanvas){
-  // 元画像をグレースケール+コントラスト強調して返す
   const w=srcCanvas.width, h=srcCanvas.height;
+
+  // --- Step1: 全体をグレースケール化してLCDエリアを探す ---
+  // まず全体を縮小してスキャン用canvasに
+  const scanScale=0.5;
+  const scan=document.createElement('canvas');
+  scan.width=Math.floor(w*scanScale); scan.height=Math.floor(h*scanScale);
+  const sctx=scan.getContext('2d');
+  sctx.drawImage(srcCanvas,0,0,scan.width,scan.height);
+  const sid=sctx.getImageData(0,0,scan.width,scan.height);
+  const sd=sid.data;
+
+  // グレースケール輝度マップ作成
+  const gray2d=[];
+  for(let y=0;y<scan.height;y++){
+    gray2d[y]=[];
+    for(let x=0;x<scan.width;x++){
+      const i=(y*scan.width+x)*4;
+      gray2d[y][x]=0.299*sd[i]+0.587*sd[i+1]+0.114*sd[i+2];
+    }
+  }
+
+  // --- Step2: LCD液晶エリアを推定 ---
+  // LCDは一般に緑がかった暗い背景に明るい数字
+  // 画像中央付近で、やや暗めの矩形エリアを探す
+  // 簡易的に: 全体の中央60%横・中央60%縦を対象に
+  const cx=Math.floor(w*0.1), cy=Math.floor(h*0.1);
+  const cw=Math.floor(w*0.8), ch=Math.floor(h*0.8);
+
+  // --- Step3: 処理済みcanvasを作成 ---
+  const scale=3; // 3倍にアップスケール
   const dst=document.createElement('canvas');
-  // 中央下部の温度表示エリアだけ切り出す（全体の中央40%横・下50%縦）
-  const cx=Math.floor(w*0.15), cy=Math.floor(h*0.3);
-  const cw=Math.floor(w*0.7), ch=Math.floor(h*0.6);
-  // 2倍にアップスケールしてTesseractの精度を上げる
-  const scale=2;
   dst.width=cw*scale; dst.height=ch*scale;
   const ctx=dst.getContext('2d');
   ctx.imageSmoothingEnabled=true;
   ctx.imageSmoothingQuality='high';
-  ctx.drawImage(srcCanvas, cx, cy, cw, ch, 0, 0, cw*scale, ch*scale);
-  // グレースケール+コントラスト強調
+  // 元画像から切り出してアップスケール
+  ctx.drawImage(srcCanvas, cx, cy, cw, ch, 0, 0, dst.width, dst.height);
+
+  // --- Step4: ピクセル処理 ---
   const id=ctx.getImageData(0,0,dst.width,dst.height);
   const d=id.data;
   for(let i=0;i<d.length;i+=4){
-    const gray=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-    // コントラスト強調: 閾値128で二値化に近い処理
-    const v=Math.min(255,Math.max(0,(gray-128)*1.8+128));
-    d[i]=d[i+1]=d[i+2]=v;
+    const r=d[i],g=d[i+1],b=d[i+2];
+    // グレースケール
+    let gray=0.299*r+0.587*g+0.114*b;
+    // LCD緑色 (g>r, g>b) を強調して白に近づける
+    if(g>r+10&&g>b+10){
+      // 緑っぽいピクセル（LCD表示部の明るい部分）→ より明るく
+      gray=Math.min(255,gray*1.4);
+    }
+    // コントラスト強調 (Sカーブ的に)
+    const norm=gray/255;
+    const enhanced=norm<0.5
+      ? 2*norm*norm
+      : 1-2*(1-norm)*(1-norm);
+    const v=Math.round(enhanced*255);
+    // 暗い部分を黒に、明るい部分を白に2値化
+    const bin=gray<100?0:(gray>140?255:v);
+    d[i]=d[i+1]=d[i+2]=bin;
   }
   ctx.putImageData(id,0,0);
   return dst;
@@ -1112,8 +1156,9 @@ async function initTesseract(){
       logger:m=>{if(m.status==='recognizing text')ocrLog(`認識中... ${Math.round(m.progress*100)}%`);}
     });
     await tesseractWorker.setParameters({
-      tessedit_char_whitelist:'0123456789.',
-      tessedit_pageseg_mode:'7', // single line
+      tessedit_char_whitelist:'0123456789.-',
+      tessedit_pageseg_mode:'6', // uniform block of text
+      tessedit_ocr_engine_mode:'1', // LSTM only (better for digits)
     });
     ocrLog('Tesseract.js 準備完了','ok');
   }catch(e){
@@ -1186,6 +1231,9 @@ async function runOCRCapture(){
     // Step2: 前処理
     const processed=preprocessCanvas(canvas);
     ocrLog(`前処理完了 (${processed.width}×${processed.height}px)`,'ok');
+    // プレビュー表示
+    const preview=document.getElementById('ocr-preview');
+    if(preview){preview.width=processed.width;preview.height=processed.height;preview.getContext('2d').drawImage(processed,0,0);}
 
     // Step3: Tesseract OCR
     ocrLog('Tesseract OCR 実行中...');
@@ -1194,21 +1242,25 @@ async function runOCRCapture(){
     const conf=Math.round(data.confidence);
     ocrLog(`OCR結果: "${raw}" (信頼度:${conf}%)`);
 
-    // Step4: 数値抽出
-    // 温度計の数値パターン: 3桁または3桁+小数点1桁
-    const match=raw.match(/(\d{2,3}(?:\.\d)?)/);
-    if(match){
-      const num=parseFloat(match[1]);
-      if(num>=60&&num<=320){
-        ocrLog(`温度読み取り成功: ${num}°C (信頼度:${conf}%)`,'ok');
-        document.getElementById('ocr-temp').textContent=num+'°C';
-        if(S.roastRunning)recordTemp(num);
-      }else{
-        ocrLog(`範囲外の数値: ${num}（60〜320の範囲外）`,'err');
-        document.getElementById('ocr-temp').textContent='範囲外';
+    // Step4: 数値抽出（複数候補から最適値を選ぶ）
+    // rawテキストから全数値パターンを抽出
+    const allNums=raw.match(/\d{2,3}(?:[.,]\d)?/g)||[];
+    ocrLog(`数値候補: [${allNums.join(', ')}]`);
+    // 60〜320の範囲に入るものをフィルタ
+    const valid=allNums.map(s=>parseFloat(s.replace(',','.'))).filter(n=>n>=60&&n<=320);
+    if(valid.length>0){
+      // 前回値に最も近い値を選ぶ（急激な変化を排除）
+      const lastTemp=S.tempData.length?S.tempData[S.tempData.length-1]:null;
+      let num=valid[0];
+      if(lastTemp!==null){
+        num=valid.reduce((best,v)=>Math.abs(v-lastTemp)<Math.abs(best-lastTemp)?v:best,valid[0]);
       }
+      ocrLog(`温度読み取り成功: ${num}°C (信頼度:${conf}%)`,'ok');
+      document.getElementById('ocr-temp').textContent=num+'°C';
+      if(S.roastRunning)recordTemp(num);
     }else{
-      ocrLog(`数値未検出: "${raw}"`,'err');
+      // デバッグ用: 前処理済み画像をサムネイル表示
+      ocrLog(`数値未検出 生テキスト:"${raw.slice(0,30)}"`,'err');
       document.getElementById('ocr-temp').textContent='未検出';
     }
   }catch(e){
