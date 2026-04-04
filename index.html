@@ -940,24 +940,64 @@ function runAI(){sendPrompt('私の焙煎データを分析してください。
 // Drive
 const DRIVE_FOLDER_PATH=['Coffee','App'];
 const DRIVE_FILE_NAME='roast_journal.json';
+const BOUNDARY='rj_boundary_xyz';
+
 async function ensureFolderPath(token){
   let pid='root';
   for(const name of DRIVE_FOLDER_PATH){
     const q=`name='${name}' and mimeType='application/vnd.google-apps.folder' and '${pid}' in parents and trashed=false`;
     const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`,{headers:{Authorization:'Bearer '+token}});
     const d=await r.json();
-    if(d.files&&d.files.length>0)pid=d.files[0].id;
-    else{const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[pid]})});const cd=await cr.json();pid=cd.id;}
-  }return pid;
+    if(d.files&&d.files.length>0){pid=d.files[0].id;}
+    else{
+      const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[pid]})});
+      const cd=await cr.json();
+      if(!cd.id)throw new Error('フォルダ作成失敗: '+JSON.stringify(cd));
+      pid=cd.id;
+    }
+  }
+  return pid;
 }
-async function findOrCreateFile(token,fid){
-  if(S.driveFileId)return S.driveFileId;
-  const q=`name='${DRIVE_FILE_NAME}' and '${fid}' in parents and trashed=false`;
-  const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`,{headers:{Authorization:'Bearer '+token}});
-  const d=await r.json();
-  if(d.files&&d.files.length>0){S.driveFileId=d.files[0].id;return S.driveFileId;}
-  const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name:DRIVE_FILE_NAME,mimeType:'application/json',parents:[fid]})});
-  const cd=await cr.json();S.driveFileId=cd.id;return S.driveFileId;
+
+// multipart body builder
+function buildMultipart(meta, jsonBody){
+  return `--${BOUNDARY}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${BOUNDARY}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${jsonBody}\r\n--${BOUNDARY}--`;
+}
+
+async function saveOrUpdateFile(token, folderId, jsonBody){
+  // 既存ファイルIDがあればPATCHで更新、なければmultipartでPOST作成
+  if(S.driveFileId){
+    const r=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${S.driveFileId}?uploadType=media`,{
+      method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:jsonBody
+    });
+    const d=await r.json();
+    if(d.error){
+      // ファイルが見つからない場合はIDをリセットして再作成
+      if(d.error.code===404){S.driveFileId=null;return saveOrUpdateFile(token,folderId,jsonBody);}
+      throw new Error(d.error.message);
+    }
+    return d.id;
+  } else {
+    // まず既存ファイルを検索
+    const q=`name='${DRIVE_FILE_NAME}' and '${folderId}' in parents and trashed=false`;
+    const sr=await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`,{headers:{Authorization:'Bearer '+token}});
+    const sd=await sr.json();
+    if(sd.files&&sd.files.length>0){
+      S.driveFileId=sd.files[0].id;
+      return saveOrUpdateFile(token,folderId,jsonBody);
+    }
+    // multipart で新規作成（メタデータ＋コンテンツを同時送信）
+    const body=buildMultipart({name:DRIVE_FILE_NAME,mimeType:'application/json',parents:[folderId]},jsonBody);
+    const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{
+      method:'POST',
+      headers:{Authorization:'Bearer '+token,'Content-Type':`multipart/related; boundary=${BOUNDARY}`},
+      body
+    });
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message);
+    S.driveFileId=d.id;
+    return d.id;
+  }
 }
 function saveDriveStorage(){['clientId','driveToken','driveUser','driveFileId','tokenExpiry'].forEach(k=>localStorage.setItem('rj_'+k,S[k]||''));}
 function loadDriveStorage(){
@@ -994,24 +1034,34 @@ async function syncToDrive(){
   const btn=document.getElementById('sync-btn');if(btn)btn.textContent='保存中...';
   document.getElementById('drive-dot').classList.add('syncing');
   try{
-    const fid=await ensureFolderPath(S.driveToken);const fileId=await findOrCreateFile(S.driveToken,fid);
-    await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=media',{method:'PATCH',headers:{Authorization:'Bearer '+S.driveToken,'Content-Type':'application/json'},body:JSON.stringify({version:3,exportedAt:new Date().toISOString(),master:S.master,beans:S.beans,roastRecords:S.roastRecords,tasteRecords:S.tasteRecords})});
-    S.lastSync=new Date().toISOString();saveDriveStorage();updateDriveUI();toast('Drive に保存しました');
-  }catch(e){toast('保存エラー: '+e.message);}
+    const fid=await ensureFolderPath(S.driveToken);
+    const body=JSON.stringify({version:3,exportedAt:new Date().toISOString(),master:S.master,beans:S.beans,roastRecords:S.roastRecords,tasteRecords:S.tasteRecords});
+    await saveOrUpdateFile(S.driveToken,fid,body);
+    S.lastSync=new Date().toISOString();saveDriveStorage();updateDriveUI();toast('Drive に保存しました ✓');
+  }catch(e){console.error('syncToDrive',e);toast('保存エラー: '+e.message);}
   finally{document.getElementById('drive-dot').classList.remove('syncing');if(btn)btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Drive に保存する';}
 }
 async function loadFromDrive(){
-  if(!S.driveToken){toast('まずGoogle Driveに接続してください');return;}toast('Drive から読み込み中...');
+  if(!S.driveToken){toast('まずGoogle Driveに接続してください');return;}
+  toast('Drive から読み込み中...');
   try{
-    const fid=await ensureFolderPath(S.driveToken);const fileId=await findOrCreateFile(S.driveToken,fid);
-    const fr=await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media',{headers:{Authorization:'Bearer '+S.driveToken}});
+    const fid=await ensureFolderPath(S.driveToken);
+    const q=`name='${DRIVE_FILE_NAME}' and '${fid}' in parents and trashed=false`;
+    const sr=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)',{headers:{Authorization:'Bearer '+S.driveToken}});
+    const sd=await sr.json();
+    if(!sd.files||!sd.files.length){toast('保存データがありません（新規スタート）');return;}
+    S.driveFileId=sd.files[0].id;
+    const fr=await fetch('https://www.googleapis.com/drive/v3/files/'+S.driveFileId+'?alt=media',{headers:{Authorization:'Bearer '+S.driveToken}});
     if(!fr.ok){toast('保存データがありません（新規スタート）');return;}
     const data=await fr.json();
-    if(data.master)S.master=data.master;if(data.beans)S.beans=data.beans;if(data.roastRecords)S.roastRecords=data.roastRecords;if(data.tasteRecords)S.tasteRecords=data.tasteRecords;
+    if(data.master)S.master=data.master;
+    if(data.beans)S.beans=data.beans;
+    if(data.roastRecords)S.roastRecords=data.roastRecords;
+    if(data.tasteRecords)S.tasteRecords=data.tasteRecords;
     S.lastSync=new Date().toISOString();saveDriveStorage();
     renderBeanForm();renderBeans();updateBeanSelect();updateTasteSelect();updateDriveUI();initFilterButtons();
     toast('読み込みました（豆:'+S.beans.length+' 焙煎:'+S.roastRecords.length+'）');
-  }catch(e){if(String(e).includes('JSON'))toast('保存データがありません（新規スタート）');else toast('読み込みエラー: '+e.message);}
+  }catch(e){console.error('loadFromDrive',e);toast('読み込みエラー: '+e.message);}
 }
 function disconnectDrive(){
   S.driveToken=null;S.driveFileId=null;S.driveUser=null;S.lastSync=null;S.tokenExpiry=null;
