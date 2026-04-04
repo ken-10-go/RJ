@@ -209,9 +209,10 @@ select.inp{cursor:pointer;}
     <!-- ===== 豆 ===== -->
     <div id="tab-beans" class="section active">
       <div class="card">
-        <div class="card-title">URLから豆情報を取り込む</div>
-        <div class="inp-w"><div class="label">商品URL</div><input class="inp" id="import-url" placeholder="https://..."></div>
-        <button class="btn btn-primary" onclick="importFromUrl()" style="margin-top:4px;">Claudeで情報を取得</button>
+        <div class="card-title">商品テキストから豆情報を取り込む</div>
+        <div style="font-size:var(--fs-xs);color:var(--c-muted);margin-bottom:8px;line-height:1.6;">商品ページの説明文・スペック欄をコピーして貼り付けてください。国名・精製方法・SCAスコアなどを自動認識します。</div>
+        <div class="inp-w"><div class="label">貼り付けたテキスト</div><textarea class="inp" id="import-text" rows="5" placeholder="例:&#10;エチオピア イルガチェフェ&#10;精製: ウォッシュド&#10;SCAスコア: 86.5&#10;フレーバー: ジャスミン、ベリー、ピーチ&#10;農園: Yirgacheffe Co-op"></textarea></div>
+        <button class="btn btn-primary" onclick="importFromText()" style="margin-top:4px;">テキストから情報を抽出</button>
         <div id="import-status" style="font-size:var(--fs-sm);color:var(--c-muted);display:none;margin-top:6px;"></div>
       </div>
       <div class="card">
@@ -921,36 +922,134 @@ function updateRoastLevelHint(){
 }
 
 // ===== URL IMPORT =====
-async function importFromUrl(){
-  const url=document.getElementById('import-url').value.trim();if(!url){toast('URLを入力してください');return;}
-  if(!getApiKey()){toast('DRIVEタブでAnthropic APIキーを設定してください');return;}
-  const st=document.getElementById('import-status');st.style.display='block';st.textContent='Claude AIが情報を取得中...';
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({
-      model:'claude-sonnet-4-20250514',max_tokens:800,
-      tools:[{type:'web_search_20250305',name:'web_search'}],
-      messages:[{role:'user',content:`このURLのコーヒー豆の商品ページを検索して、以下のJSON形式のみで返してください。情報不明は空文字。URL: ${url}\n{"name":"","country":"","farm":"","variety":"","process":"","score":"","taste":"","price":""}`}]
-    })});
-    const data=await res.json();
-    const txt=data.content.filter(c=>c.type==='text').map(c=>c.text).join('');
-    const m=txt.match(/\{[\s\S]*?\}/);
-    if(m){
-      const info=JSON.parse(m[0]);
-      if(info.name)document.getElementById('b-name').value=info.name;
-      if(info.country){if(!S.master.countries.includes(info.country))S.master.countries.push(info.country);renderCountrySel();document.getElementById('b-country-sel').value=info.country;}
-      if(info.farm)document.getElementById('b-farm').value=info.farm;
-      if(info.variety&&info.variety.trim()){
-        const v=info.variety.trim();
-        if(!S.master.varieties.includes(v))S.master.varieties.push(v);
-        S.beanSelectedVarieties=[v];renderVarietyDropdown();
-      }
-      if(info.process){S.beanSelectedProcesses=[info.process];renderChips('process-chips',S.master.processes,S.beanSelectedProcesses,'toggleBeanProcess');}
-      if(info.score)document.getElementById('b-score').value=info.score;
-      if(info.taste)document.getElementById('b-taste').value=info.taste;
-      if(info.price)document.getElementById('b-price').value=info.price;
-      st.textContent='情報を取得しました。確認して登録してください。';
-    }else{st.textContent='情報を取得できませんでした。手動入力してください。';}
-  }catch(e){st.textContent='エラー: '+e.message;}
+function importFromText(){
+  const raw=document.getElementById('import-text').value.trim();
+  if(!raw){toast('テキストを貼り付けてください');return;}
+  const st=document.getElementById('import-status');
+  st.style.display='block';
+
+  // ===== 国名マッピング =====
+  const COUNTRY_MAP={
+    'エチオピア':'Ethiopia','ethiopia':'Ethiopia',
+    'ケニア':'Kenya','kenya':'Kenya',
+    'グアテマラ':'Guatemala','guatemala':'Guatemala',
+    'コロンビア':'Colombia','colombia':'Colombia',
+    'ブラジル':'Brazil','brazil':'Brazil',
+    'コスタリカ':'Costa Rica','costa rica':'Costa Rica',
+    'エルサルバドル':'El Salvador','el salvador':'El Salvador',
+    'ホンジュラス':'Honduras','honduras':'Honduras',
+    'ペルー':'Peru','peru':'Peru',
+    'インドネシア':'Indonesia','indonesia':'Indonesia',
+    'イエメン':'Yemen','yemen':'Yemen',
+    'パナマ':'Panama','panama':'Panama',
+    'ルワンダ':'Rwanda','rwanda':'Rwanda',
+    'タンザニア':'Tanzania','tanzania':'Tanzania',
+    'メキシコ':'Mexico','mexico':'Mexico',
+    'ニカラグア':'Nicaragua','nicaragua':'Nicaragua',
+    'ハワイ':'Hawaii','hawaii':'Hawaii',
+    'ジャマイカ':'Jamaica','jamaica':'Jamaica',
+    'インド':'India','india':'India',
+    'タイ':'Thailand','thailand':'Thailand',
+  };
+
+  // ===== 精製方法マッピング =====
+  const PROCESS_MAP={
+    'ウォッシュド':'Washed','washed':'Washed','水洗':'Washed','フリーウォッシュ':'Washed',
+    'ナチュラル':'Natural','natural':'Natural','非水洗':'Natural',
+    'ハニー':'Honey','honey':'Honey',
+    'アナエロビック':'Anaerobic','anaerobic':'Anaerobic','嫌気性':'Anaerobic',
+    'ウェットハルド':'Wet-Hulled','wet-hulled':'Wet-Hulled','ギリング':'Wet-Hulled',
+    'カーボニック':'Carbonic Maceration','carbonic':'Carbonic Maceration',
+  };
+
+  // ===== 品種マッピング =====
+  const VARIETY_MAP={
+    'ゲイシャ':'Gesha/Geisha','geisha':'Gesha/Geisha','gesha':'Gesha/Geisha',
+    'ティピカ':'Typica','typica':'Typica',
+    'ブルボン':'Bourbon','bourbon':'Bourbon',
+    'カトゥーラ':'Caturra','caturra':'Caturra',
+    'カトゥアイ':'Catuai','catuai':'Catuai',
+    'エアルーム':'Heirloom','heirloom':'Heirloom','在来種':'Heirloom',
+    'sl28':'SL28','sl34':'SL34',
+    'パカマラ':'Pacamara','pacamara':'Pacamara',
+  };
+
+  const lower=raw.toLowerCase();
+  let found={};
+
+  // 国名検出
+  for(const [key,val] of Object.entries(COUNTRY_MAP)){
+    if(lower.includes(key.toLowerCase())){found.country=val;break;}
+  }
+
+  // 精製方法検出（複数可）
+  const processes=[];
+  for(const [key,val] of Object.entries(PROCESS_MAP)){
+    if(lower.includes(key.toLowerCase())&&!processes.includes(val))processes.push(val);
+  }
+  if(processes.length)found.processes=processes;
+
+  // 品種検出
+  for(const [key,val] of Object.entries(VARIETY_MAP)){
+    if(lower.includes(key.toLowerCase())){found.variety=val;break;}
+  }
+
+  // SCAスコア (例: 86.5, SCA 86, スコア:86.5)
+  const scoreM=raw.match(/(?:SCA|スコア|score)[^\d]*(\d{2,3}(?:\.\d)?)/i)
+    || raw.match(/(\d{2,3}\.\d)\s*(?:点|pt|SCA)?/);
+  if(scoreM)found.score=scoreM[1];
+
+  // 農園名 (例: 農園: Xxx, Farm: Xxx)
+  const farmM=raw.match(/(?:農園|農協|farm|estate|cooperative|co-op)[^\S\r\n]*[：:]\s*([^\n,。]+)/i);
+  if(farmM)found.farm=farmM[1].trim();
+
+  // 豆の名前: 最初の行または国名+地域名
+  const firstLine=raw.split('\n')[0].trim().replace(/https?:\/\/\S+/g,'').trim();
+  if(firstLine.length>2&&firstLine.length<60)found.name=firstLine;
+
+  // フレーバーノート (例: フレーバー: ジャスミン、ベリー)
+  const tasteM=raw.match(/(?:フレーバー|flavor|taste|テイスト|ノート|note)[^\S\r\n]*[：:]\s*([^\n。]+)/i);
+  if(tasteM)found.taste=tasteM[1].trim();
+
+  // 価格 (例: ¥1200, 1,200円, $12)
+  const priceM=raw.match(/(?:¥|￥|\$|USD)[\s]*([\d,]+)|(\d[\d,]+)\s*(?:円|yen)/i);
+  if(priceM)found.price=(priceM[1]||priceM[2]).replace(/,/g,'');
+
+  // ===== フォームに反映 =====
+  let filled=0;
+
+  if(found.name){document.getElementById('b-name').value=found.name;filled++;}
+
+  if(found.country){
+    if(!S.master.countries.includes(found.country))S.master.countries.push(found.country);
+    renderCountrySel();
+    document.getElementById('b-country-sel').value=found.country;
+    filled++;
+  }
+  if(found.farm){document.getElementById('b-farm').value=found.farm;filled++;}
+
+  if(found.variety){
+    if(!S.master.varieties.includes(found.variety))S.master.varieties.push(found.variety);
+    S.beanSelectedVarieties=[found.variety];
+    renderVarietyDropdown();
+    filled++;
+  }
+  if(found.processes&&found.processes.length){
+    S.beanSelectedProcesses=found.processes;
+    renderChips('process-chips',S.master.processes,S.beanSelectedProcesses,'toggleBeanProcess');
+    filled++;
+  }
+  if(found.score){document.getElementById('b-score').value=found.score;filled++;}
+  if(found.taste){document.getElementById('b-taste').value=found.taste;filled++;}
+  if(found.price){document.getElementById('b-price').value=found.price;filled++;}
+
+  if(filled>0){
+    st.textContent=`${filled}項目を認識しました。確認して登録してください。`;
+    st.style.color='#8cbf6a';
+  }else{
+    st.textContent='情報を認識できませんでした。キーワード（国名・精製方法・スコアなど）が含まれているか確認してください。';
+    st.style.color='var(--c-muted)';
+  }
 }
 
 // ===== ROAST SETUP =====
