@@ -1384,6 +1384,7 @@ function setStar(n){
 function renderRadarChart(){
   if(radarChart){radarChart.destroy();radarChart=null;}
   const canvas=document.getElementById('radar-chart');if(!canvas)return;
+  canvas.dataset.dragAttached=''; // リスナー再登録を許可
   const ctx=canvas.getContext('2d');
   radarChart=new Chart(ctx,{
     type:'radar',
@@ -1409,79 +1410,49 @@ function renderRadarChart(){
   attachRadarDrag(canvas);
 }
 
-// レーダードラッグ: 頂点への当たり判定＋ドラッグでスコア変更
+// レーダードラッグ
 let radarDragIdx=-1;
 let radarDragActive=false;
 
 function getRadarPointXY(i){
-  // Chart.js 4.x: scale.getPointPositionForValue(index, value)
+  if(!radarChart)return{x:0,y:0};
   const scale=radarChart.scales.r;
-  // 各頂点の角度を計算（Chart.jsの内部と同じ計算式）
   const count=RADAR_LABELS.length;
   const angle=(2*Math.PI/count)*i - Math.PI/2;
-  // 値→半径の変換（drawingAreaはスケールの最大半径）
-  const drawingArea=scale.drawingArea;
-  const val=S.radarVals[i];
-  const r=drawingArea*(val/5);
+  const r=scale.drawingArea*(S.radarVals[i]/5);
   return{x:scale.xCenter+Math.cos(angle)*r, y:scale.yCenter+Math.sin(angle)*r};
 }
 
 function getRadarValueFromXY(i, cx, cy){
+  if(!radarChart)return 3;
   const scale=radarChart.scales.r;
   const count=RADAR_LABELS.length;
   const angle=(2*Math.PI/count)*i - Math.PI/2;
-  // タッチ点から中心への距離を計算し、角度方向に投影
   const dx=cx-scale.xCenter, dy=cy-scale.yCenter;
-  // ドラッグ点のその頂点方向への射影距離
   const proj=dx*Math.cos(angle)+dy*Math.sin(angle);
-  const drawingArea=scale.drawingArea;
-  const raw=proj/drawingArea*5;
+  const raw=proj/scale.drawingArea*5;
   return Math.min(5,Math.max(1,Math.round(raw)));
 }
 
 function attachRadarDrag(canvas){
-  // 既存リスナーをリセット（clone）
-  const newCanvas=canvas.cloneNode(true);
-  canvas.parentNode.replaceChild(newCanvas,canvas);
-  // radarChartのcanvas参照も更新
-  // ※ Chart.jsはcanvas要素を内部保持するため、元canvasを使い続ける
-  // → cloneせず、リスナーを一度だけ登録する方式に変更
-  // 実装: AbortControllerで管理
-  if(canvas._radarAbort){canvas._radarAbort.abort();}
-  const ac=new AbortController();
-  canvas._radarAbort=ac;
-  const opt={signal:ac.signal};
-  const optPassive={signal:ac.signal,passive:false};
-
   function getXY(e){
     const rect=canvas.getBoundingClientRect();
     const src=e.touches?e.touches[0]:e;
-    // canvasの実際のピクセルサイズとCSS表示サイズの比率を考慮
-    const scaleX=canvas.width/rect.width;
-    const scaleY=canvas.height/rect.height;
-    return{x:(src.clientX-rect.left)*scaleX, y:(src.clientY-rect.top)*scaleY};
+    return{
+      x:(src.clientX-rect.left)*(canvas.width/rect.width),
+      y:(src.clientY-rect.top)*(canvas.height/rect.height)
+    };
   }
-
-  canvas.addEventListener('mousedown',e=>{
+  function onStart(e){
+    if(!radarChart)return;
     const {x,y}=getXY(e);
     radarDragIdx=-1;
     RADAR_LABELS.forEach((_,i)=>{
       const p=getRadarPointXY(i);
-      if(Math.hypot(p.x-x,p.y-y)<26){radarDragIdx=i;}
+      if(Math.hypot(p.x-x,p.y-y)<32){radarDragIdx=i;}
     });
     if(radarDragIdx>=0){radarDragActive=true;e.preventDefault();}
-  },opt);
-
-  canvas.addEventListener('touchstart',e=>{
-    const {x,y}=getXY(e);
-    radarDragIdx=-1;
-    RADAR_LABELS.forEach((_,i)=>{
-      const p=getRadarPointXY(i);
-      if(Math.hypot(p.x-x,p.y-y)<30){radarDragIdx=i;}
-    });
-    if(radarDragIdx>=0){radarDragActive=true;e.preventDefault();}
-  },optPassive);
-
+  }
   function onMove(e){
     if(!radarDragActive||radarDragIdx<0)return;
     e.preventDefault();
@@ -1491,18 +1462,20 @@ function attachRadarDrag(canvas){
       S.radarVals[radarDragIdx]=v;
       radarChart.data.datasets[0].data=[...S.radarVals];
       radarChart.update('none');
-      // ラベル更新
-      radarChart.options.scales.r.pointLabels.callback=(label,i)=>label+' ('+S.radarVals[i]+')';
-      radarChart.update('none');
     }
   }
-  canvas.addEventListener('mousemove',onMove,opt);
-  canvas.addEventListener('touchmove',onMove,optPassive);
-
   function onEnd(){radarDragActive=false;radarDragIdx=-1;}
-  canvas.addEventListener('mouseup',onEnd,opt);
-  canvas.addEventListener('mouseleave',onEnd,opt);
-  canvas.addEventListener('touchend',onEnd,opt);
+
+  // 既存リスナーの重複を防ぐためdata属性でフラグ管理
+  if(canvas.dataset.dragAttached==='1')return;
+  canvas.dataset.dragAttached='1';
+
+  canvas.addEventListener('mousedown',onStart);
+  window.addEventListener('mousemove',onMove);
+  window.addEventListener('mouseup',onEnd);
+  canvas.addEventListener('touchstart',onStart,{passive:false});
+  window.addEventListener('touchmove',onMove,{passive:false});
+  window.addEventListener('touchend',onEnd);
 }
 
 // スライダー関連（互換用、空実装）
