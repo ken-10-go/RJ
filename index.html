@@ -1318,38 +1318,58 @@ function recognizeDisplay(canvas){
   ocrLog(`列スコア最大=${maxCS.toFixed(3)}`);
 
   // Step5: 局所的な谷（極小値）で桁を分割
-  const halfW=Math.floor(w/8);
+  // サーチ幅を細かくして近接した谷も検出
+  const minDigitW=Math.floor(w/6); // 最小桁幅（画像幅の1/6）
+  const searchR=Math.max(2,Math.floor(minDigitW*0.3)); // 谷のサーチ半径
   const valleys=[];
-  for(let x=halfW;x<w-halfW;x++){
+  for(let x=minDigitW;x<w-minDigitW;x++){
     let isValley=true;
-    for(let dx=1;dx<=halfW;dx++){
+    for(let dx=1;dx<=searchR;dx++){
       if(smooth[x]>=smooth[x-dx]||smooth[x]>=smooth[x+dx]){isValley=false;break;}
     }
-    if(isValley&&smooth[x]<maxCS*0.8){
-      if(!valleys.length||x-valleys[valleys.length-1]>halfW){valleys.push(x);}
+    // 谷の深さ条件: 周辺ピークより5%以上低ければOK（緩い条件）
+    let leftPeak=0,rightPeak=0;
+    for(let dx=1;dx<=minDigitW;dx++){
+      if(x-dx>=0)leftPeak=Math.max(leftPeak,smooth[x-dx]);
+      if(x+dx<w)rightPeak=Math.max(rightPeak,smooth[x+dx]);
+    }
+    const peakAvg=(leftPeak+rightPeak)/2;
+    if(isValley&&smooth[x]<peakAvg*0.97){
+      if(!valleys.length||x-valleys[valleys.length-1]>minDigitW){
+        valleys.push(x);
+      }
     }
   }
   ocrLog(`谷: ${valleys.length}個 [${valleys.join(',')}]`);
 
   let rects=[];
   let prev=0;
-  for(const v of valleys){if(v-prev>w*0.04)rects.push({x:prev,w:v-prev});prev=v;}
+  for(const v of valleys){if(v-prev>w*0.03)rects.push({x:prev,w:v-prev});prev=v;}
   rects.push({x:prev,w:w-prev});
 
-  // 幅フィルタ
-  const ws=rects.map(d=>d.w).sort((a,b)=>b-a);
-  const medW=ws[Math.floor(ws.length/2)];
-  rects=rects.filter(d=>d.w>=medW*0.3);
+  // 幅フィルタ（中央値の30%未満=小数点等を除外）
+  if(rects.length>1){
+    const ws2=rects.map(d=>d.w).sort((a,b)=>b-a);
+    const medW2=ws2[Math.floor(ws2.length/2)];
+    rects=rects.filter(d=>d.w>=medW2*0.3);
+  }
   ocrLog(`桁候補: ${rects.length}個 幅=${rects.map(d=>d.w).join(',')}`);
 
-  // フォールバック: 均等3分割
-  if(rects.length<2||rects.length>5){
-    ocrLog(`桁数異常→均等3分割`);
-    rects=[];
-    const dw=Math.floor(w/3);
-    for(let i=0;i<3;i++)rects.push({x:i*dw,w:dw});
+  // 幅が大きすぎる桁（他の桁の1.8倍以上）は2桁と見なして均等分割
+  if(rects.length>=2){
+    const avgW=rects.reduce((s,d)=>s+d.w,0)/rects.length;
+    const expanded=[];
+    for(const dr of rects){
+      if(dr.w>avgW*1.6&&rects.length<4){
+        // 2分割
+        const hw=Math.floor(dr.w/2);
+        expanded.push({x:dr.x,w:hw},{x:dr.x+hw,w:dr.w-hw});
+        ocrLog(`  幅${dr.w}を2分割`);
+      }else expanded.push(dr);
+    }
+    rects=expanded;
   }
-  ocrLog(`数字桁: ${rects.length}個`);
+  ocrLog(`数字桁: ${rects.length}個 (最終)`);
 
   // Step6: 各桁を認識
   const results=[];
