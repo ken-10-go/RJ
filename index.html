@@ -335,11 +335,13 @@ select.inp{cursor:pointer;}
             </div>
             <button class="btn btn-outline" style="width:100%;padding:8px;" onclick="logSliderTemp()">この温度を記録</button>
           </div>
-          <!-- カメラ（ドラッグボックス付き） -->
+          <!-- カメラ（桁ガイド付き） -->
           <div id="camera-preview-wrap" style="display:none;margin-bottom:8px;position:relative;touch-action:none;">
             <video id="camera-video" autoplay playsinline muted style="width:100%;border-radius:9px;border:1px solid var(--border);background:#000;max-height:220px;object-fit:cover;display:block;"></video>
             <canvas id="camera-canvas" style="display:none;"></canvas>
-            <!-- OCR読み取り結果オーバーレイ -->
+            <!-- 桁ガイドオーバーレイ -->
+            <canvas id="guide-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:9px;touch-action:none;cursor:move;"></canvas>
+            <!-- 読み取り結果 -->
             <div style="position:absolute;bottom:8px;left:8px;right:8px;background:rgba(26,15,7,0.88);border-radius:7px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;">
               <div>
                 <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-muted);text-transform:uppercase;">読み取り温度</div>
@@ -348,14 +350,6 @@ select.inp{cursor:pointer;}
               <div style="text-align:right;">
                 <div id="ocr-countdown" style="font-family:'DM Mono',monospace;font-size:20px;color:var(--c-cream);">10</div>
                 <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-muted);">次の読み取り</div>
-              </div>
-            </div>
-            <!-- ドラッグ可能なLCD選択ボックス -->
-            <div id="ocr-box" style="display:none;position:absolute;border:2px solid #e8841e;border-radius:4px;box-shadow:0 0 0 1px rgba(0,0,0,.5);cursor:move;touch-action:none;">
-              <div style="position:absolute;top:-18px;left:0;background:rgba(232,132,30,.9);border-radius:3px;padding:1px 5px;font-family:'DM Mono',monospace;font-size:9px;color:#1a0f07;white-space:nowrap;">LCD範囲 ドラッグで移動</div>
-              <!-- リサイズハンドル（右下） -->
-              <div id="ocr-box-resize" style="position:absolute;bottom:-1px;right:-1px;width:16px;height:16px;cursor:se-resize;touch-action:none;">
-                <svg width="16" height="16" viewBox="0 0 16 16"><path d="M14 2L2 14M10 2L2 10M14 6L6 14" stroke="#e8841e" stroke-width="1.5"/></svg>
               </div>
             </div>
           </div>
@@ -1264,33 +1258,33 @@ function sampleRegion(data,x1,y1,x2,y2,iw,ih){
   return c>0?s/c:128;
 }
 function recognizeDigit(data,iw,ih,x0,y0,dw,dh,thresh,darkDigits){
-  const x1=x0, x2=x0+dw;
-  const xm=x0+dw*0.48;         // 横中心
+  // 各ゾーンの中央60%だけをサンプリング（端20%ずつ捨てる）
+  // ゾーン境界
+  const x1=x0, x2=x0+dw, xm=x0+dw*0.5;
   const y1=y0, y2=y0+dh;
-  // 縦を5ゾーンに分割: 上棒/上縦/中棒/下縦/下棒
-  const yt1=y0+dh*0.08;        // 上棒の下端
-  const yt2=y0+dh*0.38;        // 上縦の下端（＝中棒の上端）
-  const yb1=y0+dh*0.62;        // 中棒の下端（＝下縦の上端）
-  const yb2=y0+dh*0.92;        // 下縦の下端（＝下棒の上端）
-  const px=Math.max(2,Math.floor(dw*0.07));
-  const py=Math.max(1,Math.floor(dh*0.02));
+  const topEnd    = y0+dh*0.14;
+  const upperEnd  = y0+dh*0.44;
+  const midStart  = y0+dh*0.44;
+  const midEnd    = y0+dh*0.56;
+  const lowerStart= y0+dh*0.56;
+  const botStart  = y0+dh*0.86;
+
+  // 各ゾーンで端20%を除いた中央60%をサンプリング
+  function sampleZone(xa,ya,xb,yb){
+    const mx=(xb-xa)*0.20, my=(yb-ya)*0.20;
+    return sampleRegion(data, xa+mx, ya+my, xb-mx, yb-my, iw, ih);
+  }
 
   const segs=[
-    // top: 上横棒
-    sampleRegion(data, x1+px, y1,   x2-px, yt1,   iw,ih),
-    // tl: 左上縦棒
-    sampleRegion(data, x1,    yt1,   xm-px, yt2,   iw,ih),
-    // tr: 右上縦棒
-    sampleRegion(data, xm+px, yt1,   x2,    yt2,   iw,ih),
-    // mid: 中段横棒
-    sampleRegion(data, x1+px, yt2,   x2-px, yb1,   iw,ih),
-    // bl: 左下縦棒
-    sampleRegion(data, x1,    yb1,   xm-px, yb2,   iw,ih),
-    // br: 右下縦棒
-    sampleRegion(data, xm+px, yb1,   x2,    yb2,   iw,ih),
-    // bot: 下横棒
-    sampleRegion(data, x1+px, yb2,   x2-px, y2,    iw,ih),
+    sampleZone(x1,   y1,          x2,   topEnd     ), // top
+    sampleZone(x1,   topEnd,      xm,   upperEnd   ), // tl
+    sampleZone(xm,   topEnd,      x2,   upperEnd   ), // tr
+    sampleZone(x1,   midStart,    x2,   midEnd     ), // mid
+    sampleZone(x1,   lowerStart,  xm,   botStart   ), // bl
+    sampleZone(xm,   lowerStart,  x2,   botStart   ), // br
+    sampleZone(x1,   botStart,    x2,   y2         ), // bot
   ];
+
   const ON=darkDigits?(v=>v<thresh?1:0):(v=>v>thresh?1:0);
   const det=segs.map(ON);
   let best=null,bestD=99;
@@ -1308,29 +1302,42 @@ function recognizeDisplay(canvas){
   const id=ctx.getImageData(0,0,w,h);
   const data=id.data;
 
-  // Step1: ヒストグラム（暗すぎるピクセル除外）
-  const hist=new Int32Array(256);
-  let totalPx=0;
+  // Step1: 全ピクセルの輝度を収集してソート
+  const grays=new Float32Array(w*h);
+  let rawMin=255,rawMax=0;
   for(let i=0;i<w*h;i++){
     const p=i*4;
-    const g=Math.round(0.299*data[p]+0.587*data[p+1]+0.114*data[p+2]);
-    if(g>8){hist[g]++;totalPx++;}
+    const g=0.299*data[p]+0.587*data[p+1]+0.114*data[p+2];
+    grays[i]=g;
+    if(g<rawMin)rawMin=g; if(g>rawMax)rawMax=g;
   }
-  if(totalPx===0){ocrLog('有効ピクセルなし','err');return null;}
-  let peakV=0,peakC=0,wsum=0;
-  // ピーク検出: 極端に暗い値(0-15)を除外して背景色を正確に検出
-  for(let v=15;v<256;v++){if(hist[v]>peakC){peakC=hist[v];peakV=v;}wsum+=v*hist[v];}
-  const mean=wsum/totalPx;
-  // darkDigits: 背景より数字が暗い場合
-  // LCDの場合: 背景=明るい緑, 数字=暗い → darkDigits=true が正しい
-  // ピークが低い(< mean*0.7)場合は黒枠が多い→背景は明るいはず → darkDigits=true強制
-  const darkDigits=peakV<mean||peakV<mean*0.7;
+  ocrLog(`実輝度範囲: ${Math.round(rawMin)}-${Math.round(rawMax)}`);
+
+  // パーセンタイル計算（ソートなしで高速に）
+  const hist=new Int32Array(256);
+  for(let i=0;i<grays.length;i++) hist[Math.min(255,Math.round(grays[i]))]++;
+  const totalPx=w*h;
+  let cumSum=0, p10=0,p20=0,p50=0,p80=0;
+  for(let v=0;v<256;v++){
+    cumSum+=hist[v];
+    if(cumSum<totalPx*0.10) p10=v;
+    if(cumSum<totalPx*0.20) p20=v;
+    if(cumSum<totalPx*0.50) p50=v;
+    if(cumSum<totalPx*0.80) p80=v;
+  }
+  ocrLog(`p10=${p10} p20=${p20} p50=${p50} p80=${p80}`);
+
+  // 閾値: 上位20%のピクセルを「セグメントON」とする
+  // LCDの数字セグメントは全面積の15〜25%を占める
+  // darkDigits=true: 数字が暗い（p80が背景色、p20以下が数字）
+  // darkDigits=false: 数字が明るい（p20が背景色、p80以上が数字）
+  // 判定: p50が高ければ背景が明るい→数字は暗い
+  const darkDigits = p50 > 128;
+  const thresh = darkDigits ? p20 : p80;
+  ocrLog(`閾値=${thresh} 数字=${darkDigits?'暗(v<'+thresh+')':'明(v>'+thresh+')'}`);
   // 数字=明(背景暗): 数字は平均より明るい → 閾値 = 平均+（ピーク-平均）*0.3
   // 数字=暗(背景明): 数字は平均より暗い  → 閾値 = 平均-（平均-ピーク）*0.3
-  const thresh=darkDigits
-    ?(peakV+(mean-peakV)*0.7)      // 暗い数字: ピークより少し高い
-    :(mean+(peakV-mean)*0.3);      // 明るい数字: 平均より少し高い（低めの閾値）
-  ocrLog(`ピーク=${peakV} 平均=${Math.round(mean)} 閾値=${Math.round(thresh)} 数字=${darkDigits?'暗':'明'}`);
+
 
   // Step2: 行スコアで垂直トリム
   const rowScore=new Float32Array(h);
@@ -1452,15 +1459,23 @@ function toGrayscaleCanvas(srcCanvas, cropRect){
   const cy=Math.floor(sh*cropRect.y);
   const cw=Math.max(1,Math.floor(sw*cropRect.w));
   const ch=Math.max(1,Math.floor(sh*cropRect.h));
+
+  // ユーザー指定クロップ後、さらに左右15%・上下20%内側に縮める（黒枠除去）
+  const insetX=Math.floor(cw*0.15);
+  const insetY=Math.floor(ch*0.20);
+  const fx=cx+insetX, fy=cy+insetY;
+  const fw=Math.max(1,cw-insetX*2), fh=Math.max(1,ch-insetY*2);
+  ocrLog(`クロップ: ${cw}x${ch} → inset後 ${fw}x${fh}`);
+
   const scale=2;
   const dst=document.createElement('canvas');
-  dst.width=cw*scale; dst.height=ch*scale;
-  const ctx=dst.getContext('2d');
-  ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(srcCanvas, cx, cy, cw, ch, 0, 0, dst.width, dst.height);
+  dst.width=fw*scale; dst.height=fh*scale;
+  const dctx=dst.getContext('2d');
+  dctx.imageSmoothingEnabled=false;
+  dctx.drawImage(srcCanvas,fx,fy,fw,fh,0,0,dst.width,dst.height);
 
-  // コントラスト正規化（min-max）: 暗すぎる画像でも数字が見えるように
-  const id=ctx.getImageData(0,0,dst.width,dst.height);
+  // コントラスト正規化
+  const id=dctx.getImageData(0,0,dst.width,dst.height);
   const d=id.data;
   let mn=255,mx=0;
   for(let i=0;i<d.length;i+=4){
@@ -1468,21 +1483,13 @@ function toGrayscaleCanvas(srcCanvas, cropRect){
     if(g<mn)mn=g; if(g>mx)mx=g;
   }
   const range=mx-mn||1;
-  // 暗い部分が多い場合（range < 80）はガンマ補正で明るくする
-  const useGamma=range<80;
-  ocrLog(`輝度範囲: ${Math.round(mn)}〜${Math.round(mx)} range=${Math.round(range)}${useGamma?' ガンマ補正':''}`);
+  ocrLog(`輝度: ${Math.round(mn)}-${Math.round(mx)}`);
   for(let i=0;i<d.length;i+=4){
     const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-    let v;
-    if(useGamma){
-      // ガンマ補正: 暗い部分を持ち上げる
-      v=Math.round(Math.pow((g-mn)/range,0.5)*255);
-    }else{
-      v=Math.round((g-mn)/range*255);
-    }
+    const v=Math.round((g-mn)/range*255);
     d[i]=d[i+1]=d[i+2]=v; d[i+3]=255;
   }
-  ctx.putImageData(id,0,0);
+  dctx.putImageData(id,0,0);
   return dst;
 }
 
@@ -1503,7 +1510,8 @@ async function startCameraOCR(){
     document.getElementById('cam-start-btn').style.display='none';
     document.getElementById('cam-stop-btn').style.display='block';
     document.getElementById('ocr-debug').classList.add('visible');
-    showOcrBox();
+    initGuideInteraction();
+    drawGuide();
     ocrCD=5;
     ocrCDInterval=setInterval(()=>{
       ocrCD--;
@@ -1570,6 +1578,160 @@ function testOcrFromFile(input){
   img.src=url;
 }
 
+// ===== ガイドベース認識 =====
+function cropDigit(srcCanvas, rect) {
+  // 1桁分をクロップして正規化
+  const {x, y, w, h} = rect;
+  const scale = 2;
+  const dst = document.createElement('canvas');
+  dst.width = w * scale; dst.height = h * scale;
+  const ctx = dst.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(srcCanvas, x, y, w, h, 0, 0, dst.width, dst.height);
+  // コントラスト正規化
+  const id = ctx.getImageData(0, 0, dst.width, dst.height);
+  const d = id.data;
+  let mn=255, mx=0;
+  for(let i=0;i<d.length;i+=4){
+    const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    if(g<mn)mn=g; if(g>mx)mx=g;
+  }
+  const range=mx-mn||1;
+  for(let i=0;i<d.length;i+=4){
+    const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    const v=Math.round((g-mn)/range*255);
+    d[i]=d[i+1]=d[i+2]=v; d[i+3]=255;
+  }
+  ctx.putImageData(id,0,0);
+  return dst;
+}
+
+function recognizeOneDigit(digitCanvas) {
+  const ctx = digitCanvas.getContext('2d');
+  const w = digitCanvas.width, h = digitCanvas.height;
+  const id = ctx.getImageData(0,0,w,h);
+  const data = id.data;
+
+  // p20/p80で閾値と方向を決定
+  const hist = new Int32Array(256);
+  for(let i=0;i<w*h;i++){
+    const p=i*4;
+    hist[Math.min(255,Math.round(0.299*data[p]+0.587*data[p+1]+0.114*data[p+2]))]++;
+  }
+  const total=w*h;
+  let cum=0, p20=0, p80=0;
+  for(let v=0;v<256;v++){
+    cum+=hist[v];
+    if(cum<total*0.20) p20=v;
+    if(cum<total*0.80) p80=v;
+  }
+  // 中央値で方向判定
+  let cum2=0; let p50=0;
+  for(let v=0;v<256;v++){cum2+=hist[v];if(cum2<total*0.5)p50=v;}
+  const darkDigits = p50 > 128;
+  const thresh = darkDigits ? p20 + (p80-p20)*0.35 : p20 + (p80-p20)*0.65;
+
+  // 7セグメント認識（中央60%をサンプリング）
+  function sampleZone(xa,ya,xb,yb){
+    const mx=(xb-xa)*0.20, my=(yb-ya)*0.20;
+    const sx=Math.max(0,xa+mx), ex=Math.min(w-1,xb-mx);
+    const sy=Math.max(0,ya+my), ey=Math.min(h-1,yb-my);
+    let s=0,c=0;
+    for(let y=Math.floor(sy);y<=Math.floor(ey);y++)
+      for(let x=Math.floor(sx);x<=Math.floor(ex);x++){
+        s+=0.299*data[(y*w+x)*4]+0.587*data[(y*w+x)*4+1]+0.114*data[(y*w+x)*4+2];c++;
+      }
+    return c>0?s/c:128;
+  }
+
+  const xm = w*0.5;
+  const topEnd=h*0.14, upperEnd=h*0.44;
+  const midStart=h*0.44, midEnd=h*0.56;
+  const lowerStart=h*0.56, botStart=h*0.86;
+
+  const segs=[
+    sampleZone(0,0,         w,topEnd     ),
+    sampleZone(0,topEnd,    xm,upperEnd  ),
+    sampleZone(xm,topEnd,   w,upperEnd   ),
+    sampleZone(0,midStart,  w,midEnd     ),
+    sampleZone(0,lowerStart,xm,botStart  ),
+    sampleZone(xm,lowerStart,w,botStart  ),
+    sampleZone(0,botStart,  w,h          ),
+  ];
+  const ON=darkDigits?(v=>v<thresh?1:0):(v=>v>thresh?1:0);
+  const det=segs.map(ON);
+
+  let best=null, bestD=99;
+  for(const [d,p] of Object.entries(SEG_PATTERNS)){
+    const dist=p.reduce((s,v,i)=>s+(v!==det[i]?1:0),0);
+    if(dist<bestD){bestD=dist;best=d;}
+  }
+  return {digit: bestD<=2?best:'?', dist:bestD, det, thresh, darkDigits};
+}
+
+function recognizeFromGuide(srcCanvas) {
+  const rects = getDigitRectsInVideo();
+  const digits = [];
+  for(let i=0;i<4;i++){
+    const r = rects[i];
+    if(r.w<4||r.h<4){digits.push('?');continue;}
+    const dc = cropDigit(srcCanvas, r);
+    const {digit,dist,det,thresh,darkDigits} = recognizeOneDigit(dc);
+    digits.push(digit);
+    ocrLog(`  D${i+1}: seg=[${det.join('')}]→'${digit}'(err=${dist}) th=${Math.round(thresh)} ${darkDigits?'暗':'明'}`);
+  }
+  // D1〜D3が整数部、D4が小数部
+  // D1が'0'または'?'なら2桁と判断して除外
+  let intPart, decPart;
+  if(digits[0]==='0'||digits[0]==='?'){
+    // 2桁: D2D3.D4
+    intPart = (digits[1]==='?'?'0':digits[1])+(digits[2]==='?'?'0':digits[2]);
+  }else{
+    // 3桁: D1D2D3.D4
+    intPart = digits.slice(0,3).map(d=>d==='?'?'0':d).join('');
+  }
+  decPart = digits[3]==='?'?'0':digits[3];
+  const result = intPart+'.'+decPart;
+  ocrLog('組み立て: '+result);
+  return result.includes('?')?null:result;
+}
+
+// ファイルテスト用も更新
+function testOcrFromFile(input){
+  const file=input.files[0];if(!file)return;
+  document.getElementById('ocr-debug').classList.add('visible');
+  ocrLog('--- 画像ファイルテスト ---');
+  const img=new Image();
+  const url=URL.createObjectURL(file);
+  img.onload=()=>{
+    const canvas=document.getElementById('camera-canvas');
+    canvas.width=img.naturalWidth; canvas.height=img.naturalHeight;
+    canvas.getContext('2d').drawImage(img,0,0);
+    URL.revokeObjectURL(url);
+    ocrLog(`画像サイズ: ${img.naturalWidth}x${img.naturalHeight}`,'ok');
+    // ガイドをcanvasサイズに合わせて描画更新
+    drawGuide();
+    const result = recognizeFromGuide(canvas);
+    ocrLog('認識結果: "'+result+'"');
+    if(!result||result.includes('?')){
+      ocrLog('認識失敗 → ガイドを数字に合わせてください','err');
+      document.getElementById('ocr-temp').textContent='調整してください';
+    }else{
+      const num=parseFloat(result);
+      if(num>=20&&num<=250){
+        ocrLog('OK: '+num+'°C','ok');
+        document.getElementById('ocr-temp').textContent=num+'°C (テスト)';
+      }else{
+        ocrLog('範囲外: '+num+'°C','err');
+        document.getElementById('ocr-temp').textContent=num+'°C?';
+      }
+    }
+    input.value='';
+  };
+  img.onerror=()=>{ocrLog('画像読み込みエラー','err');};
+  img.src=url;
+}
+
 async function runOCRCapture(){
   if(ocrBusy||!cameraStream)return;
   ocrBusy=true;
@@ -1579,21 +1741,17 @@ async function runOCRCapture(){
     const video=document.getElementById('camera-video');
     const canvas=document.getElementById('camera-canvas');
     if(!video.videoWidth){ocrLog('動画未準備','err');ocrBusy=false;return;}
-    canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+    canvas.width=video.videoWidth; canvas.height=video.videoHeight;
     canvas.getContext('2d').drawImage(video,0,0);
-    ocrLog(`キャプチャ ${video.videoWidth}×${video.videoHeight}`,'ok');
-    const cropRect=getCropRect();
-    const cropped=toGrayscaleCanvas(canvas,cropRect);
-    ocrLog(`クロップ後 ${cropped.width}×${cropped.height}px`,'ok');
-    const preview=document.getElementById('ocr-preview');
-    if(preview){preview.width=cropped.width;preview.height=cropped.height;preview.getContext('2d').drawImage(cropped,0,0);}
-    const raw=recognizeDisplay(cropped);
-    ocrLog(`認識結果: "${raw}"`);
-    if(!raw||raw.includes('?')){
-      ocrLog('認識失敗 → クロップ範囲を調整してください','err');
+    ocrLog(`キャプチャ ${video.videoWidth}x${video.videoHeight}`,'ok');
+
+    const result = recognizeFromGuide(canvas);
+    ocrLog(`認識結果: "${result}"`);
+    if(!result||result.includes('?')){
+      ocrLog('認識失敗 → ガイドを数字に合わせてください','err');
       document.getElementById('ocr-temp').textContent='調整してください';
     }else{
-      const num=parseFloat(raw);
+      const num=parseFloat(result);
       const lastTemp=S.tempData.length?S.tempData[S.tempData.length-1]:null;
       const inRange=num>=20&&num<=250;
       const plausible=lastTemp===null||Math.abs(num-lastTemp)<=40;
@@ -1602,7 +1760,7 @@ async function runOCRCapture(){
         document.getElementById('ocr-temp').textContent=num+'°C';
         if(S.roastRunning)recordTemp(num);
       }else{
-        ocrLog(`範囲外または急変: ${num}°C (前回:${lastTemp})`,'err');
+        ocrLog('範囲外: '+num+'°C (前回:'+lastTemp+')','err');
         document.getElementById('ocr-temp').textContent=num+'°C?';
       }
     }
@@ -1843,76 +2001,193 @@ function updateCompareChart(){
 }
 function runAI(){toast('分析機能は現在準備中です');}
 
-// ===== OCR CROP HELPERS =====
-const ocrBoxState={x:0.05,y:0.15,w:0.6,h:0.55};
-let boxDragging=false,boxResizing=false,boxDragOX=0,boxDragOY=0,boxStartState=null;
-function initOcrBox(){
-  const wrap=document.getElementById('camera-preview-wrap');
-  const box=document.getElementById('ocr-box');
-  const resizeHandle=document.getElementById('ocr-box-resize');
-  if(!wrap||!box)return;
-  function getVideoRect(){return document.getElementById('camera-video').getBoundingClientRect();}
-  function updateBoxDOM(){
-    const vr=getVideoRect();
-    box.style.left=Math.round(ocrBoxState.x*vr.width)+'px';
-    box.style.top=Math.round(ocrBoxState.y*vr.height)+'px';
-    box.style.width=Math.round(ocrBoxState.w*vr.width)+'px';
-    box.style.height=Math.round(ocrBoxState.h*vr.height)+'px';
-    refreshOcrPreview();
+// ===== 桁ガイド OCR =====
+// ガイド状態: 4桁ボックスの位置・サイズ（video座標の相対値 0.0〜1.0）
+const guide = {
+  x: 0.05,  // ガイド全体の左端
+  y: 0.25,  // ガイド全体の上端
+  w: 0.70,  // ガイド全体の幅
+  h: 0.45,  // ガイド全体の高さ
+};
+// 桁間隔: D1 D2 D3 . D4 （D1D2D3=整数部、D4=小数部）
+// D1〜D3は等幅、D4は同幅、小数点は細いスペース
+const DIGIT_COUNT = 4; // D1,D2,D3,D4
+const DOT_RATIO = 0.08; // 小数点の幅（ガイド幅比）
+
+let guideDragging = false;
+let guideResizing = false;
+let guideDragOX = 0, guideDragOY = 0;
+let guideResizeStartX = 0, guideResizeStartY = 0;
+let guideStartState = null;
+
+function getDigitRects() {
+  // 4桁の矩形を計算（0.0〜1.0の相対値）
+  // レイアウト: [D1][D2][D3][dot][D4]
+  // D1〜D3の幅 = (全幅 - dot幅) / 4
+  const dotW = guide.w * DOT_RATIO;
+  const digitW = (guide.w - dotW) / 4;
+  const rects = [];
+  for (let i = 0; i < 4; i++) {
+    const offset = i < 3 ? i * digitW : (3 * digitW + dotW);
+    rects.push({
+      x: guide.x + offset,
+      y: guide.y,
+      w: digitW,
+      h: guide.h,
+    });
   }
-  function onMoveStart(e){
-    if(e.target===resizeHandle||e.target.closest('#ocr-box-resize'))return;
-    e.preventDefault();boxDragging=true;
-    const pt=e.touches?e.touches[0]:e;const vr=getVideoRect();
-    boxDragOX=(pt.clientX-vr.left)/vr.width-ocrBoxState.x;
-    boxDragOY=(pt.clientY-vr.top)/vr.height-ocrBoxState.y;
-  }
-  function onMoveMove(e){
-    if(!boxDragging)return;e.preventDefault();
-    const pt=e.touches?e.touches[0]:e;const vr=getVideoRect();
-    let nx=(pt.clientX-vr.left)/vr.width-boxDragOX;
-    let ny=(pt.clientY-vr.top)/vr.height-boxDragOY;
-    nx=Math.max(0,Math.min(1-ocrBoxState.w,nx));ny=Math.max(0,Math.min(1-ocrBoxState.h,ny));
-    ocrBoxState.x=nx;ocrBoxState.y=ny;updateBoxDOM();
-  }
-  function onMoveEnd(){boxDragging=false;}
-  box.addEventListener('mousedown',onMoveStart);box.addEventListener('touchstart',onMoveStart,{passive:false});
-  document.addEventListener('mousemove',onMoveMove);document.addEventListener('touchmove',onMoveMove,{passive:false});
-  document.addEventListener('mouseup',onMoveEnd);document.addEventListener('touchend',onMoveEnd);
-  function onResizeStart(e){e.preventDefault();e.stopPropagation();boxResizing=true;const pt=e.touches?e.touches[0]:e;const vr=getVideoRect();boxStartState={...ocrBoxState,cx:pt.clientX,cy:pt.clientY,vw:vr.width,vh:vr.height};}
-  function onResizeMove(e){
-    if(!boxResizing)return;e.preventDefault();
-    const pt=e.touches?e.touches[0]:e;
-    const dx=(pt.clientX-boxStartState.cx)/boxStartState.vw;const dy=(pt.clientY-boxStartState.cy)/boxStartState.vh;
-    ocrBoxState.w=Math.max(0.1,Math.min(1-ocrBoxState.x,boxStartState.w+dx));
-    ocrBoxState.h=Math.max(0.1,Math.min(1-ocrBoxState.y,boxStartState.h+dy));
-    updateBoxDOM();
-  }
-  function onResizeEnd(){boxResizing=false;}
-  resizeHandle.addEventListener('mousedown',onResizeStart);resizeHandle.addEventListener('touchstart',onResizeStart,{passive:false});
-  document.addEventListener('mousemove',e=>{if(boxResizing)onResizeMove(e);});
-  document.addEventListener('touchmove',e=>{if(boxResizing)onResizeMove(e);},{passive:false});
-  document.addEventListener('mouseup',onResizeEnd);document.addEventListener('touchend',onResizeEnd);
+  return rects;
 }
-function showOcrBox(){
-  const box=document.getElementById('ocr-box');if(!box)return;
-  box.style.display='block';
-  const video=document.getElementById('camera-video');const vr=video.getBoundingClientRect();
-  box.style.left=Math.round(ocrBoxState.x*vr.width)+'px';box.style.top=Math.round(ocrBoxState.y*vr.height)+'px';
-  box.style.width=Math.round(ocrBoxState.w*vr.width)+'px';box.style.height=Math.round(ocrBoxState.h*vr.height)+'px';
+
+function drawGuide() {
+  const canvas = document.getElementById('guide-canvas');
+  if (!canvas) return;
+  const video = document.getElementById('camera-video');
+  const vw = video.offsetWidth || canvas.offsetWidth;
+  const vh = video.offsetHeight || canvas.offsetHeight;
+  canvas.width = vw * window.devicePixelRatio || vw;
+  canvas.height = vh * window.devicePixelRatio || vh;
+  canvas.style.width = vw + 'px';
+  canvas.style.height = vh + 'px';
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, vw, vh);
+
+  const rects = getDigitRects();
+  const dotW = guide.w * DOT_RATIO * vw;
+  const d3right = (guide.x + 3 * (guide.w - guide.w * DOT_RATIO) / 4) * vw;
+  const dotCX = d3right + dotW / 2;
+  const dotCY = (guide.y + guide.h * 0.85) * vh;
+
+  // 半透明マスク
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(0, 0, vw, vh);
+
+  // 各桁ボックスをクリア＆枠描画
+  rects.forEach((r, i) => {
+    const rx = r.x * vw, ry = r.y * vh, rw = r.w * vw, rh = r.h * vh;
+    ctx.clearRect(rx, ry, rw, rh);
+    ctx.strokeStyle = i === 3 ? 'rgba(90,200,90,0.9)' : 'rgba(232,132,30,0.9)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
+    // 桁ラベル
+    ctx.fillStyle = i === 3 ? 'rgba(90,200,90,0.9)' : 'rgba(232,132,30,0.9)';
+    ctx.font = `bold ${Math.floor(rh * 0.15)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(i === 3 ? '.X' : 'D' + (i + 1), rx + rw / 2, ry + rh * 0.14);
+  });
+
+  // 小数点
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath();
+  ctx.arc(dotCX, dotCY, Math.max(3, guide.h * vh * 0.05), 0, Math.PI * 2);
+  ctx.fill();
+
+  // 操作ヒント
+  ctx.fillStyle = 'rgba(232,132,30,0.85)';
+  ctx.font = `${Math.floor(vh * 0.04)}px monospace`;
+  ctx.textAlign = 'left';
+  ctx.fillText('↕ドラッグ移動  ◢リサイズ', guide.x * vw, guide.y * vh - 6);
+
+  // リサイズハンドル（右下）
+  const hx = (guide.x + guide.w) * vw;
+  const hy = (guide.y + guide.h) * vh;
+  ctx.fillStyle = 'rgba(232,132,30,0.9)';
+  ctx.fillRect(hx - 14, hy - 14, 14, 14);
+  ctx.fillStyle = '#1a0f07';
+  ctx.font = `bold 11px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('◢', hx - 7, hy - 3);
 }
-function hideOcrBox(){const box=document.getElementById('ocr-box');if(box)box.style.display='none';}
-function getCropRect(){return{...ocrBoxState};}
-function refreshOcrPreview(){
-  if(!cameraStream)return;
-  const video=document.getElementById('camera-video');if(!video.videoWidth)return;
-  const tmp=document.createElement('canvas');tmp.width=video.videoWidth;tmp.height=video.videoHeight;
-  tmp.getContext('2d').drawImage(video,0,0);
-  const processed=toGrayscaleCanvas(tmp,getCropRect());
-  const preview=document.getElementById('ocr-preview');
-  if(preview){preview.width=processed.width;preview.height=processed.height;preview.getContext('2d').drawImage(processed,0,0);}
+
+function initGuideInteraction() {
+  const canvas = document.getElementById('guide-canvas');
+  if (!canvas) return;
+
+  function toRel(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return {
+      x: (src.clientX - rect.left) / rect.width,
+      y: (src.clientY - rect.top) / rect.height,
+    };
+  }
+
+  function isInResizeHandle(rx, ry) {
+    const hx = guide.x + guide.w;
+    const hy = guide.y + guide.h;
+    return Math.abs(rx - hx) < 0.05 && Math.abs(ry - hy) < 0.05;
+  }
+
+  function isInGuide(rx, ry) {
+    return rx >= guide.x && rx <= guide.x + guide.w &&
+           ry >= guide.y && ry <= guide.y + guide.h;
+  }
+
+  function onStart(e) {
+    e.preventDefault();
+    const { x, y } = toRel(e);
+    if (isInResizeHandle(x, y)) {
+      guideResizing = true;
+      guideResizeStartX = x; guideResizeStartY = y;
+      guideStartState = { ...guide };
+    } else if (isInGuide(x, y)) {
+      guideDragging = true;
+      guideDragOX = x - guide.x;
+      guideDragOY = y - guide.y;
+    }
+  }
+
+  function onMove(e) {
+    if (!guideDragging && !guideResizing) return;
+    e.preventDefault();
+    const { x, y } = toRel(e);
+    if (guideDragging) {
+      guide.x = Math.max(0, Math.min(1 - guide.w, x - guideDragOX));
+      guide.y = Math.max(0, Math.min(1 - guide.h, y - guideDragOY));
+    } else if (guideResizing) {
+      const dx = x - guideResizeStartX;
+      const dy = y - guideResizeStartY;
+      guide.w = Math.max(0.2, Math.min(1 - guide.x, guideStartState.w + dx));
+      guide.h = Math.max(0.1, Math.min(1 - guide.y, guideStartState.h + dy));
+    }
+    drawGuide();
+  }
+
+  function onEnd() { guideDragging = false; guideResizing = false; }
+
+  canvas.addEventListener('mousedown', onStart);
+  canvas.addEventListener('touchstart', onStart, { passive: false });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('mouseup', onEnd);
+  window.addEventListener('touchend', onEnd);
 }
-function updateCropPreview(){refreshOcrPreview();}
+
+// ガイドから各桁のcanvasピクセル座標を返す（カメラ解像度基準）
+function getDigitRectsInVideo() {
+  const video = document.getElementById('camera-video');
+  const vw = video.videoWidth || 640;
+  const vh = video.videoHeight || 480;
+  return getDigitRects().map(r => ({
+    x: Math.floor(r.x * vw),
+    y: Math.floor(r.y * vh),
+    w: Math.floor(r.w * vw),
+    h: Math.floor(r.h * vh),
+  }));
+}
+
+// 後方互換
+function getCropRect() { return { x: guide.x, y: guide.y, w: guide.w, h: guide.h }; }
+function showOcrBox() { drawGuide(); }
+function hideOcrBox() {
+  const c = document.getElementById('guide-canvas');
+  if (c) { const ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height); }
+}
+function initOcrBox() { initGuideInteraction(); }
+function refreshOcrPreview() { drawGuide(); }
+function updateCropPreview() {}
 
 // ===== API KEY =====
 function getApiKey(){return localStorage.getItem('rj_anthropic_key')||'';}
