@@ -370,9 +370,21 @@ select.inp{cursor:pointer;}
               <span style="font-weight:500;font-size:var(--fs-sm);">自動読み取り停止</span>
             </button>
           </div>
+          <!-- 画像ファイルでOCRテスト（ローカル確認用） -->
+          <div style="margin-bottom:4px;">
+            <label class="camera-btn" for="ocr-test-file" style="padding:9px;border-color:rgba(122,179,245,.5);color:#7ab3f5;">
+              <span style="font-size:16px;">🖼️</span>
+              <span style="font-weight:500;font-size:var(--fs-sm);">画像ファイルでOCRテスト</span>
+              <span style="font-size:10px;color:var(--c-muted);">カメラ不可時の代替</span>
+            </label>
+            <input type="file" id="ocr-test-file" accept="image/*" style="display:none;" onchange="testOcrFromFile(this)">
+          </div>
           <!-- OCR プレビュー＋デバッグパネル -->
           <div id="ocr-debug" class="ocr-debug">
-            <div style="color:var(--c-accent);font-weight:500;margin-bottom:4px;">OCR デバッグログ</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <div style="color:var(--c-accent);font-weight:500;">OCR デバッグログ</div>
+              <button onclick="copyOcrLog()" style="background:rgba(196,122,58,.2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--c-cream);font-size:10px;cursor:pointer;">📋 コピー</button>
+            </div>
             <div style="margin-bottom:4px;">
               <div style="font-size:9px;color:var(--c-muted);margin-bottom:2px;">前処理プレビュー</div>
               <canvas id="ocr-preview" style="width:100%;border-radius:3px;border:1px solid var(--border);background:#000;display:block;max-height:60px;object-fit:contain;"></canvas>
@@ -1212,7 +1224,19 @@ function ocrLog(msg,type=''){
   d.className='ocr-step'+(type?' '+type:'');
   d.textContent=new Date().toLocaleTimeString('ja-JP')+' '+msg;
   log.insertBefore(d,log.firstChild);
-  while(log.children.length>20)log.removeChild(log.lastChild);
+  while(log.children.length>30)log.removeChild(log.lastChild);
+}
+function copyOcrLog(){
+  const log=document.getElementById('ocr-debug-log');
+  const lines=[...log.children].map(d=>d.textContent).join('
+');
+  navigator.clipboard.writeText(lines).then(()=>toast('ログをコピーしました')).catch(()=>{
+    // fallback
+    const ta=document.createElement('textarea');
+    ta.value=lines;document.body.appendChild(ta);ta.select();
+    document.execCommand('copy');document.body.removeChild(ta);
+    toast('ログをコピーしました');
+  });
 }
 
 // ===== 7セグメント認識エンジン =====
@@ -1241,30 +1265,32 @@ function sampleRegion(data,x1,y1,x2,y2,iw,ih){
   return c>0?s/c:128;
 }
 function recognizeDigit(data,iw,ih,x0,y0,dw,dh,thresh,darkDigits){
-  // セグメント座標（7セグ標準レイアウト）
-  // top, tl, tr, mid, bl, br, bot の順
-  const x1=x0, xm=x0+dw/2, x2=x0+dw;
-  const y1=y0, ym=y0+dh/2, y2=y0+dh;
-  const mx=Math.max(2,Math.floor(dw*0.08)); // 水平マージン
-  const my=Math.max(2,Math.floor(dh*0.05)); // 垂直マージン
-  const sw=dw*0.12; // セグメントの太さ（幅の12%）
-  const sh=dh*0.10; // セグメントの太さ（高さの10%）
+  const x1=x0, x2=x0+dw;
+  const xm=x0+dw*0.48;         // 横中心
+  const y1=y0, y2=y0+dh;
+  // 縦を5ゾーンに分割: 上棒/上縦/中棒/下縦/下棒
+  const yt1=y0+dh*0.08;        // 上棒の下端
+  const yt2=y0+dh*0.38;        // 上縦の下端（＝中棒の上端）
+  const yb1=y0+dh*0.62;        // 中棒の下端（＝下縦の上端）
+  const yb2=y0+dh*0.92;        // 下縦の下端（＝下棒の上端）
+  const px=Math.max(2,Math.floor(dw*0.07));
+  const py=Math.max(1,Math.floor(dh*0.02));
 
   const segs=[
-    // top: 上辺の横棒
-    sampleRegion(data, x1+mx, y1,    x2-mx, y1+sh,   iw,ih),
-    // tl: 左上の縦棒
-    sampleRegion(data, x1,    y1+my, xm-mx, ym-my,   iw,ih),
-    // tr: 右上の縦棒
-    sampleRegion(data, xm+mx, y1+my, x2,    ym-my,   iw,ih),
-    // mid: 中段の横棒
-    sampleRegion(data, x1+mx, ym-sh, x2-mx, ym+sh,   iw,ih),
-    // bl: 左下の縦棒
-    sampleRegion(data, x1,    ym+my, xm-mx, y2-my,   iw,ih),
-    // br: 右下の縦棒
-    sampleRegion(data, xm+mx, ym+my, x2,    y2-my,   iw,ih),
-    // bot: 下辺の横棒
-    sampleRegion(data, x1+mx, y2-sh, x2-mx, y2,      iw,ih),
+    // top: 上横棒
+    sampleRegion(data, x1+px, y1,   x2-px, yt1,   iw,ih),
+    // tl: 左上縦棒
+    sampleRegion(data, x1,    yt1,   xm-px, yt2,   iw,ih),
+    // tr: 右上縦棒
+    sampleRegion(data, xm+px, yt1,   x2,    yt2,   iw,ih),
+    // mid: 中段横棒
+    sampleRegion(data, x1+px, yt2,   x2-px, yb1,   iw,ih),
+    // bl: 左下縦棒
+    sampleRegion(data, x1,    yb1,   xm-px, yb2,   iw,ih),
+    // br: 右下縦棒
+    sampleRegion(data, xm+px, yb1,   x2,    yb2,   iw,ih),
+    // bot: 下横棒
+    sampleRegion(data, x1+px, yb2,   x2-px, y2,    iw,ih),
   ];
   const ON=darkDigits?(v=>v<thresh?1:0):(v=>v>thresh?1:0);
   const det=segs.map(ON);
@@ -1274,7 +1300,7 @@ function recognizeDigit(data,iw,ih,x0,y0,dw,dh,thresh,darkDigits){
     if(dist<bestD){bestD=dist;best=d;}
   }
   ocrLog(`  seg=[${det.join('')}]→'${best}'(err=${bestD})`);
-  return{digit:bestD<=3?best:'?',dist:bestD};
+  return{digit:bestD<=2?best:'?',dist:bestD};
 }
 
 function recognizeDisplay(canvas){
@@ -1293,9 +1319,13 @@ function recognizeDisplay(canvas){
   }
   if(totalPx===0){ocrLog('有効ピクセルなし','err');return null;}
   let peakV=0,peakC=0,wsum=0;
-  for(let v=0;v<256;v++){if(hist[v]>peakC){peakC=hist[v];peakV=v;}wsum+=v*hist[v];}
+  // ピーク検出: 極端に暗い値(0-15)を除外して背景色を正確に検出
+  for(let v=15;v<256;v++){if(hist[v]>peakC){peakC=hist[v];peakV=v;}wsum+=v*hist[v];}
   const mean=wsum/totalPx;
-  const darkDigits=peakV<mean;
+  // darkDigits: 背景より数字が暗い場合
+  // LCDの場合: 背景=明るい緑, 数字=暗い → darkDigits=true が正しい
+  // ピークが低い(< mean*0.7)場合は黒枠が多い→背景は明るいはず → darkDigits=true強制
+  const darkDigits=peakV<mean||peakV<mean*0.7;
   // 数字=明(背景暗): 数字は平均より明るい → 閾値 = 平均+（ピーク-平均）*0.3
   // 数字=暗(背景明): 数字は平均より暗い  → 閾値 = 平均-（平均-ピーク）*0.3
   const thresh=darkDigits
@@ -1314,8 +1344,8 @@ function recognizeDisplay(canvas){
   for(let y=0;y<h;y++){let s=0,c=0;for(let dy=-3;dy<=3;dy++){if(y+dy>=0&&y+dy<h){s+=rowScore[y+dy];c++;}}rowSmooth[y]=s/c;}
   const maxRS=Math.max(...rowSmooth)||0.01;
   let y1=0,y2=h-1;
-  for(let y=0;y<h;y++){if(rowSmooth[y]>maxRS*0.15){y1=Math.max(0,y-3);break;}}
-  for(let y=h-1;y>=0;y--){if(rowSmooth[y]>maxRS*0.15){y2=Math.min(h-1,y+3);break;}}
+  for(let y=0;y<h;y++){if(rowSmooth[y]>maxRS*0.1){y1=Math.max(0,y-5);break;}}
+  for(let y=h-1;y>=0;y--){if(rowSmooth[y]>maxRS*0.1){y2=Math.min(h-1,y+5);break;}}
   if(y2-y1<h*0.1){y1=0;y2=h-1;}
   const trimH=y2-y1+1;
   ocrLog(`垂直トリム y=${y1}~${y2} (${trimH}px / ${h}px)`);
@@ -1373,17 +1403,20 @@ function recognizeDisplay(canvas){
   }
   ocrLog(`桁候補: ${rects.length}個 幅=${rects.map(d=>d.w).join(',')}`);
 
-  // 幅が大きすぎる桁（他の桁の1.8倍以上）は2桁と見なして均等分割
-  if(rects.length>=2){
-    const avgW=rects.reduce((s,d)=>s+d.w,0)/rects.length;
+  // 幅が大きすぎる桁は複数桁が合体とみなして分割
+  {
     const expanded=[];
     for(const dr of rects){
-      if(dr.w>avgW*1.6&&rects.length<4){
-        // 2分割
+      // 他の桁の中央値の1.4倍以上 → 2桁分
+      const otherW=rects.filter(d=>d!==dr).map(d=>d.w);
+      const refW=otherW.length?otherW.reduce((a,b)=>a+b,0)/otherW.length:dr.w;
+      if(dr.w>refW*1.35&&rects.length<=3){
         const hw=Math.floor(dr.w/2);
         expanded.push({x:dr.x,w:hw},{x:dr.x+hw,w:dr.w-hw});
-        ocrLog(`  幅${dr.w}を2分割`);
-      }else expanded.push(dr);
+        ocrLog(`  幅${dr.w}(ref=${Math.round(refW)})を2分割`);
+      }else{
+        expanded.push(dr);
+      }
     }
     rects=expanded;
   }
@@ -1426,6 +1459,31 @@ function toGrayscaleCanvas(srcCanvas, cropRect){
   const ctx=dst.getContext('2d');
   ctx.imageSmoothingEnabled=false;
   ctx.drawImage(srcCanvas, cx, cy, cw, ch, 0, 0, dst.width, dst.height);
+
+  // コントラスト正規化（min-max）: 暗すぎる画像でも数字が見えるように
+  const id=ctx.getImageData(0,0,dst.width,dst.height);
+  const d=id.data;
+  let mn=255,mx=0;
+  for(let i=0;i<d.length;i+=4){
+    const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    if(g<mn)mn=g; if(g>mx)mx=g;
+  }
+  const range=mx-mn||1;
+  // 暗い部分が多い場合（range < 80）はガンマ補正で明るくする
+  const useGamma=range<80;
+  ocrLog(`輝度範囲: ${Math.round(mn)}〜${Math.round(mx)} range=${Math.round(range)}${useGamma?' ガンマ補正':''}`);
+  for(let i=0;i<d.length;i+=4){
+    const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    let v;
+    if(useGamma){
+      // ガンマ補正: 暗い部分を持ち上げる
+      v=Math.round(Math.pow((g-mn)/range,0.5)*255);
+    }else{
+      v=Math.round((g-mn)/range*255);
+    }
+    d[i]=d[i+1]=d[i+2]=v; d[i+3]=255;
+  }
+  ctx.putImageData(id,0,0);
   return dst;
 }
 
@@ -1468,6 +1526,49 @@ function stopCameraOCR(){
   if(sb)sb.style.display='block';if(sp)sp.style.display='none';
   hideOcrBox();
   ocrLog('カメラ停止');
+}
+
+// 画像ファイルからOCRテスト（ローカル用）
+function testOcrFromFile(input){
+  const file=input.files[0];if(!file)return;
+  document.getElementById('ocr-debug').classList.add('visible');
+  ocrLog('--- 画像ファイルテスト ---');
+  const img=new Image();
+  const url=URL.createObjectURL(file);
+  img.onload=()=>{
+    // 画像をcanvasに描画
+    const canvas=document.getElementById('camera-canvas');
+    canvas.width=img.naturalWidth;
+    canvas.height=img.naturalHeight;
+    canvas.getContext('2d').drawImage(img,0,0);
+    URL.revokeObjectURL(url);
+    ocrLog(`画像サイズ: ${img.naturalWidth}×${img.naturalHeight}`,'ok');
+    // クロップしてプレビュー表示
+    const cropRect=getCropRect();
+    const cropped=toGrayscaleCanvas(canvas,cropRect);
+    ocrLog(`クロップ後 ${cropped.width}×${cropped.height}px`,'ok');
+    const preview=document.getElementById('ocr-preview');
+    if(preview){preview.width=cropped.width;preview.height=cropped.height;preview.getContext('2d').drawImage(cropped,0,0);}
+    // OCR実行
+    const raw=recognizeDisplay(cropped);
+    ocrLog(`認識結果: "${raw}"`);
+    if(!raw||raw.includes('?')){
+      ocrLog('認識失敗 → ボックスを調整してください','err');
+      document.getElementById('ocr-temp').textContent='調整してください';
+    }else{
+      const num=parseFloat(raw);
+      if(num>=20&&num<=250){
+        ocrLog(`✓ ${num}°C`,'ok');
+        document.getElementById('ocr-temp').textContent=num+'°C (テスト)';
+      }else{
+        ocrLog(`範囲外: ${num}°C`,'err');
+        document.getElementById('ocr-temp').textContent=num+'°C?';
+      }
+    }
+    input.value='';
+  };
+  img.onerror=()=>{ocrLog('画像読み込みエラー','err');};
+  img.src=url;
 }
 
 async function runOCRCapture(){
