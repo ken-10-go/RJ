@@ -1269,104 +1269,97 @@ function recognizeDisplay(canvas){
   const id=ctx.getImageData(0,0,w,h);
   const data=id.data;
 
-  // ===== Step1: 輝度分布を取得（0除外） =====
-  // 黒(0)ピクセルを除外してヒストグラム計算
+  // Step1: ヒストグラム（暗すぎるピクセル除外）
   const hist=new Int32Array(256);
   let totalPx=0;
   for(let i=0;i<w*h;i++){
     const p=i*4;
     const g=Math.round(0.299*data[p]+0.587*data[p+1]+0.114*data[p+2]);
-    if(g>5){hist[g]++;totalPx++;} // 暗すぎるピクセルを除外
+    if(g>8){hist[g]++;totalPx++;}
   }
   if(totalPx===0){ocrLog('有効ピクセルなし','err');return null;}
-
-  // 最頻値（背景色）
   let peakV=0,peakC=0,wsum=0;
   for(let v=0;v<256;v++){if(hist[v]>peakC){peakC=hist[v];peakV=v;}wsum+=v*hist[v];}
   const mean=wsum/totalPx;
-  // 背景と数字の判定: 平均より暗い最頻値 → 数字は明るい
   const darkDigits=peakV<mean;
-  // 閾値: 背景と数字の中間
-  const thresh=darkDigits?(peakV+mean)/2:(mean+peakV)/2;
+  const thresh=darkDigits?(peakV*0.6+mean*0.4):(mean*0.4+peakV*0.6);
   ocrLog(`ピーク=${peakV} 平均=${Math.round(mean)} 閾値=${Math.round(thresh)} 数字=${darkDigits?'暗':'明'}`);
 
-  // ===== Step2: 行スコアで数字行を検出→垂直トリム =====
+  // Step2: 行スコアで垂直トリム
   const rowScore=new Float32Array(h);
   for(let y=0;y<h;y++){
-    let s=0;
-    for(let x=0;x<w;x++){
-      const v=getBright(data,x,y,w);
-      if(v<=5)continue; // 黒除外
-      s+=darkDigits?(v<thresh?1:0):(v>thresh?1:0);
-    }
-    rowScore[y]=s/w;
+    let s=0,cnt=0;
+    for(let x=0;x<w;x++){const v=getBright(data,x,y,w);if(v<=8)continue;s+=darkDigits?(v<thresh?1:0):(v>thresh?1:0);cnt++;}
+    rowScore[y]=cnt>0?s/cnt:0;
   }
-  const maxRS=Math.max(...rowScore)||0.01;
+  const rowSmooth=new Float32Array(h);
+  for(let y=0;y<h;y++){let s=0,c=0;for(let dy=-3;dy<=3;dy++){if(y+dy>=0&&y+dy<h){s+=rowScore[y+dy];c++;}}rowSmooth[y]=s/c;}
+  const maxRS=Math.max(...rowSmooth)||0.01;
   let y1=0,y2=h-1;
-  for(let y=0;y<h;y++){if(rowScore[y]>maxRS*0.2){y1=Math.max(0,y-2);break;}}
-  for(let y=h-1;y>=0;y--){if(rowScore[y]>maxRS*0.2){y2=Math.min(h-1,y+2);break;}}
-  if(y2-y1<4){y1=0;y2=h-1;}
-  ocrLog(`垂直トリム y=${y1}~${y2} (${y2-y1}px)`);
+  for(let y=0;y<h;y++){if(rowSmooth[y]>maxRS*0.15){y1=Math.max(0,y-3);break;}}
+  for(let y=h-1;y>=0;y--){if(rowSmooth[y]>maxRS*0.15){y2=Math.min(h-1,y+3);break;}}
+  if(y2-y1<h*0.1){y1=0;y2=h-1;}
+  const trimH=y2-y1+1;
+  ocrLog(`垂直トリム y=${y1}~${y2} (${trimH}px / ${h}px)`);
 
-  // ===== Step3: トリム後の列スコアで桁を検出 =====
-  const trimH=y2-y1;
+  // Step3: 列スコア（トリム後）
   const colScore=new Float32Array(w);
   for(let x=0;x<w;x++){
-    let s=0;
-    for(let y=y1;y<=y2;y++){
-      const v=getBright(data,x,y,w);
-      if(v<=5)continue;
-      s+=darkDigits?(v<thresh?1:0):(v>thresh?1:0);
-    }
-    colScore[x]=s/trimH;
+    let s=0,cnt=0;
+    for(let y=y1;y<=y2;y++){const v=getBright(data,x,y,w);if(v<=8)continue;s+=darkDigits?(v<thresh?1:0):(v>thresh?1:0);cnt++;}
+    colScore[x]=cnt>0?s/cnt:0;
   }
 
-  // 移動平均スムージング
-  const K=Math.max(1,Math.floor(w/80));
+  // Step4: 移動平均スムージング
+  const K=Math.max(2,Math.floor(w*0.03));
   const smooth=new Float32Array(w);
-  for(let x=0;x<w;x++){
-    let s=0,c=0;
-    for(let dx=-K;dx<=K;dx++){if(x+dx>=0&&x+dx<w){s+=colScore[x+dx];c++;}}
-    smooth[x]=s/c;
-  }
-
+  for(let x=0;x<w;x++){let s=0,c=0;for(let dx=-K;dx<=K;dx++){if(x+dx>=0&&x+dx<w){s+=colScore[x+dx];c++;}}smooth[x]=s/c;}
   const maxCS=Math.max(...smooth)||0.01;
-  const gapTh=maxCS*0.2; // 最大値の20%以下をギャップ
-  ocrLog(`列スコア最大=${maxCS.toFixed(3)} ギャップ閾値=${gapTh.toFixed(3)}`);
+  ocrLog(`列スコア最大=${maxCS.toFixed(3)}`);
 
-  const rects=[];
-  let inD=false,dS=0;
-  for(let x=0;x<w;x++){
-    if(!inD&&smooth[x]>gapTh){inD=true;dS=x;}
-    else if(inD&&smooth[x]<=gapTh){
-      if(x-dS>=w*0.025)rects.push({x:dS,w:x-dS});
-      inD=false;
+  // Step5: 局所的な谷（極小値）で桁を分割
+  const halfW=Math.floor(w/8);
+  const valleys=[];
+  for(let x=halfW;x<w-halfW;x++){
+    let isValley=true;
+    for(let dx=1;dx<=halfW;dx++){
+      if(smooth[x]>=smooth[x-dx]||smooth[x]>=smooth[x+dx]){isValley=false;break;}
+    }
+    if(isValley&&smooth[x]<maxCS*0.8){
+      if(!valleys.length||x-valleys[valleys.length-1]>halfW){valleys.push(x);}
     }
   }
-  if(inD&&w-dS>=w*0.025)rects.push({x:dS,w:w-dS});
-  ocrLog(`桁候補: ${rects.length}個 幅=${rects.map(d=>d.w).join(',')}`);
+  ocrLog(`谷: ${valleys.length}個 [${valleys.join(',')}]`);
+
+  let rects=[];
+  let prev=0;
+  for(const v of valleys){if(v-prev>w*0.04)rects.push({x:prev,w:v-prev});prev=v;}
+  rects.push({x:prev,w:w-prev});
 
   // 幅フィルタ
-  if(!rects.length){
-    // フォールバック: 均等3分割
-    ocrLog('検出失敗→均等3分割');
+  const ws=rects.map(d=>d.w).sort((a,b)=>b-a);
+  const medW=ws[Math.floor(ws.length/2)];
+  rects=rects.filter(d=>d.w>=medW*0.3);
+  ocrLog(`桁候補: ${rects.length}個 幅=${rects.map(d=>d.w).join(',')}`);
+
+  // フォールバック: 均等3分割
+  if(rects.length<2||rects.length>5){
+    ocrLog(`桁数異常→均等3分割`);
+    rects=[];
     const dw=Math.floor(w/3);
     for(let i=0;i<3;i++)rects.push({x:i*dw,w:dw});
   }
-  const ws=rects.map(d=>d.w).sort((a,b)=>b-a);
-  const medW=ws[Math.floor(ws.length/2)];
-  const digits=rects.filter(d=>d.w>=medW*0.3);
-  ocrLog(`数字桁: ${digits.length}個`);
+  ocrLog(`数字桁: ${rects.length}個`);
 
-  // 各桁認識
+  // Step6: 各桁を認識
   const results=[];
-  for(const dr of digits){
+  for(const dr of rects){
     const {digit,dist}=recognizeDigit(data,w,h,dr.x,y1,dr.w,trimH,thresh,darkDigits);
     results.push({digit,dist});
     ocrLog(`  x=${dr.x} w=${dr.w} → '${digit}' (err=${dist})`);
   }
 
-  // 小数点1桁固定で組み立て
+  // Step7: 小数点1桁固定で組み立て
   if(results.length>=3&&results.length<=4){
     const intP=results.slice(0,-1).map(d=>d.digit).join('');
     const decP=results[results.length-1].digit;
