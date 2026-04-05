@@ -1296,7 +1296,11 @@ function recognizeDisplay(canvas){
   for(let v=0;v<256;v++){if(hist[v]>peakC){peakC=hist[v];peakV=v;}wsum+=v*hist[v];}
   const mean=wsum/totalPx;
   const darkDigits=peakV<mean;
-  const thresh=darkDigits?(peakV*0.6+mean*0.4):(mean*0.4+peakV*0.6);
+  // 数字=明(背景暗): 数字は平均より明るい → 閾値 = 平均+（ピーク-平均）*0.3
+  // 数字=暗(背景明): 数字は平均より暗い  → 閾値 = 平均-（平均-ピーク）*0.3
+  const thresh=darkDigits
+    ?(peakV+(mean-peakV)*0.7)      // 暗い数字: ピークより少し高い
+    :(mean+(peakV-mean)*0.3);      // 明るい数字: 平均より少し高い（低めの閾値）
   ocrLog(`ピーク=${peakV} 平均=${Math.round(mean)} 閾値=${Math.round(thresh)} 数字=${darkDigits?'暗':'明'}`);
 
   // Step2: 行スコアで垂直トリム
