@@ -656,7 +656,7 @@ function undo(){
 function updateUndoBtn(){
   const btn=document.getElementById('undo-btn');
   if(!btn)return;
-  btn.textContent='↩ UNDO'+(UNDO_STACK.length?` (${UNDO_STACK.length})`:'');
+  btn.textContent='< UNDO'+(UNDO_STACK.length?' ('+UNDO_STACK.length+')'  :'');
   btn.style.opacity=UNDO_STACK.length?'1':'0.4';
 }
 let activeMultiSelect=null;
@@ -700,9 +700,9 @@ function renderVarietyDropdown(){
   const items=document.getElementById('variety-items');
   items.innerHTML=S.master.varieties.map(v=>{
     const sel=S.beanSelectedVarieties.includes(v);
-    return`<div class="ms-item${sel?' selected':''}" onclick="toggleVariety('${v.replace(/'/g,"\\'")}')">
-      <div class="ms-check">${sel?'✓':''}</div><span>${v}</span>
-    </div>`;
+    const esc=v.replace(/'/g,"\\'");
+    return '<div class="ms-item'+(sel?' selected':'')+'" onclick="toggleVariety(\''+esc+'\')">'+
+           '<div class="ms-check">'+(sel?'[v]':'')+'</div><span>'+v+'</span></div>';
   }).join('');
   renderVarietyTags();
 }
@@ -1228,8 +1228,7 @@ function ocrLog(msg,type=''){
 }
 function copyOcrLog(){
   const log=document.getElementById('ocr-debug-log');
-  const lines=[...log.children].map(d=>d.textContent).join('
-');
+  const lines=[...log.children].map(d=>d.textContent).join('\n');
   navigator.clipboard.writeText(lines).then(()=>toast('ログをコピーしました')).catch(()=>{
     // fallback
     const ta=document.createElement('textarea');
@@ -1558,7 +1557,7 @@ function testOcrFromFile(input){
     }else{
       const num=parseFloat(raw);
       if(num>=20&&num<=250){
-        ocrLog(`✓ ${num}°C`,'ok');
+        ocrLog('OK: '+num+'°C','ok');
         document.getElementById('ocr-temp').textContent=num+'°C (テスト)';
       }else{
         ocrLog(`範囲外: ${num}°C`,'err');
@@ -1599,7 +1598,7 @@ async function runOCRCapture(){
       const inRange=num>=20&&num<=250;
       const plausible=lastTemp===null||Math.abs(num-lastTemp)<=40;
       if(inRange&&plausible){
-        ocrLog(`✓ ${num}°C`,'ok');
+        ocrLog('OK: '+num+'°C','ok');
         document.getElementById('ocr-temp').textContent=num+'°C';
         if(S.roastRunning)recordTemp(num);
       }else{
@@ -1984,7 +1983,7 @@ async function fetchDriveUser(){
     document.getElementById('drive-dot').classList.add('connected');document.getElementById('drive-status-txt').textContent='接続中';document.getElementById('drive-status-txt').style.color='#8cbf6a';
     saveDriveStorage();updateDriveUI();toast('Drive に接続しました。データを読み込んでいます...');
     await loadFromDrive();
-    if(hasPendingSync()){await syncToDrive();clearPending();toast('オフライン中の変更をDriveに同期しました ✓');}
+    if(hasPendingSync()){await syncToDrive();clearPending();toast('オフライン中の変更をDriveに同期しました');}
   }catch(e){toast('接続エラー: '+e.message);}
 }
 function updateDriveUI(){
@@ -2001,7 +2000,7 @@ async function syncToDrive(){
     const fid=await ensureFolderPath(S.driveToken);
     const body=JSON.stringify({version:4,exportedAt:new Date().toISOString(),master:S.master,beans:S.beans,roastRecords:S.roastRecords,tasteRecords:S.tasteRecords});
     await saveOrUpdateFile(S.driveToken,fid,body);
-    S.lastSync=new Date().toISOString();saveDriveStorage();updateDriveUI();toast('Drive に保存しました ✓');
+    S.lastSync=new Date().toISOString();saveDriveStorage();updateDriveUI();toast('Drive に保存しました');
   }catch(e){console.error('syncToDrive',e);toast('保存エラー: '+e.message);}
   finally{document.getElementById('drive-dot').classList.remove('syncing');if(btn)btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Drive に保存する';}
 }
