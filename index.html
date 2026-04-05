@@ -2004,15 +2004,15 @@ function runAI(){toast('分析機能は現在準備中です');}
 // ===== 桁ガイド OCR =====
 // ガイド状態: 4桁ボックスの位置・サイズ（video座標の相対値 0.0〜1.0）
 const guide = {
-  x: 0.05,  // ガイド全体の左端
-  y: 0.25,  // ガイド全体の上端
-  w: 0.70,  // ガイド全体の幅
-  h: 0.45,  // ガイド全体の高さ
+  x: 0.08,  // ガイド全体の左端
+  y: 0.20,  // ガイド全体の上端
+  w: 0.65,  // ガイド全体の幅
+  h: 0.50,  // ガイド全体の高さ
 };
-// 桁間隔: D1 D2 D3 . D4 （D1D2D3=整数部、D4=小数部）
-// D1〜D3は等幅、D4は同幅、小数点は細いスペース
-const DIGIT_COUNT = 4; // D1,D2,D3,D4
-const DOT_RATIO = 0.08; // 小数点の幅（ガイド幅比）
+// 桁間隔: D1 D2 D3 [dot] D4
+// 4桁等幅 + 小数点スペース
+const DIGIT_COUNT = 4;
+const DOT_RATIO = 0.10; // 小数点スペースの幅比
 
 let guideDragging = false;
 let guideResizing = false;
@@ -2021,18 +2021,19 @@ let guideResizeStartX = 0, guideResizeStartY = 0;
 let guideStartState = null;
 
 function getDigitRects() {
-  // 4桁の矩形を計算（0.0〜1.0の相対値）
   // レイアウト: [D1][D2][D3][dot][D4]
-  // D1〜D3の幅 = (全幅 - dot幅) / 4
+  // D4は°Cマークを除外するため少し狭くする（D1-D3の80%）
   const dotW = guide.w * DOT_RATIO;
-  const digitW = (guide.w - dotW) / 4;
+  const digitW = (guide.w - dotW) / 4.2; // D4を少し狭く
+  const d4W = digitW * 0.75; // D4は75%幅
   const rects = [];
   for (let i = 0; i < 4; i++) {
     const offset = i < 3 ? i * digitW : (3 * digitW + dotW);
+    const w = i === 3 ? d4W : digitW;
     rects.push({
       x: guide.x + offset,
       y: guide.y,
-      w: digitW,
+      w: w,
       h: guide.h,
     });
   }
@@ -2072,10 +2073,11 @@ function drawGuide() {
     ctx.lineWidth = 2;
     ctx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
     // 桁ラベル
-    ctx.fillStyle = i === 3 ? 'rgba(90,200,90,0.9)' : 'rgba(232,132,30,0.9)';
-    ctx.font = `bold ${Math.floor(rh * 0.15)}px monospace`;
+    ctx.fillStyle = i === 3 ? 'rgba(90,200,90,0.95)' : 'rgba(232,132,30,0.95)';
+    ctx.font = `bold ${Math.max(10,Math.floor(rh * 0.14))}px monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText(i === 3 ? '.X' : 'D' + (i + 1), rx + rw / 2, ry + rh * 0.14);
+    const lbl = i === 3 ? '.X' : (i === 0 ? '?' : 'D' + (i + 1));
+    ctx.fillText(lbl, rx + rw / 2, ry + rh * 0.16);
   });
 
   // 小数点
