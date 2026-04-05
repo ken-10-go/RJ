@@ -1241,17 +1241,30 @@ function sampleRegion(data,x1,y1,x2,y2,iw,ih){
   return c>0?s/c:128;
 }
 function recognizeDigit(data,iw,ih,x0,y0,dw,dh,thresh,darkDigits){
-  const x1=x0,x2=x0+dw/2,x3=x0+dw;
-  const y1=y0,y2=y0+dh/3,y3=y0+dh*2/3,y4=y0+dh;
-  const m=Math.max(2,Math.floor(dw*0.05));
+  // セグメント座標（7セグ標準レイアウト）
+  // top, tl, tr, mid, bl, br, bot の順
+  const x1=x0, xm=x0+dw/2, x2=x0+dw;
+  const y1=y0, ym=y0+dh/2, y2=y0+dh;
+  const mx=Math.max(2,Math.floor(dw*0.08)); // 水平マージン
+  const my=Math.max(2,Math.floor(dh*0.05)); // 垂直マージン
+  const sw=dw*0.12; // セグメントの太さ（幅の12%）
+  const sh=dh*0.10; // セグメントの太さ（高さの10%）
+
   const segs=[
-    sampleRegion(data,x1+m,y1,      x3-m,y1+dh*0.18, iw,ih),
-    sampleRegion(data,x1,  y1+m,    x2-m,y2-m,        iw,ih),
-    sampleRegion(data,x2+m,y1+m,    x3,  y2-m,        iw,ih),
-    sampleRegion(data,x1+m,y2+m,    x3-m,y3-m,        iw,ih),
-    sampleRegion(data,x1,  y3+m,    x2-m,y4-m,        iw,ih),
-    sampleRegion(data,x2+m,y3+m,    x3,  y4-m,        iw,ih),
-    sampleRegion(data,x1+m,y3+dh*0.82,x3-m,y4,        iw,ih),
+    // top: 上辺の横棒
+    sampleRegion(data, x1+mx, y1,    x2-mx, y1+sh,   iw,ih),
+    // tl: 左上の縦棒
+    sampleRegion(data, x1,    y1+my, xm-mx, ym-my,   iw,ih),
+    // tr: 右上の縦棒
+    sampleRegion(data, xm+mx, y1+my, x2,    ym-my,   iw,ih),
+    // mid: 中段の横棒
+    sampleRegion(data, x1+mx, ym-sh, x2-mx, ym+sh,   iw,ih),
+    // bl: 左下の縦棒
+    sampleRegion(data, x1,    ym+my, xm-mx, y2-my,   iw,ih),
+    // br: 右下の縦棒
+    sampleRegion(data, xm+mx, ym+my, x2,    y2-my,   iw,ih),
+    // bot: 下辺の横棒
+    sampleRegion(data, x1+mx, y2-sh, x2-mx, y2,      iw,ih),
   ];
   const ON=darkDigits?(v=>v<thresh?1:0):(v=>v>thresh?1:0);
   const det=segs.map(ON);
@@ -1260,7 +1273,8 @@ function recognizeDigit(data,iw,ih,x0,y0,dw,dh,thresh,darkDigits){
     const dist=p.reduce((s,v,i)=>s+(v!==det[i]?1:0),0);
     if(dist<bestD){bestD=dist;best=d;}
   }
-  return{digit:bestD<=2?best:'?',dist:bestD};
+  ocrLog(`  seg=[${det.join('')}]→'${best}'(err=${bestD})`);
+  return{digit:bestD<=3?best:'?',dist:bestD};
 }
 
 function recognizeDisplay(canvas){
