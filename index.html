@@ -106,6 +106,7 @@ select.inp{cursor:pointer;}
 .c2{background:rgba(200,80,40,.25);color:#e06040;border:1px solid rgba(200,80,40,.4);}
 .c3{background:rgba(90,138,58,.2);color:#8cbf6a;border:1px solid rgba(90,138,58,.35);}
 .c4{background:rgba(192,64,64,.25);color:#e06060;border:1px solid rgba(192,64,64,.4);}
+.c0{background:rgba(80,130,200,.18);color:#7ab3f5;border:1px solid rgba(80,130,200,.35);}
 .event-log{max-height:110px;overflow-y:auto;}
 .ev{font-family:'DM Mono',monospace;font-size:var(--fs-mono);padding:3px 0;border-bottom:1px solid rgba(196,122,58,.08);display:flex;gap:6px;}
 .ev-t{color:var(--c-accent);min-width:42px;}
@@ -385,6 +386,12 @@ select.inp{cursor:pointer;}
             </div>
             <div id="ocr-debug-log"></div>
           </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:8px 0 4px;">
+            <button class="ctrl c0" onclick="markEventWithTemp('Charge',null)" style="font-size:10px;">Charge<br><span style="font-size:9px;opacity:.7;">投入</span></button>
+            <button class="ctrl c0" onclick="markEventWithTemp('Turning Point',null)" style="font-size:10px;">T.Point<br><span style="font-size:9px;opacity:.7;">底打ち</span></button>
+            <button class="ctrl c0" onclick="markEventWithTemp('Maillard',null)" style="font-size:10px;">Maillard<br><span style="font-size:9px;opacity:.7;">メイラード</span></button>
+            <button class="ctrl c0" onclick="markEventWithTemp('Steam End',null)" style="font-size:10px;">Steam End<br><span style="font-size:9px;opacity:.7;">乾燥完了</span></button>
+          </div>
           <div class="roast-controls">
             <button class="ctrl c1" onclick="markEventWithTemp('1st Crack Start',1.0)">1st Crack 開始</button>
             <button class="ctrl c1" onclick="markEventWithTemp('1st Crack End',1.5)">1st Crack 終了</button>
@@ -614,7 +621,7 @@ const RADAR_LABELS=['Acidity','Sweetness','Body','Bitterness','Aroma','Aftertast
 const S={
   beans:[],roastRecords:[],tasteRecords:[],
   master:{countries:[...DEFAULT_COUNTRIES],processes:[...DEFAULT_PROCESSES],brews:[...DEFAULT_BREWS],varieties:[...DEFAULT_VARIETIES]},
-  currentRoast:null,timerInterval:null,elapsed:0,
+  currentRoast:null,timerInterval:null,elapsed:0,firstCrackTime:null,
   roastRunning:false,tempData:[],timeData:[],events:[],
   stars:0,selectedFlavors:[],activeFlavorCat:null,
   radarVals:[3,3,3,3,3,3],
@@ -1097,7 +1104,7 @@ function startRoast(){
   if(!S.beans.length){toast('先に豆を登録してください');return;}
   S.roastRunning=true;
   if(!S.currentRoast){
-    S.elapsed=0;S.tempData=[];S.timeData=[];S.events=[];
+    S.elapsed=0;S.tempData=[];S.timeData=[];S.events=[];S.firstCrackTime=null;
     document.getElementById('event-log').innerHTML='';
     S.currentRoast={id:Date.now(),beanId:parseInt(document.getElementById('r-bean').value),amount:document.getElementById('r-amount').value,washing:document.getElementById('r-washing').checked,startTime:new Date().toISOString(),startTemp:null};
     if(S.roastSetupOpen)toggleRoastSetup();
@@ -1661,6 +1668,13 @@ function recognizeOneDigit(digitCanvas) {
   const ON=darkDigits?(v=>v<thresh?1:0):(v=>v>thresh?1:0);
   const det=segs.map(ON);
 
+  // セグメントON数をカウント
+  const onCount = det.reduce((s,v)=>s+v, 0);
+  // ONが1個以下 → 空白桁（表示なし）
+  if(onCount <= 1){
+    return {digit: ' ', dist: 0, det, thresh, darkDigits};
+  }
+
   let best=null, bestD=99;
   for(const [d,p] of Object.entries(SEG_PATTERNS)){
     const dist=p.reduce((s,v,i)=>s+(v!==det[i]?1:0),0);
@@ -1681,19 +1695,20 @@ function recognizeFromGuide(srcCanvas) {
     ocrLog(`  D${i+1}: seg=[${det.join('')}]→'${digit}'(err=${dist}) th=${Math.round(thresh)} ${darkDigits?'暗':'明'}`);
   }
   // D1〜D3が整数部、D4が小数部
-  // D1が'0'または'?'なら2桁と判断して除外
+  // D1が'0'・' '・'?'なら2桁と判断
   let intPart, decPart;
-  if(digits[0]==='0'||digits[0]==='?'){
-    // 2桁: D2D3.D4
-    intPart = (digits[1]==='?'?'0':digits[1])+(digits[2]==='?'?'0':digits[2]);
+  const d1empty = digits[0]==='0'||digits[0]===' '||digits[0]==='?';
+  if(d1empty){
+    intPart = (digits[1]===' '||digits[1]==='?'?'0':digits[1])
+            + (digits[2]===' '||digits[2]==='?'?'0':digits[2]);
   }else{
-    // 3桁: D1D2D3.D4
-    intPart = digits.slice(0,3).map(d=>d==='?'?'0':d).join('');
+    intPart = digits.slice(0,3).map(d=>(d===' '||d==='?')?'0':d).join('');
   }
-  decPart = digits[3]==='?'?'0':digits[3];
+  decPart = (digits[3]===' '||digits[3]==='?')?'0':digits[3];
   const result = intPart+'.'+decPart;
-  ocrLog('組み立て: '+result);
-  return result.includes('?')?null:result;
+  ocrLog('組み立て: D=['+digits.join(',')+'] → '+result);
+  // ?が含まれる場合はnull
+  return digits.some(d=>d==='?')?null:result;
 }
 
 // ファイルテスト用も更新
