@@ -354,6 +354,12 @@ select.inp{cursor:pointer;}
               </div>
             </div>
           </div>
+          <!-- OCRモード切り替え -->
+          <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+            <span style="font-size:10px;color:var(--c-muted);white-space:nowrap;">読み取り方式:</span>
+            <button id="ocr-mode-gemini" onclick="setOcrMode('gemini')" style="flex:1;padding:6px 4px;font-size:11px;border-radius:7px;border:1px solid var(--c-accent);background:var(--c-accent);color:#1a0f07;font-weight:600;cursor:pointer;">🤖 Gemini API</button>
+            <button id="ocr-mode-seg" onclick="setOcrMode('seg')" style="flex:1;padding:6px 4px;font-size:11px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--c-cream);cursor:pointer;">🔢 7セグ認識</button>
+          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:4px;">
             <button class="camera-btn" id="cam-start-btn" onclick="startCameraOCR()" style="padding:11px;">
               <span style="font-size:20px;">📷</span>
@@ -539,6 +545,20 @@ select.inp{cursor:pointer;}
             </label>
           </div>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📷 カメラOCR設定</div>
+        <div class="inp-w">
+          <div class="label">Gemini API キー（温度計の自動読み取り）</div>
+          <input class="inp" id="gemini-api-key" type="password" placeholder="AIzaSy..." style="font-size:var(--fs-xs);">
+          <div class="client-id-hint">
+            取得先: <a href="https://aistudio.google.com/" target="_blank" style="color:var(--c-accent);">Google AI Studio</a>（無料・1日1,500リクエスト）<br>
+            未設定の場合は7セグメント認識で動作します
+          </div>
+        </div>
+        <button class="btn btn-outline" style="width:100%;margin-top:8px;font-size:var(--fs-sm);" onclick="saveGeminiKey()">保存</button>
+        <div id="gemini-key-status" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-muted);margin-top:6px;text-align:center;"></div>
       </div>
 
     </div>
@@ -1569,48 +1589,6 @@ function stopCameraOCR(){
 }
 
 // 画像ファイルからOCRテスト（ローカル用）
-function testOcrFromFile(input){
-  const file=input.files[0];if(!file)return;
-  document.getElementById('ocr-debug').classList.add('visible');
-  ocrLog('--- 画像ファイルテスト ---');
-  const img=new Image();
-  const url=URL.createObjectURL(file);
-  img.onload=()=>{
-    // 画像をcanvasに描画
-    const canvas=document.getElementById('camera-canvas');
-    canvas.width=img.naturalWidth;
-    canvas.height=img.naturalHeight;
-    canvas.getContext('2d').drawImage(img,0,0);
-    URL.revokeObjectURL(url);
-    ocrLog(`画像サイズ: ${img.naturalWidth}×${img.naturalHeight}`,'ok');
-    // クロップしてプレビュー表示
-    const cropRect=getCropRect();
-    const cropped=toGrayscaleCanvas(canvas,cropRect);
-    ocrLog(`クロップ後 ${cropped.width}×${cropped.height}px`,'ok');
-    const preview=document.getElementById('ocr-preview');
-    if(preview){preview.width=cropped.width;preview.height=cropped.height;preview.getContext('2d').drawImage(cropped,0,0);}
-    // OCR実行
-    const raw=recognizeDisplay(cropped);
-    ocrLog(`認識結果: "${raw}"`);
-    if(!raw||raw.includes('?')){
-      ocrLog('認識失敗 → ボックスを調整してください','err');
-      document.getElementById('ocr-temp').textContent='調整してください';
-    }else{
-      const num=parseFloat(raw);
-      if(num>=20&&num<=250){
-        ocrLog('OK: '+num+'°C','ok');
-        document.getElementById('ocr-temp').textContent=num+'°C (テスト)';
-      }else{
-        ocrLog(`範囲外: ${num}°C`,'err');
-        document.getElementById('ocr-temp').textContent=num+'°C?';
-      }
-    }
-    input.value='';
-  };
-  img.onerror=()=>{ocrLog('画像読み込みエラー','err');};
-  img.src=url;
-}
-
 // ===== ガイドベース認識 =====
 function cropDigit(srcCanvas, rect) {
   // 1桁分をクロップして正規化
@@ -1737,22 +1715,35 @@ function recognizeFromGuide(srcCanvas) {
   return digits.some(d=>d==='?')?null:result;
 }
 
-// ファイルテスト用も更新
+// ファイルテスト用（Gemini対応）
 function testOcrFromFile(input){
   const file=input.files[0];if(!file)return;
   document.getElementById('ocr-debug').classList.add('visible');
-  ocrLog('--- 画像ファイルテスト ---');
+  ocrLog('--- 画像ファイルテスト ('+(ocrMode==='gemini'?'Gemini':'7セグ')+') ---');
   const img=new Image();
   const url=URL.createObjectURL(file);
-  img.onload=()=>{
+  img.onload=async()=>{
     const canvas=document.getElementById('camera-canvas');
     canvas.width=img.naturalWidth; canvas.height=img.naturalHeight;
     canvas.getContext('2d').drawImage(img,0,0);
     URL.revokeObjectURL(url);
     ocrLog(`画像サイズ: ${img.naturalWidth}x${img.naturalHeight}`,'ok');
-    // ガイドをcanvasサイズに合わせて描画更新
     drawGuide();
-    const result = recognizeFromGuide(canvas);
+
+    let result=null;
+    if(ocrMode==='gemini'&&getGeminiKey()){
+      try{
+        result=await readTempWithGemini(canvas);
+        if(!result)ocrLog('Gemini: 読み取り失敗 → 7セグにフォールバック','err');
+      }catch(e){
+        ocrLog('Geminiエラー: '+e.message+' → 7セグにフォールバック','err');
+        result=null;
+      }
+    }
+    if(!result){
+      result=recognizeFromGuide(canvas);
+    }
+
     ocrLog('認識結果: "'+result+'"');
     if(!result||result.includes('?')){
       ocrLog('認識失敗 → ガイドを数字に合わせてください','err');
@@ -1777,7 +1768,7 @@ async function runOCRCapture(){
   if(ocrBusy||!cameraStream)return;
   ocrBusy=true;
   document.getElementById('ocr-temp').textContent='読み取り中...';
-  ocrLog('--- キャプチャ ---');
+  ocrLog('--- キャプチャ ('+(ocrMode==='gemini'?'Gemini':'7セグ')+') ---');
   try{
     const video=document.getElementById('camera-video');
     const canvas=document.getElementById('camera-canvas');
@@ -1786,7 +1777,19 @@ async function runOCRCapture(){
     canvas.getContext('2d').drawImage(video,0,0);
     ocrLog(`キャプチャ ${video.videoWidth}x${video.videoHeight}`,'ok');
 
-    const result = recognizeFromGuide(canvas);
+    let result=null;
+    if(ocrMode==='gemini'&&getGeminiKey()){
+      try{
+        result=await readTempWithGemini(canvas);
+        if(!result)ocrLog('Gemini: 読み取り失敗 → 7セグにフォールバック','err');
+      }catch(e){
+        ocrLog('Geminiエラー: '+e.message+' → 7セグにフォールバック','err');
+        result=null;
+      }
+    }
+    if(!result){
+      result=recognizeFromGuide(canvas);
+    }
     ocrLog(`認識結果: "${result}"`);
     if(!result||result.includes('?')){
       ocrLog('認識失敗 → ガイドを数字に合わせてください','err');
@@ -2237,9 +2240,85 @@ function initOcrBox() { initGuideInteraction(); }
 function refreshOcrPreview() { drawGuide(); }
 function updateCropPreview() {}
 
-// ===== API KEY =====
-function getApiKey(){return localStorage.getItem('rj_anthropic_key')||'';}
-function saveApiKey(){const v=document.getElementById('anthropic-api-key');if(!v)return;localStorage.setItem('rj_anthropic_key',v.value.trim());toast('APIキーを保存しました');}
+// ===== GEMINI API KEY & OCR MODE =====
+let ocrMode = localStorage.getItem('rj_ocr_mode') || 'gemini'; // 'gemini' | 'seg'
+
+function getGeminiKey(){return localStorage.getItem('rj_gemini_key')||'';}
+function saveGeminiKey(){
+  const v=document.getElementById('gemini-api-key');
+  if(!v)return;
+  const key=v.value.trim();
+  if(key){
+    localStorage.setItem('rj_gemini_key',key);
+    v.value='';
+    toast('Gemini APIキーを保存しました');
+    document.getElementById('gemini-key-status').textContent='✅ キー設定済み';
+    setOcrMode('gemini');
+  }else{
+    localStorage.removeItem('rj_gemini_key');
+    toast('Gemini APIキーを削除しました');
+    document.getElementById('gemini-key-status').textContent='';
+  }
+}
+function loadGeminiKeyStatus(){
+  const st=document.getElementById('gemini-key-status');
+  if(!st)return;
+  st.textContent=getGeminiKey()?'✅ キー設定済み':'（未設定 → 7セグ認識で動作）';
+}
+function setOcrMode(mode){
+  ocrMode=mode;
+  localStorage.setItem('rj_ocr_mode',mode);
+  const bg=document.getElementById('ocr-mode-gemini');
+  const bs=document.getElementById('ocr-mode-seg');
+  if(!bg||!bs)return;
+  if(mode==='gemini'){
+    bg.style.background='var(--c-accent)';bg.style.color='#1a0f07';bg.style.borderColor='var(--c-accent)';bg.style.fontWeight='600';
+    bs.style.background='transparent';bs.style.color='var(--c-cream)';bs.style.borderColor='var(--border)';bs.style.fontWeight='400';
+  }else{
+    bs.style.background='var(--c-accent)';bs.style.color='#1a0f07';bs.style.borderColor='var(--c-accent)';bs.style.fontWeight='600';
+    bg.style.background='transparent';bg.style.color='var(--c-cream)';bg.style.borderColor='var(--border)';bg.style.fontWeight='400';
+  }
+  ocrLog('OCRモード: '+(mode==='gemini'?'Gemini API':'7セグ認識'));
+}
+
+async function readTempWithGemini(canvas){
+  const key=getGeminiKey();
+  if(!key)return null;
+  // 送信前に400×400にリサイズしてトークン削減
+  const small=document.createElement('canvas');
+  small.width=400;small.height=400;
+  small.getContext('2d').drawImage(canvas,0,0,400,400);
+  const b64=small.toDataURL('image/jpeg',0.85).split(',')[1];
+  ocrLog('Gemini API 送信中...');
+  const resp=await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+key,
+    {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        contents:[{parts:[
+          {text:'この温度計のLCDディスプレイに表示されている数字を読んでください。整数部と小数部を含む数字のみを返してください（例: 185.5 や 22.9）。単位（°C等）は不要です。読めない場合は ? とだけ返してください。'},
+          {inline_data:{mime_type:'image/jpeg',data:b64}}
+        ]}],
+        generationConfig:{maxOutputTokens:16,temperature:0}
+      })
+    }
+  );
+  if(!resp.ok){
+    const err=await resp.text();
+    throw new Error('Gemini '+resp.status+': '+err.slice(0,100));
+  }
+  const json=await resp.json();
+  const raw=(json.candidates?.[0]?.content?.parts?.[0]?.text||'?').trim();
+  ocrLog('Gemini応答: "'+raw+'"');
+  if(raw==='?'||raw==='')return null;
+  const m=raw.match(/\d+\.?\d*/);
+  return m?m[0]:null;
+}
+
+// 後方互換（旧コードが参照している場合のため残す）
+function getApiKey(){return '';}
+function saveApiKey(){}
 function loadApiKey(){}
 
 // ===== OFFLINE STORAGE =====
@@ -2380,6 +2459,9 @@ initFlavorWheel();
 renderBeans();
 updateUndoBtn();
 if(S.driveToken)loadFromDrive();
+// OCRモードとGeminiキー状態を復元
+setOcrMode(ocrMode);
+loadGeminiKeyStatus();
 </script>
 </body>
 </html>
