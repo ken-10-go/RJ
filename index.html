@@ -265,12 +265,12 @@ select.inp{cursor:pointer;}
         <div class="inp-row">
           <div class="inp-w"><div class="label">豆の名前 *</div><input class="inp" id="b-name" placeholder="Ethiopia Yirgacheffe"></div>
           <div class="inp-w"><div class="label">国</div>
-            <select class="inp" id="b-country-sel" onchange="onCountrySel()"></select>
+            <select class="inp" id="b-country-sel"></select>
+            <div class="ms-add-row" style="margin-top:6px;">
+              <input id="b-country-free" class="inp" placeholder="国を追加..." onkeydown="if(event.key==='Enter')addCountry()">
+              <button class="btn btn-sm btn-outline" onclick="addCountry()" style="padding:5px 10px;white-space:nowrap;">追加</button>
+            </div>
           </div>
-        </div>
-        <div class="inp-w" id="b-country-free-wrap" style="display:none;">
-          <div class="label">国名を入力</div>
-          <div class="free-inp-row"><input class="inp" id="b-country-free" placeholder="例: Tanzania"><button class="btn btn-outline btn-sm" onclick="addCountry()">追加</button></div>
         </div>
         <div class="inp-w">
           <div class="label">農園 / 農協</div><input class="inp" id="b-farm" placeholder="Yirgacheffe Co-op">
@@ -350,6 +350,16 @@ select.inp{cursor:pointer;}
             <div class="multi-select-dropdown" id="rl-filter-dropdown">
               <div id="rl-filter-items"></div>
             </div>
+          </div>
+        </div>
+        <div class="inp-row" style="margin-top:8px;gap:8px;">
+          <div class="inp-w">
+            <div class="label" style="margin-bottom:6px;">購入年</div>
+            <select class="inp" id="year-filter" onchange="setYearFilter(this.value)" style="font-size:var(--fs-sm);"></select>
+          </div>
+          <div class="inp-w">
+            <div class="label" style="margin-bottom:6px;">購入月</div>
+            <select class="inp" id="month-filter" onchange="setMonthFilter(this.value)" style="font-size:var(--fs-sm);"></select>
           </div>
         </div>
         <div id="bean-list" class="bean-list"></div>
@@ -762,7 +772,7 @@ const S={
   stars:0,selectedFlavors:[],activeFlavorCat:null,
   radarVals:[3,3,3,3,3,3],
   beanSelectedProcesses:[],beanSelectedRLs:[],beanSelectedVarieties:[],
-  filterCountries:[],filterRLs:[],beanPhotoData:null,
+  filterCountries:[],filterRLs:[],filterYear:null,filterMonth:null,beanPhotoData:null,
   driveToken:null,driveFileId:null,driveUser:null,clientId:null,lastSync:null,tokenExpiry:null,
   roastSetupOpen:true,
 };
@@ -813,7 +823,7 @@ function switchTab(t){
   closeAllDropdowns();
 }
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.style.opacity='1';setTimeout(()=>el.style.opacity='0',2400);}
-function rlLabel(val){const r=ROAST_LEVELS.find(r=>r.val===val);return r?r.ja+'['+val.toFixed(1)+']':val.toFixed(1);}
+function rlLabel(val){const r=ROAST_LEVELS.find(r=>r.val===val);return r?'['+val.toFixed(1)+'] '+r.ja:val.toFixed(1);}
 function rlFromEvents(events){if(!events||!events.length)return null;const last=[...events].reverse().find(e=>e.rlVal!=null);return last?last.rlVal:null;}
 
 // ===== MULTI-SELECT DROPDOWN =====
@@ -885,7 +895,7 @@ function renderChips(id,items,sel,fn){
 }
 function renderBeanForm(){
   renderChips('process-chips',masterNames('processes'),S.beanSelectedProcesses,'toggleBeanProcess');
-  renderChips('rl-chips',ROAST_LEVELS.map(r=>r.ja+'['+r.val.toFixed(1)+']'),S.beanSelectedRLs,'toggleBeanRL');
+  renderChips('rl-chips',ROAST_LEVELS.map(r=>'['+r.val.toFixed(1)+'] '+r.ja),S.beanSelectedRLs,'toggleBeanRL');
   renderCountrySel();
   renderVarietyDropdown();
 }
@@ -914,21 +924,20 @@ function addProcess(){
 }
 function renderCountrySel(){
   const sel=document.getElementById('b-country-sel');const cur=sel.value;
-  sel.innerHTML=`<option value="">-- 選択 --</option>`+masterNames('countries').map(c=>`<option value="${c}">${c}</option>`).join('')+`<option value="__free__">＋ その他（自由入力）</option>`;
+  sel.innerHTML=`<option value="">-- 選択 --</option>`+masterNames('countries').map(c=>`<option value="${c}">${c}</option>`).join('');
   if(cur)sel.value=cur;
 }
-function onCountrySel(){document.getElementById('b-country-free-wrap').style.display=document.getElementById('b-country-sel').value==='__free__'?'block':'none';}
 function addCountry(){
   const v=document.getElementById('b-country-free').value.trim();if(!v)return;
   if(!masterNames('countries').includes(v)){
     S.master.countries.push({id:Date.now(),name:v,enabled:true});
     saveMasterToDrive('countries');
+    renderCountrySel();
   }
-  renderCountrySel();document.getElementById('b-country-sel').value=v;
-  document.getElementById('b-country-free-wrap').style.display='none';
+  document.getElementById('b-country-sel').value=v;
   document.getElementById('b-country-free').value='';autoSync();
 }
-function getSelectedCountry(){const v=document.getElementById('b-country-sel').value;return(v===''||v==='__free__')?document.getElementById('b-country-free').value.trim():v;}
+function getSelectedCountry(){return document.getElementById('b-country-sel').value;}
 function initBrewSelect(){
   const sel=document.getElementById('t-brew-sel');
   sel.innerHTML=S.master.brews.map(b=>`<option value="${b}">${b}</option>`).join('')+`<option value="__free__">＋ その他（自由入力）</option>`;
@@ -970,7 +979,7 @@ function initFilterButtons(){
   const rItems=document.getElementById('rl-filter-items');
   if(rItems){
     rItems.innerHTML=ROAST_LEVELS.map(r=>{
-      const label=r.ja+'['+r.val.toFixed(1)+']';
+      const label='['+r.val.toFixed(1)+'] '+r.ja;
       return `<div class="ms-item${S.filterRLs.includes(r.ja)?' selected':''}" onclick="toggleRLFilter('${r.ja}')">
         <div class="ms-check">${S.filterRLs.includes(r.ja)?'✓':''}</div>
         <span>${label}</span>
@@ -992,7 +1001,16 @@ function initFilterButtons(){
       rPh.style.display='';rPh.textContent='すべての焙煎度';
     }
   }
+  // 購入年・月フィルタ
+  const years=[...new Set(S.beans.map(b=>b.purchaseDate?.slice(0,4)).filter(Boolean))].sort((a,b)=>b-a);
+  const yEl=document.getElementById('year-filter');
+  if(yEl){yEl.innerHTML='<option value="">すべての年</option>'+years.map(y=>`<option value="${y}"${S.filterYear===y?' selected':''}>${y}年</option>`).join('');}
+  const months=[...Array(12)].map((_,i)=>String(i+1).padStart(2,'0'));
+  const mEl=document.getElementById('month-filter');
+  if(mEl){mEl.innerHTML='<option value="">すべての月</option>'+months.map(m=>`<option value="${m}"${S.filterMonth===m?' selected':''}>${parseInt(m)}月</option>`).join('');}
 }
+function setYearFilter(v){S.filterYear=v||null;renderBeans();}
+function setMonthFilter(v){S.filterMonth=v||null;renderBeans();}
 function toggleCountryFilter(c){
   if(S.filterCountries.includes(c))S.filterCountries=S.filterCountries.filter(x=>x!==c);
   else S.filterCountries.push(c);
@@ -1070,7 +1088,7 @@ function editBean(id){
   document.getElementById('bean-save-btn').textContent='更新する';
   document.getElementById('bean-cancel-btn').style.display='block';
   renderChips('process-chips',S.master.processes,S.beanSelectedProcesses,'toggleBeanProcess');
-  renderChips('rl-chips',ROAST_LEVELS.map(r=>r.ja+'['+r.val.toFixed(1)+']'),S.beanSelectedRLs,'toggleBeanRL');
+  renderChips('rl-chips',ROAST_LEVELS.map(r=>'['+r.val.toFixed(1)+'] '+r.ja),S.beanSelectedRLs,'toggleBeanRL');
   renderVarietyDropdown();
   document.getElementById('tab-beans').scrollTo({top:0,behavior:'smooth'});
 }
@@ -1104,30 +1122,30 @@ function renderBeans(){
   let beans=S.beans;
   if(S.filterCountries.length)beans=beans.filter(b=>S.filterCountries.includes(b.country));
   if(S.filterRLs.length)beans=beans.filter(b=>b.roastLevels&&b.roastLevels.some(r=>S.filterRLs.some(ja=>r.includes(ja))));
+  if(S.filterYear)beans=beans.filter(b=>b.purchaseDate&&b.purchaseDate.startsWith(S.filterYear));
+  if(S.filterMonth)beans=beans.filter(b=>b.purchaseDate&&b.purchaseDate.slice(5,7)===S.filterMonth);
   if(!beans.length){el.innerHTML='<div class="empty">該当する豆がありません</div>';return;}
-  el.innerHTML=beans.map(b=>`
-    <div class="bean-item">
-      <div class="bean-name">${b.name}</div>
-      <div class="bean-sub">${b.country||''}${b.farm?' / '+b.farm:''}${b.purchaseDate?' | '+b.purchaseDate.replace('-','年')+'月':''}</div>
-      <div class="bean-badges">
-        ${(b.varieties||[]).map(v=>`<span class="badge" style="background:rgba(122,179,245,.15);color:#7ab3f5;border:1px solid rgba(122,179,245,.3);">${v}</span>`).join('')}
-        ${(b.processes||[]).map(p=>`<span class="badge badge-p">${p}</span>`).join('')}
-        ${(b.roastLevels||[]).map(r=>`<span class="badge badge-r">${r}</span>`).join('')}
-        ${b.score?`<span class="badge badge-r">SCA ${b.score}</span>`:''}
-      </div>
-      ${b.photo?`<img src="${b.photo}" style="width:100%;border-radius:7px;margin-top:8px;max-height:100px;object-fit:cover;" loading="lazy">`:'' }
+  el.innerHTML=beans.map(b=>{
+    const proc=(b.processes||[]).join(' / ');
+    const pd=b.purchaseDate?b.purchaseDate.slice(0,7).replace('-','年')+'月購入':'';
+    return`<div class="bean-item">
+      <div class="bean-name">${b.country?b.country+' / ':''}${b.name}</div>
+      <div class="bean-sub">${[proc,pd].filter(Boolean).join(' | ')}</div>
       <div class="bean-actions">
         <button class="btn btn-sm btn-outline" onclick="editBean(${b.id})">編集</button>
         <button class="btn btn-sm btn-copy" onclick="copyBean(${b.id})">コピー</button>
         <button class="btn btn-sm btn-danger" onclick="deleteBean(${b.id})">削除</button>
       </div>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 }
 
 function updateBeanSelect(){
   const s=document.getElementById('r-bean');
-  s.innerHTML=S.beans.length?S.beans.map(b=>`<option value="${b.id}">${b.country?b.country+' / ':''}${b.name}</option>`).join(''):'<option>先に豆を登録してください</option>';
+  s.innerHTML=S.beans.length?S.beans.map(b=>{
+    const proc=b.processes&&b.processes.length?' / '+b.processes.join('·'):'';
+    return`<option value="${b.id}">${b.country?b.country+' / ':''}${b.name}${proc}</option>`;
+  }).join(''):'<option>先に豆を登録してください</option>';
   updateRoastLevelHint();
 }
 function updateRoastLevelHint(){
@@ -2245,7 +2263,11 @@ function toggleFlavor(f){
 function updateTasteSelect(){
   initBrewSelect();
   const s=document.getElementById('t-record');if(!s)return;
-  s.innerHTML=S.roastRecords.length?S.roastRecords.slice().reverse().map(r=>{const b=S.beans.find(b=>b.id===r.beanId);return`<option value="${r.id}">${b?b.name:'不明'} (${new Date(r.startTime).toLocaleDateString('ja-JP')})</option>`;}).join(''):'<option>焙煎記録がありません</option>';
+  s.innerHTML=S.roastRecords.length?S.roastRecords.slice().reverse().map(r=>{
+    const b=S.beans.find(b=>b.id===r.beanId);
+    const bInfo=b?`${b.country?b.country+' / ':''}${b.name}${b.processes&&b.processes.length?' / '+b.processes[0]:''}`:' 不明';
+    return`<option value="${r.id}">${bInfo} (${new Date(r.startTime).toLocaleDateString('ja-JP')})</option>`;
+  }).join(''):'<option>焙煎記録がありません</option>';
   updateElapsedDays();
 }
 function updateElapsedDays(){
