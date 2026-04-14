@@ -263,14 +263,22 @@ select.inp{cursor:pointer;}
       <details class="card" open>
         <summary id="bean-form-title">豆を登録</summary>
         <div class="inp-row">
-          <div class="inp-w"><div class="label">豆の名前 *</div><input class="inp" id="b-name" placeholder="Ethiopia Yirgacheffe"></div>
-          <div class="inp-w"><div class="label">国</div>
-            <select class="inp" id="b-country-sel"></select>
-            <div class="ms-add-row" style="margin-top:6px;">
-              <input id="b-country-free" class="inp" placeholder="国を追加..." onkeydown="if(event.key==='Enter')addCountry()">
-              <button class="btn btn-sm btn-outline" onclick="addCountry()" style="padding:5px 10px;white-space:nowrap;">追加</button>
+          <div class="inp-w">
+            <div class="label">国</div>
+            <div class="multi-select-wrap" id="country-wrap">
+              <div class="multi-select-box" id="country-box" onclick="toggleMsDropdown('country')">
+                <span id="country-placeholder" style="color:var(--c-muted);font-size:var(--fs-sm);">国を選択...</span>
+              </div>
+              <div class="multi-select-dropdown" id="country-dropdown">
+                <div id="country-items"></div>
+                <div class="ms-add-row">
+                  <input id="b-country-free" placeholder="国を追加..." onkeydown="if(event.key==='Enter')addCountry()">
+                  <button class="btn btn-sm btn-outline" onclick="addCountry()" style="padding:5px 10px;white-space:nowrap;">追加</button>
+                </div>
+              </div>
             </div>
           </div>
+          <div class="inp-w"><div class="label">豆の名前 *</div><input class="inp" id="b-name" placeholder="Ethiopia Yirgacheffe"></div>
         </div>
         <div class="inp-w">
           <div class="label">農園 / 農協</div><input class="inp" id="b-farm" placeholder="Yirgacheffe Co-op">
@@ -293,12 +301,29 @@ select.inp{cursor:pointer;}
         </div>
         <div class="inp-w">
           <div class="label">精製方法（複数選択可）</div>
-          <div class="chip-group" id="process-chips"></div>
-          <div class="free-inp-row"><input class="inp" id="b-process-free" placeholder="その他の精製方法"><button class="btn btn-outline btn-sm" onclick="addProcess()">追加</button></div>
+          <div class="multi-select-wrap" id="process-wrap">
+            <div class="multi-select-box" id="process-box" onclick="toggleMsDropdown('process')">
+              <span id="process-placeholder" style="color:var(--c-muted);font-size:var(--fs-sm);">精製方法を選択...</span>
+            </div>
+            <div class="multi-select-dropdown" id="process-dropdown">
+              <div id="process-items"></div>
+              <div class="ms-add-row">
+                <input id="b-process-free" placeholder="精製方法を追加..." onkeydown="if(event.key==='Enter')addProcess()">
+                <button class="btn btn-sm btn-outline" onclick="addProcess()" style="padding:5px 10px;white-space:nowrap;">追加</button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="inp-w">
           <div class="label">推奨焙煎度（複数選択可）</div>
-          <div class="chip-group" id="rl-chips"></div>
+          <div class="multi-select-wrap" id="rl-wrap">
+            <div class="multi-select-box" id="rl-box" onclick="toggleMsDropdown('rl')">
+              <span id="rl-placeholder" style="color:var(--c-muted);font-size:var(--fs-sm);">焙煎度を選択...</span>
+            </div>
+            <div class="multi-select-dropdown" id="rl-dropdown">
+              <div id="rl-items"></div>
+            </div>
+          </div>
         </div>
         <div class="inp-w"><div class="label">購入元</div><input class="inp" id="b-shop" placeholder="ショップ名"></div>
         <div class="inp-row">
@@ -329,36 +354,32 @@ select.inp{cursor:pointer;}
         <button class="btn btn-outline" onclick="cancelEditBean()" id="bean-cancel-btn" style="width:100%;margin-top:6px;display:none;">キャンセル</button>
       </details>
       <div class="card">
-        <div class="card-title">登録済みの豆</div>
-        <div class="inp-w">
-          <div class="label" style="margin-bottom:6px;">国で絞り込み</div>
-          <div class="multi-select-wrap" id="country-filter-wrap">
-            <div class="multi-select-box" id="country-filter-box" onclick="toggleMsDropdown('country-filter')">
-              <span id="country-filter-placeholder" style="color:var(--c-muted);font-size:var(--fs-sm);">すべての国</span>
-            </div>
-            <div class="multi-select-dropdown" id="country-filter-dropdown">
-              <div id="country-filter-items"></div>
-            </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleFilterPanel()">
+          <div class="card-title" style="margin-bottom:0;">登録済みの豆</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="filter-badges" style="font-size:var(--fs-sm);color:var(--c-accent);"></span>
+            <span id="filter-arrow" style="color:var(--c-muted);font-size:var(--fs-sm);">絞り込み ▼</span>
           </div>
         </div>
-        <div class="inp-w" style="margin-top:8px;">
-          <div class="label" style="margin-bottom:6px;">焙煎度で絞り込み</div>
-          <div class="multi-select-wrap" id="rl-filter-wrap">
-            <div class="multi-select-box" id="rl-filter-box" onclick="toggleMsDropdown('rl-filter')">
-              <span id="rl-filter-placeholder" style="color:var(--c-muted);font-size:var(--fs-sm);">すべての焙煎度</span>
+        <div id="filter-panel" style="display:none;margin-top:10px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;">
+            <div class="multi-select-wrap" id="country-filter-wrap">
+              <div class="multi-select-box" id="country-filter-box" onclick="toggleMsDropdown('country-filter')" style="min-height:34px;">
+                <span id="country-filter-placeholder" style="color:var(--c-muted);font-size:var(--fs-sm);">国</span>
+              </div>
+              <div class="multi-select-dropdown" id="country-filter-dropdown">
+                <div id="country-filter-items"></div>
+              </div>
             </div>
-            <div class="multi-select-dropdown" id="rl-filter-dropdown">
-              <div id="rl-filter-items"></div>
+            <div class="multi-select-wrap" id="rl-filter-wrap">
+              <div class="multi-select-box" id="rl-filter-box" onclick="toggleMsDropdown('rl-filter')" style="min-height:34px;">
+                <span id="rl-filter-placeholder" style="color:var(--c-muted);font-size:var(--fs-sm);">焙煎度</span>
+              </div>
+              <div class="multi-select-dropdown" id="rl-filter-dropdown">
+                <div id="rl-filter-items"></div>
+              </div>
             </div>
-          </div>
-        </div>
-        <div class="inp-row" style="margin-top:8px;gap:8px;">
-          <div class="inp-w">
-            <div class="label" style="margin-bottom:6px;">購入年</div>
             <select class="inp" id="year-filter" onchange="setYearFilter(this.value)" style="font-size:var(--fs-sm);"></select>
-          </div>
-          <div class="inp-w">
-            <div class="label" style="margin-bottom:6px;">購入月</div>
             <select class="inp" id="month-filter" onchange="setMonthFilter(this.value)" style="font-size:var(--fs-sm);"></select>
           </div>
         </div>
@@ -747,6 +768,9 @@ const DEFAULT_BREWS=['Hand Drip','French Press','Aeropress','Espresso','Cold Bre
 const DEFAULT_VARIETIES=['Heirloom','Typica','Bourbon','Gesha/Geisha','SL28','SL34','Catuai','Caturra','Pacamara','Mundo Novo','Yellow Bourbon','Red Bourbon','Catimor','Sidama','Ruiru 11'];
 const RADAR_LABELS=['Acidity','Sweetness','Body','Flavor','Aroma','Aftertaste'];
 
+// マスタ変更追跡（saveBean時にまとめてDrive保存）
+let masterDirtyTypes=new Set();
+
 // マスタ初期化: 名前配列 → {id,name,enabled} 配列
 function toMasterRows(names){return names.map((name,i)=>({id:i+1,name,enabled:true}));}
 // 旧形式（文字列配列）を新形式に変換（後方互換）
@@ -771,7 +795,7 @@ const S={
   roastRunning:false,tempData:[],timeData:[],events:[],
   stars:0,selectedFlavors:[],activeFlavorCat:null,
   radarVals:[3,3,3,3,3,3],
-  beanSelectedProcesses:[],beanSelectedRLs:[],beanSelectedVarieties:[],
+  beanSelectedCountry:null,beanSelectedProcesses:[],beanSelectedRLs:[],beanSelectedVarieties:[],filterPanelOpen:false,
   filterCountries:[],filterRLs:[],filterYear:null,filterMonth:null,beanPhotoData:null,
   driveToken:null,driveFileId:null,driveUser:null,clientId:null,lastSync:null,tokenExpiry:null,
   roastSetupOpen:true,
@@ -880,7 +904,7 @@ function addVarietyOption(){
   const v=inp.value.trim();if(!v)return;
   if(!masterNames('varieties').includes(v)){
     S.master.varieties.push({id:Date.now(),name:v,enabled:true});
-    saveMasterToDrive('varieties');
+    masterDirtyTypes.add('varieties');
   }
   if(!S.beanSelectedVarieties.includes(v))S.beanSelectedVarieties.push(v);
   inp.value='';
@@ -889,55 +913,133 @@ function addVarietyOption(){
 }
 
 // ===== MASTER DATA =====
-function renderChips(id,items,sel,fn){
-  const el=document.getElementById(id);if(!el)return;
-  el.innerHTML=items.map(v=>`<button class="chip${sel.includes(v)?' selected':''}" onclick="${fn}(this)">${v}</button>`).join('');
-}
 function renderBeanForm(){
-  renderChips('process-chips',masterNames('processes'),S.beanSelectedProcesses,'toggleBeanProcess');
-  renderChips('rl-chips',ROAST_LEVELS.map(r=>'['+r.val.toFixed(1)+'] '+r.ja),S.beanSelectedRLs,'toggleBeanRL');
-  renderCountrySel();
+  renderCountryDropdown();
+  renderProcessDropdown();
+  renderRLDropdown();
   renderVarietyDropdown();
 }
-function toggleBeanProcess(btn){
-  const p=btn.textContent;
-  if(S.beanSelectedProcesses.includes(p))S.beanSelectedProcesses=S.beanSelectedProcesses.filter(x=>x!==p);
-  else S.beanSelectedProcesses.push(p);
-  btn.classList.toggle('selected',S.beanSelectedProcesses.includes(p));
-}
-function toggleBeanRL(btn){
-  const r=btn.textContent;
-  if(S.beanSelectedRLs.includes(r))S.beanSelectedRLs=S.beanSelectedRLs.filter(x=>x!==r);
-  else S.beanSelectedRLs.push(r);
-  btn.classList.toggle('selected',S.beanSelectedRLs.includes(r));
-}
-function addProcess(){
-  const v=document.getElementById('b-process-free').value.trim();if(!v)return;
-  if(!masterNames('processes').includes(v)){
-    S.master.processes.push({id:Date.now(),name:v,enabled:true});
-    saveMasterToDrive('processes');
+// --- 国（単一選択）---
+function renderCountryDropdown(){
+  const items=document.getElementById('country-items');
+  const box=document.getElementById('country-box');
+  const ph=document.getElementById('country-placeholder');
+  if(!items)return;
+  items.innerHTML=masterNames('countries').map(c=>`
+    <div class="ms-item${S.beanSelectedCountry===c?' selected':''}" onclick="selectCountry('${c.replace(/'/g,'\\x27')}')">
+      <div class="ms-check">${S.beanSelectedCountry===c?'✓':''}</div>
+      <span>${c}</span>
+    </div>`).join('');
+  if(box&&ph){
+    box.querySelectorAll('.ms-tag').forEach(t=>t.remove());
+    if(S.beanSelectedCountry){
+      ph.style.display='none';
+      const tag=document.createElement('span');tag.className='ms-tag';
+      tag.innerHTML=`${S.beanSelectedCountry}<button class="ms-tag-x" onclick="event.stopPropagation();selectCountry('')">×</button>`;
+      box.insertBefore(tag,ph);
+    }else{ph.style.display='';ph.textContent='国を選択...';}
   }
-  S.beanSelectedProcesses.push(v);
-  document.getElementById('b-process-free').value='';
-  renderChips('process-chips',masterNames('processes'),S.beanSelectedProcesses,'toggleBeanProcess');
-  autoSync();
 }
-function renderCountrySel(){
-  const sel=document.getElementById('b-country-sel');const cur=sel.value;
-  sel.innerHTML=`<option value="">-- 選択 --</option>`+masterNames('countries').map(c=>`<option value="${c}">${c}</option>`).join('');
-  if(cur)sel.value=cur;
+function selectCountry(c){
+  S.beanSelectedCountry=S.beanSelectedCountry===c?null:c;
+  renderCountryDropdown();
+  if(c)closeAllDropdowns();
 }
 function addCountry(){
   const v=document.getElementById('b-country-free').value.trim();if(!v)return;
   if(!masterNames('countries').includes(v)){
     S.master.countries.push({id:Date.now(),name:v,enabled:true});
-    saveMasterToDrive('countries');
-    renderCountrySel();
+    masterDirtyTypes.add('countries');
   }
-  document.getElementById('b-country-sel').value=v;
-  document.getElementById('b-country-free').value='';autoSync();
+  S.beanSelectedCountry=v;
+  document.getElementById('b-country-free').value='';
+  renderCountryDropdown();closeAllDropdowns();
 }
-function getSelectedCountry(){return document.getElementById('b-country-sel').value;}
+function getSelectedCountry(){return S.beanSelectedCountry||'';}
+// --- 精製方法（複数選択）---
+function renderProcessDropdown(){
+  const items=document.getElementById('process-items');
+  const box=document.getElementById('process-box');
+  const ph=document.getElementById('process-placeholder');
+  if(!items)return;
+  items.innerHTML=masterNames('processes').map(p=>`
+    <div class="ms-item${S.beanSelectedProcesses.includes(p)?' selected':''}" onclick="toggleBeanProcessMs('${p.replace(/'/g,'\\x27')}')">
+      <div class="ms-check">${S.beanSelectedProcesses.includes(p)?'✓':''}</div>
+      <span>${p}</span>
+    </div>`).join('');
+  if(box&&ph){
+    box.querySelectorAll('.ms-tag').forEach(t=>t.remove());
+    if(S.beanSelectedProcesses.length){
+      ph.style.display='none';
+      S.beanSelectedProcesses.forEach(p=>{
+        const tag=document.createElement('span');tag.className='ms-tag';
+        tag.innerHTML=`${p}<button class="ms-tag-x" onclick="event.stopPropagation();toggleBeanProcessMs('${p.replace(/'/g,'\\x27')}')">×</button>`;
+        box.insertBefore(tag,ph);
+      });
+    }else{ph.style.display='';ph.textContent='精製方法を選択...';}
+  }
+}
+function toggleBeanProcessMs(p){
+  if(S.beanSelectedProcesses.includes(p))S.beanSelectedProcesses=S.beanSelectedProcesses.filter(x=>x!==p);
+  else S.beanSelectedProcesses.push(p);
+  renderProcessDropdown();
+}
+function addProcess(){
+  const v=document.getElementById('b-process-free').value.trim();if(!v)return;
+  if(!masterNames('processes').includes(v)){
+    S.master.processes.push({id:Date.now(),name:v,enabled:true});
+    masterDirtyTypes.add('processes');
+  }
+  if(!S.beanSelectedProcesses.includes(v))S.beanSelectedProcesses.push(v);
+  document.getElementById('b-process-free').value='';
+  renderProcessDropdown();
+}
+// --- 推奨焙煎度（複数選択）---
+function renderRLDropdown(){
+  const items=document.getElementById('rl-items');
+  const box=document.getElementById('rl-box');
+  const ph=document.getElementById('rl-placeholder');
+  if(!items)return;
+  const rlLabels=ROAST_LEVELS.map(r=>'['+r.val.toFixed(1)+'] '+r.ja);
+  items.innerHTML=rlLabels.map(label=>`
+    <div class="ms-item${S.beanSelectedRLs.includes(label)?' selected':''}" onclick="toggleBeanRLMs('${label.replace(/'/g,'\\x27')}')">
+      <div class="ms-check">${S.beanSelectedRLs.includes(label)?'✓':''}</div>
+      <span>${label}</span>
+    </div>`).join('');
+  if(box&&ph){
+    box.querySelectorAll('.ms-tag').forEach(t=>t.remove());
+    if(S.beanSelectedRLs.length){
+      ph.style.display='none';
+      S.beanSelectedRLs.forEach(r=>{
+        const tag=document.createElement('span');tag.className='ms-tag';
+        tag.innerHTML=`${r}<button class="ms-tag-x" onclick="event.stopPropagation();toggleBeanRLMs('${r.replace(/'/g,'\\x27')}')">×</button>`;
+        box.insertBefore(tag,ph);
+      });
+    }else{ph.style.display='';ph.textContent='焙煎度を選択...';}
+  }
+}
+function toggleBeanRLMs(label){
+  if(S.beanSelectedRLs.includes(label))S.beanSelectedRLs=S.beanSelectedRLs.filter(x=>x!==label);
+  else S.beanSelectedRLs.push(label);
+  renderRLDropdown();
+}
+// --- フィルタパネル ---
+function toggleFilterPanel(){
+  S.filterPanelOpen=!S.filterPanelOpen;
+  const panel=document.getElementById('filter-panel');
+  const arrow=document.getElementById('filter-arrow');
+  if(panel)panel.style.display=S.filterPanelOpen?'block':'none';
+  if(arrow)arrow.textContent=S.filterPanelOpen?'絞り込み ▲':'絞り込み ▼';
+}
+function updateFilterBadges(){
+  const parts=[];
+  if(S.filterCountries.length)parts.push('国×'+S.filterCountries.length);
+  if(S.filterRLs.length)parts.push('焙煎度×'+S.filterRLs.length);
+  if(S.filterYear)parts.push(S.filterYear+'年');
+  if(S.filterMonth)parts.push(parseInt(S.filterMonth)+'月');
+  const el=document.getElementById('filter-badges');
+  if(el)el.textContent=parts.join(' ');
+}
 function initBrewSelect(){
   const sel=document.getElementById('t-brew-sel');
   sel.innerHTML=S.master.brews.map(b=>`<option value="${b}">${b}</option>`).join('')+`<option value="__free__">＋ その他（自由入力）</option>`;
@@ -951,6 +1053,7 @@ function addBrew(){
 }
 function getSelectedBrew(){const v=document.getElementById('t-brew-sel').value;return v==='__free__'?document.getElementById('t-brew-free').value.trim():v;}
 function initFilterButtons(){
+  updateFilterBadges();
   // 国フィルタ（multi-select）
   const cItems=document.getElementById('country-filter-items');
   if(cItems){
@@ -1050,27 +1153,27 @@ function saveBean(){
   if(editId){const i=S.beans.findIndex(b=>b.id===parseInt(editId));if(i>=0)S.beans[i]=bean;}
   else S.beans.push(bean);
   clearBeanForm();renderBeans();updateBeanSelect();
-  toast(editId?'豆情報を更新しました':'豆「'+bean.name+'」を登録しました');autoSync();
+  toast(editId?'豆情報を更新しました':'豆「'+bean.name+'」を登録しました');
+  masterDirtyTypes.forEach(t=>saveMasterToDrive(t));masterDirtyTypes.clear();
+  autoSync();
 }
 
 function clearBeanForm(){
   ['b-name','b-farm','b-price','b-score','b-taste','b-memo','b-purchase-date'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('b-amount').value='1000';
   document.getElementById('b-edit-id').value='';
-  document.getElementById('b-country-free-wrap').style.display='none';
   document.getElementById('b-photo-preview').style.display='none';
   document.getElementById('b-photo').value='';
   document.getElementById('bean-form-title').textContent='豆を登録';
   document.getElementById('bean-save-btn').textContent='豆を登録する';
   document.getElementById('bean-cancel-btn').style.display='none';
-  S.beanSelectedProcesses=[];S.beanSelectedRLs=[];S.beanPhotoData=null;S.beanSelectedVarieties=[];
+  S.beanSelectedCountry=null;S.beanSelectedProcesses=[];S.beanSelectedRLs=[];S.beanPhotoData=null;S.beanSelectedVarieties=[];
   renderBeanForm();
 }
 
 function editBean(id){
   const b=S.beans.find(b=>b.id===id);if(!b)return;
   document.getElementById('b-name').value=b.name||'';
-  renderCountrySel();if(b.country)document.getElementById('b-country-sel').value=b.country;
   document.getElementById('b-farm').value=b.farm||'';
   document.getElementById('b-shop').value=b.shop||'';
   document.getElementById('b-amount').value=b.amount||'';
@@ -1080,6 +1183,7 @@ function editBean(id){
   document.getElementById('b-taste').value=b.taste||'';
   document.getElementById('b-memo').value=b.memo||'';
   document.getElementById('b-edit-id').value=b.id;
+  S.beanSelectedCountry=b.country||null;
   S.beanSelectedProcesses=[...(b.processes||[])];
   S.beanSelectedRLs=[...(b.roastLevels||[])];
   S.beanSelectedVarieties=[...(b.varieties||[])];
@@ -1087,9 +1191,7 @@ function editBean(id){
   document.getElementById('bean-form-title').textContent='豆を編集';
   document.getElementById('bean-save-btn').textContent='更新する';
   document.getElementById('bean-cancel-btn').style.display='block';
-  renderChips('process-chips',S.master.processes,S.beanSelectedProcesses,'toggleBeanProcess');
-  renderChips('rl-chips',ROAST_LEVELS.map(r=>'['+r.val.toFixed(1)+'] '+r.ja),S.beanSelectedRLs,'toggleBeanRL');
-  renderVarietyDropdown();
+  renderCountryDropdown();renderProcessDropdown();renderRLDropdown();renderVarietyDropdown();
   document.getElementById('tab-beans').scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -1254,9 +1356,12 @@ function importFromText(){
   if(found.name){document.getElementById('b-name').value=found.name;filled++;}
 
   if(found.country){
-    if(!S.master.countries.includes(found.country))S.master.countries.push(found.country);
-    renderCountrySel();
-    document.getElementById('b-country-sel').value=found.country;
+    if(!masterNames('countries').includes(found.country)){
+      S.master.countries.push({id:Date.now(),name:found.country,enabled:true});
+      masterDirtyTypes.add('countries');
+    }
+    S.beanSelectedCountry=found.country;
+    renderCountryDropdown();
     filled++;
   }
   if(found.farm){document.getElementById('b-farm').value=found.farm;filled++;}
@@ -1269,7 +1374,7 @@ function importFromText(){
   }
   if(found.processes&&found.processes.length){
     S.beanSelectedProcesses=found.processes;
-    renderChips('process-chips',S.master.processes,S.beanSelectedProcesses,'toggleBeanProcess');
+    renderProcessDropdown();
     filled++;
   }
   if(found.score){document.getElementById('b-score').value=found.score;filled++;}
