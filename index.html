@@ -90,13 +90,13 @@ select.inp{cursor:pointer;}
 .ms-tag{background:var(--c-accent-light);color:var(--c-accent);border:1px solid #fbbf24;border-radius:12px;font-size:var(--fs-xs);padding:2px 8px;display:flex;align-items:center;gap:3px;font-family:'Poppins',sans-serif;font-weight:500;white-space:nowrap;}
 .ms-tag-x{background:none;border:none;color:var(--c-accent);cursor:pointer;font-size:12px;padding:0;line-height:1;}
 .ms-add-row{display:flex;gap:6px;padding:8px;}
-.ms-add-row input{flex:1;background:rgba(26,15,7,.8);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--c-cream);font-size:var(--fs-sm);outline:none;}
+.ms-add-row input{flex:1;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:6px 8px;color:var(--c-text);font-size:var(--fs-sm);outline:none;}
 /* free input row */
 .free-inp-row{display:flex;gap:6px;margin-top:6px;}
 .free-inp-row input{flex:1;}
 /* qty stepper */
 .qty-row{display:flex;align-items:center;gap:8px;}
-.qty-btn{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:rgba(196,122,58,.15);color:var(--c-accent);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.qty-btn{width:36px;height:36px;border-radius:8px;border:1px solid #e5e7eb;background:#fef3c7;color:var(--c-accent);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 /* bean list */
 .bean-list{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:10px;}
 .bean-item{background:var(--c-surface);border:1px solid #e5e7eb;border-radius:14px;padding:14px;transition:border-color .2s,transform .15s,box-shadow .2s;-webkit-tap-highlight-color:transparent;box-shadow:var(--shadow-sm);}
@@ -108,8 +108,8 @@ select.inp{cursor:pointer;}
 .filter-row{display:flex;gap:6px;flex-wrap:wrap;}
 /* roast */
 .roast-timer{text-align:center;padding:6px 0;}
-.timer-display{font-family:'DM Mono',monospace;font-size:52px;color:var(--c-cream);letter-spacing:.04em;line-height:1;}
-.timer-lbl{font-family:'DM Mono',monospace;font-size:var(--fs-mono);color:var(--c-muted);text-transform:uppercase;letter-spacing:.12em;margin-top:3px;}
+.timer-display{font-family:'DM Mono',monospace;font-size:52px;color:var(--c-text);letter-spacing:.04em;line-height:1;}
+.timer-lbl{font-family:'DM Mono',monospace;font-size:var(--fs-mono);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.12em;margin-top:3px;}
 .temp-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:10px 0;}
 .temp-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:11px;text-align:center;}
 .temp-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--c-accent);}
@@ -124,43 +124,43 @@ select.inp{cursor:pointer;}
 .c4{background:#fee2e2;color:#dc2626;border:1px solid #fecaca;}
 .c0{background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;}
 .event-log{max-height:110px;overflow-y:auto;}
-.ev{font-family:'DM Mono',monospace;font-size:var(--fs-mono);padding:3px 0;border-bottom:1px solid rgba(196,122,58,.08);display:flex;gap:6px;}
+.ev{font-family:'DM Mono',monospace;font-size:var(--fs-mono);padding:3px 0;border-bottom:1px solid #f3f4f6;display:flex;gap:6px;}
 .ev-t{color:var(--c-accent);min-width:42px;}
-.ev-x{color:var(--c-muted);}
+.ev-x{color:var(--c-text-muted);}
 /* camera & OCR */
-.camera-btn{background:rgba(196,122,58,.15);border:1px dashed var(--c-accent);border-radius:9px;padding:14px;width:100%;cursor:pointer;color:var(--c-accent);font-size:var(--fs-sm);display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;}
-.ocr-debug{background:rgba(26,15,7,.9);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-muted);max-height:90px;overflow-y:auto;display:none;}
+.camera-btn{background:#fef3c7;border:1px dashed var(--c-accent);border-radius:9px;padding:14px;width:100%;cursor:pointer;color:var(--c-accent);font-size:var(--fs-sm);display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;}
+.ocr-debug{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;margin-top:6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);max-height:90px;overflow-y:auto;display:none;}
 .ocr-debug.visible{display:block;}
 .ocr-step{padding:2px 0;border-bottom:1px solid rgba(196,122,58,.06);}
-.ocr-step.ok{color:#8cbf6a;}
+.ocr-step.ok{color:var(--c-green);}
 .ocr-step.err{color:var(--c-danger);}
 /* temp slider */
-.temp-slider-wrap{background:rgba(26,15,7,.5);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;}
+.temp-slider-wrap{background:#f3f4f6 (rgb(243, 244, 246), opacity:.5);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;}
 .temp-slider-row{display:flex;align-items:center;gap:10px;margin:8px 0;}
-.temp-slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(to right,rgba(196,122,58,.3),rgba(232,132,30,.8));outline:none;cursor:pointer;}
-.temp-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--c-accent);border:2px solid var(--c-cream);cursor:pointer;}
-.temp-slider-val{font-family:'DM Mono',monospace;font-size:24px;color:var(--c-cream);min-width:56px;text-align:center;}
+.temp-slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(to right,#fef3c7,var(--c-accent));outline:none;cursor:pointer;}
+.temp-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--c-accent);border:2px solid var(--c-text);cursor:pointer;}
+.temp-slider-val{font-family:'DM Mono',monospace;font-size:24px;color:var(--c-text);min-width:56px;text-align:center;}
 /* collapsible */
 .collapsible-header{display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
-.collapsible-arrow{color:var(--c-muted);font-size:12px;transition:transform .2s;}
+.collapsible-arrow{color:var(--c-text-muted);font-size:12px;transition:transform .2s;}
 .collapsible-arrow.open{transform:rotate(180deg);}
 .collapsible-body{overflow:hidden;transition:max-height .3s ease;}
 /* radar */
 .radar-wrap{display:flex;justify-content:center;margin:8px 0;touch-action:none;}
-.radar-hint{font-size:var(--fs-xs);color:var(--c-muted);text-align:center;margin-top:4px;}
+.radar-hint{font-size:var(--fs-xs);color:var(--c-text-muted);text-align:center;margin-top:4px;}
 /* flavor wheel */
 .flavor-cat-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
-.flavor-cat-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--c-muted);font-size:var(--fs-xs);cursor:pointer;font-family:'DM Mono',monospace;transition:all .15s;}
-.flavor-cat-btn.active{background:rgba(196,122,58,.2);color:var(--c-accent);border-color:var(--c-accent);}
-.flavor-sub-area{background:rgba(26,15,7,.5);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;min-height:48px;}
-.flavor-sub-label{font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.flavor-cat-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--c-text-muted);font-size:var(--fs-xs);cursor:pointer;font-family:'DM Mono',monospace;transition:all .15s;}
+.flavor-cat-btn.active{background:#fef3c7;color:var(--c-accent);border-color:var(--c-accent);}
+.flavor-sub-area{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:10px;min-height:48px;}
+.flavor-sub-label{font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
 .flavor-sub-row{display:flex;flex-wrap:wrap;gap:5px;}
-.flavor-sub-btn{padding:4px 10px;border-radius:20px;border:1px solid rgba(90,138,58,.3);background:transparent;color:var(--c-muted);font-size:var(--fs-xs);cursor:pointer;transition:all .15s;}
-.flavor-sub-btn.selected{background:rgba(90,138,58,.25);color:#8cbf6a;border-color:rgba(90,138,58,.6);}
-.flavor-selected-label{font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
+.flavor-sub-btn{padding:4px 10px;border-radius:20px;border:1px solid #d1d5db;background:transparent;color:var(--c-text-muted);font-size:var(--fs-xs);cursor:pointer;transition:all .15s;}
+.flavor-sub-btn.selected{background:#dcfce7;color:var(--c-green);border-color:#bbf7d0;font-weight:600;}
+.flavor-selected-label{font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
 .flavor-selected-row{display:flex;flex-wrap:wrap;gap:4px;min-height:28px;}
-.flavor-tag{background:rgba(90,138,58,.2);color:#8cbf6a;border:1px solid rgba(90,138,58,.3);border-radius:20px;font-size:var(--fs-xs);padding:2px 8px;display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;}
-.flavor-tag button{background:none;border:none;color:#8cbf6a;cursor:pointer;font-size:12px;padding:0;line-height:1;}
+.flavor-tag{background:#dcfce7;color:var(--c-green);border:1px solid #bbf7d0;border-radius:20px;font-size:var(--fs-xs);padding:3px 9px;display:flex;align-items:center;gap:4px;font-family:'Poppins',sans-serif;font-weight:500;}
+.flavor-tag button{background:none;border:none;color:var(--c-green);cursor:pointer;font-size:12px;padding:0;line-height:1;}
 /* records */
 .records-list{display:flex;flex-direction:column;gap:8px;}
 .rec{background:var(--c-surface);border:1px solid #e5e7eb;border-radius:14px;padding:13px 14px;cursor:pointer;transition:border-color .2s,transform .15s,box-shadow .2s;-webkit-tap-highlight-color:transparent;box-shadow:var(--shadow-sm);}
@@ -173,20 +173,20 @@ select.inp{cursor:pointer;}
 .rec-s{font-family:'Poppins',sans-serif;font-size:var(--fs-xs);color:var(--c-text-muted);font-weight:500;}
 .rec-s span{color:var(--c-accent);font-weight:700;}
 /* analysis */
-.a-stat{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(196,122,58,.08);}
-.a-lbl{font-size:var(--fs-sm);color:var(--c-muted);}
-.a-val{font-family:'DM Mono',monospace;font-size:var(--fs-base);color:var(--c-cream);}
+.a-stat{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6;}
+.a-lbl{font-size:var(--fs-sm);color:var(--c-text-muted);}
+.a-val{font-family:'DM Mono',monospace;font-size:var(--fs-base);color:var(--c-text);}
 /* drive */
-.sync-info{background:rgba(26,15,7,.7);border:1px solid var(--border);border-radius:8px;padding:10px;}
-.sync-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(196,122,58,.08);}
+.sync-info{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;}
+.sync-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6;}
 .sync-row:last-child{border-bottom:none;}
-.sync-label{font-size:var(--fs-sm);color:var(--c-muted);}
-.sync-val{font-family:'DM Mono',monospace;font-size:var(--fs-sm);color:var(--c-cream);}
-.file-badge{font-family:'DM Mono',monospace;font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(90,138,58,.2);color:#8cbf6a;border:1px solid rgba(90,138,58,.3);}
-.client-id-hint{font-size:var(--fs-xs);color:var(--c-muted);line-height:1.6;margin:6px 0 10px;}
+.sync-label{font-size:var(--fs-sm);color:var(--c-text-muted);}
+.sync-val{font-family:'DM Mono',monospace;font-size:var(--fs-sm);color:var(--c-text);}
+.file-badge{font-family:'DM Mono',monospace;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:#dcfce7;color:var(--c-green);border:1px solid #bbf7d0;}
+.client-id-hint{font-size:var(--fs-xs);color:var(--c-text-muted);line-height:1.6;margin:6px 0 10px;}
 .check-row{display:flex;align-items:center;gap:8px;padding:4px 0;}
 .check-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--c-accent);cursor:pointer;}
-.check-row label{font-size:var(--fs-base);color:var(--c-cream);cursor:pointer;}
+.check-row label{font-size:var(--fs-base);color:var(--c-text);cursor:pointer;}
 .photo-preview{width:100%;border-radius:8px;border:1px solid var(--border);margin-top:6px;display:none;max-height:160px;object-fit:cover;}
 .compare-check{display:flex;align-items:center;gap:6px;padding:4px 0;}
 .compare-check input{accent-color:var(--c-accent);}
@@ -194,7 +194,7 @@ select.inp{cursor:pointer;}
 .roast-footer-bar{
   position:fixed;bottom:0;left:50%;transform:translateX(-50%);
   width:100%;max-width:430px;
-  background:var(--c-espresso);
+  background:var(--c-bg);
   border-top:2px solid var(--border);
   padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));
   z-index:50;
@@ -204,8 +204,8 @@ select.inp{cursor:pointer;}
 .ctrl-footer{padding:13px 4px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.03em;font-weight:600;transition:all .2s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;}
 /* ===== 焙煎タブ内折りたたみセクション ===== */
 .roast-collapse-hdr{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:8px 0;border-bottom:1px solid rgba(196,122,58,.12);margin-bottom:4px;}
-.roast-collapse-hdr-lbl{font-family:'DM Mono',monospace;font-size:var(--fs-sm);color:var(--c-muted);text-transform:uppercase;letter-spacing:.1em;}
-.roast-collapse-arrow{color:var(--c-muted);font-size:12px;transition:transform .2s;}
+.roast-collapse-hdr-lbl{font-family:'DM Mono',monospace;font-size:var(--fs-sm);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.1em;}
+.roast-collapse-arrow{color:var(--c-text-muted);font-size:12px;transition:transform .2s;}
 .roast-collapse-arrow.open{transform:rotate(180deg);}
 .roast-collapse-body{overflow:hidden;transition:max-height .3s ease;}
 /* スペーサー: 固定フッターの高さ分を確保 */
@@ -236,8 +236,8 @@ select.inp{cursor:pointer;}
 .ro-metric-lbl{font-family:'Poppins',sans-serif;font-size:9px;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:4px;font-weight:600;}
 .ro-chart-wrap{padding:6px 8px;border-bottom:1px solid var(--border);flex-shrink:0;}
 .ro-cam-section{padding:6px 8px;border-bottom:1px solid var(--border);flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
-.ro-footer{background:var(--c-espresso);border-top:2px solid var(--border);padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));flex-shrink:0;}
-.ro-ev-log{background:rgba(26,15,7,.8);border:1px solid var(--border);border-radius:7px;padding:5px 8px;margin-top:5px;max-height:80px;overflow-y:auto;display:none;}
+.ro-footer{background:var(--c-bg);border-top:2px solid var(--border);padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));flex-shrink:0;}
+.ro-ev-log{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:7px;padding:5px 8px;margin-top:5px;max-height:80px;overflow-y:auto;display:none;color:var(--c-text);}
 .ro-ev-log.open{display:block;}
 </style>
 </head>
@@ -245,10 +245,10 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-muted);margin-left:8px;vertical-align:middle;">v1.0</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.0</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <button id="undo-btn" onclick="undo()" style="background:rgba(196,122,58,.15);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
-        <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-muted);">未接続</span></div>
+        <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
+        <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
       </div>
     </div>
     <div class="topbar-sub">Coffee Roasting Tracker</div>
@@ -285,10 +285,10 @@ select.inp{cursor:pointer;}
     <div id="tab-beans" class="section active">
       <details class="card">
         <summary>商品テキストから取り込む</summary>
-        <div style="font-size:var(--fs-xs);color:var(--c-muted);margin-bottom:8px;line-height:1.6;">商品ページの説明文・スペック欄をコピーして貼り付けてください。国名・精製方法・SCAスコアなどを自動認識します。</div>
+        <div style="font-size:var(--fs-xs);color:var(--c-text-muted);margin-bottom:8px;line-height:1.6;">商品ページの説明文・スペック欄をコピーして貼り付けてください。国名・精製方法・SCAスコアなどを自動認識します。</div>
         <div class="inp-w"><div class="label">貼り付けたテキスト</div><textarea class="inp" id="import-text" rows="5" placeholder="例:&#10;エチオピア イルガチェフェ&#10;精製: ウォッシュド&#10;SCAスコア: 86.5&#10;フレーバー: ジャスミン、ベリー、ピーチ&#10;農園: Yirgacheffe Co-op"></textarea></div>
         <button class="btn btn-primary" onclick="importFromText()" style="margin-top:4px;">テキストから情報を抽出</button>
-        <div id="import-status" style="font-size:var(--fs-sm);color:var(--c-muted);display:none;margin-top:6px;"></div>
+        <div id="import-status" style="font-size:var(--fs-sm);color:var(--c-text-muted);display:none;margin-top:6px;"></div>
       </details>
       <details class="card" open>
         <summary id="bean-form-title">豆を登録</summary>
@@ -307,10 +307,10 @@ select.inp{cursor:pointer;}
               </div>
             </div>
           </div>
-          <div class="inp-w"><div class="label">豆の名前 *</div><input class="inp" id="b-name" placeholder="Ethiopia Yirgacheffe"></div>
+          <div class="inp-w"><input class="inp" id="b-name" placeholder="豆の名前"></div>
         </div>
         <div class="inp-w">
-          <div class="label">農園 / 農協</div><input class="inp" id="b-farm" placeholder="Yirgacheffe Co-op">
+          <input class="inp" id="b-farm" placeholder="農園 / 農協">
         </div>
         <!-- 品種: multi-select dropdown -->
         <div class="inp-w">
@@ -342,17 +342,16 @@ select.inp{cursor:pointer;}
           </div>
         </div>
         <div class="inp-w">
-          <div class="label">推奨焙煎度（複数選択可）</div>
           <div class="multi-select-wrap" id="rl-wrap">
             <div class="multi-select-box" id="rl-box" onclick="toggleMsDropdown('rl')">
-              <span id="rl-placeholder" style="color:var(--c-muted);font-size:var(--fs-sm);">焙煎度を選択...</span>
+              <span id="rl-placeholder" style="color:var(--c-text-muted);font-size:var(--fs-sm);">推奨焙煎度を選択...</span>
             </div>
             <div class="multi-select-dropdown" id="rl-dropdown">
               <div id="rl-items"></div>
             </div>
           </div>
         </div>
-        <div class="inp-w"><div class="label">購入元</div><input class="inp" id="b-shop" placeholder="ショップ名"></div>
+        <div class="inp-w"><input class="inp" id="b-shop" placeholder="購入元・ショップ名"></div>
         <div class="inp-row">
           <div class="inp-w">
             <div class="label">購入量 (g)</div>
@@ -385,14 +384,14 @@ select.inp{cursor:pointer;}
           <div class="card-title" style="margin-bottom:0;">登録済みの豆</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span id="filter-badges" style="font-size:var(--fs-sm);color:var(--c-accent);"></span>
-            <span id="filter-arrow" style="color:var(--c-muted);font-size:var(--fs-sm);">絞り込み ▼</span>
+            <span id="filter-arrow" style="color:var(--c-text-muted);font-size:var(--fs-sm);">絞り込み ▼</span>
           </div>
         </div>
         <div id="filter-panel" style="display:none;margin-top:10px;">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;">
             <div class="multi-select-wrap" id="country-filter-wrap">
               <div class="multi-select-box" id="country-filter-box" onclick="toggleMsDropdown('country-filter')" style="min-height:34px;">
-                <span id="country-filter-placeholder" style="color:var(--c-muted);font-size:var(--fs-sm);">国</span>
+                <span id="country-filter-placeholder" style="color:var(--c-text-muted);font-size:var(--fs-sm);">国</span>
               </div>
               <div class="multi-select-dropdown" id="country-filter-dropdown">
                 <div id="country-filter-items"></div>
@@ -400,7 +399,7 @@ select.inp{cursor:pointer;}
             </div>
             <div class="multi-select-wrap" id="rl-filter-wrap">
               <div class="multi-select-box" id="rl-filter-box" onclick="toggleMsDropdown('rl-filter')" style="min-height:34px;">
-                <span id="rl-filter-placeholder" style="color:var(--c-muted);font-size:var(--fs-sm);">焙煎度</span>
+                <span id="rl-filter-placeholder" style="color:var(--c-text-muted);font-size:var(--fs-sm);">焙煎度</span>
               </div>
               <div class="multi-select-dropdown" id="rl-filter-dropdown">
                 <div id="rl-filter-items"></div>
@@ -490,7 +489,7 @@ select.inp{cursor:pointer;}
           <div class="label">抽出方法を入力</div>
           <div class="free-inp-row"><input class="inp" id="t-brew-free" placeholder="例: Siphon"><button class="btn btn-outline btn-sm" onclick="addBrew()">追加</button></div>
         </div>
-        <div style="margin-top:12px;margin-bottom:6px;font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-muted);text-transform:uppercase;letter-spacing:.1em;border-top:1px solid var(--border);padding-top:10px;">抽出パラメータ</div>
+        <div style="margin-top:12px;margin-bottom:6px;font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.1em;border-top:1px solid var(--border);padding-top:10px;">抽出パラメータ</div>
         <div class="inp-row">
           <div class="inp-w"><div class="label">豆量 (g)</div><input class="inp" id="t-bean-g" type="number" placeholder="15" step="0.1"></div>
           <div class="inp-w"><div class="label">湯量 (ml)</div><input class="inp" id="t-water-ml" type="number" placeholder="250"></div>
@@ -586,7 +585,7 @@ select.inp{cursor:pointer;}
           </div>
         </div>
         <button class="btn btn-outline" style="width:100%;margin-top:8px;font-size:var(--fs-sm);" onclick="saveGeminiKey()">保存</button>
-        <div id="gemini-key-status" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-muted);margin-top:6px;text-align:center;"></div>
+        <div id="gemini-key-status" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-top:6px;text-align:center;"></div>
       </div>
 
     </div>
@@ -604,7 +603,7 @@ select.inp{cursor:pointer;}
     <div class="inp-w">
       <div class="label">焙煎度（イベントから自動推定・修正可）</div>
       <select class="inp" id="finish-rl"></select>
-      <div id="finish-rl-hint" style="font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-muted);margin-top:4px;"></div>
+      <div id="finish-rl-hint" style="font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-text-muted);margin-top:4px;"></div>
     </div>
     <div class="inp-row">
       <div class="inp-w"><div class="label">焙煎前 (g)</div><input class="inp" id="finish-weight-before" type="number" placeholder="200"></div>
@@ -648,12 +647,12 @@ select.inp{cursor:pointer;}
     <div class="inp-w"><div class="label">メモ</div><textarea class="inp" id="er-memo" rows="2"></textarea></div>
     <!-- イベント編集 -->
     <div class="label" style="margin-bottom:6px;">イベント編集</div>
-    <div id="er-events" style="background:rgba(26,15,7,.5);border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;max-height:180px;overflow-y:auto;"></div>
+    <div id="er-events" style="background:#f3f4f6 (rgb(243, 244, 246), opacity:.5);border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;max-height:180px;overflow-y:auto;"></div>
     <button class="btn btn-outline btn-sm" onclick="erAddEvent()" style="width:100%;margin-bottom:10px;">＋ イベントを追加</button>
     <!-- 温度データ編集 -->
     <div class="label" style="margin-bottom:6px;">温度データ編集</div>
-    <div style="font-size:var(--fs-xs);color:var(--c-muted);margin-bottom:6px;">誤読み取りの行を削除できます</div>
-    <div id="er-temps" style="background:rgba(26,15,7,.5);border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:10px;max-height:160px;overflow-y:auto;font-family:'DM Mono',monospace;font-size:var(--fs-xs);"></div>
+    <div style="font-size:var(--fs-xs);color:var(--c-text-muted);margin-bottom:6px;">誤読み取りの行を削除できます</div>
+    <div id="er-temps" style="background:#f3f4f6 (rgb(243, 244, 246), opacity:.5);border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:10px;max-height:160px;overflow-y:auto;font-family:'DM Mono',monospace;font-size:var(--fs-xs);"></div>
     <input type="hidden" id="er-id">
     <button class="btn btn-primary" onclick="saveEditRoast()">更新する</button>
   </div>
@@ -668,8 +667,8 @@ select.inp{cursor:pointer;}
       <div id="ro-status-lbl" class="ro-status-lbl">焙煎中</div>
       <div id="ro-bean-lbl" class="ro-bean-lbl">—</div>
     </div>
-    <button id="ro-pause-btn" onclick="toggleRoastPause()" style="background:rgba(90,138,58,.2);border:1px solid rgba(90,138,58,.4);color:#8cbf6a;border-radius:7px;padding:7px 11px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;white-space:nowrap;">⏸ 停止</button>
-    <button onclick="openFinishModal()" style="background:rgba(192,64,64,.2);border:1px solid rgba(192,64,64,.4);color:#e06060;border-radius:7px;padding:7px 11px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;white-space:nowrap;">■ 排出</button>
+    <button id="ro-pause-btn" onclick="toggleRoastPause()" style="background:#dcfce7;border:1px solid #bbf7d0;color:var(--c-green);border-radius:7px;padding:7px 11px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">⏸ 停止</button>
+    <button onclick="openFinishModal()" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;border-radius:7px;padding:7px 11px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">■ 排出</button>
   </div>
   <!-- 温度・ROR・DT メトリクス -->
   <div class="ro-metrics">
@@ -696,14 +695,14 @@ select.inp{cursor:pointer;}
       <video id="camera-video" autoplay playsinline muted style="width:100%;border-radius:8px;border:1px solid var(--border);background:#000;max-height:140px;object-fit:cover;display:block;"></video>
       <canvas id="camera-canvas" style="display:none;"></canvas>
       <canvas id="guide-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;touch-action:none;cursor:move;"></canvas>
-      <div style="position:absolute;bottom:6px;left:6px;right:6px;background:rgba(26,15,7,0.88);border-radius:6px;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;">
+      <div style="position:absolute;bottom:6px;left:6px;right:6px;background:#f3f4f6 (rgb(243, 244, 246), opacity:0.88);border-radius:6px;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;">
         <div>
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-muted);text-transform:uppercase;">読み取り温度</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);text-transform:uppercase;">読み取り温度</div>
           <div id="ocr-temp" style="font-family:'DM Mono',monospace;font-size:20px;color:var(--c-accent);">—</div>
         </div>
         <div style="text-align:right;">
-          <div id="ocr-countdown" style="font-family:'DM Mono',monospace;font-size:18px;color:var(--c-cream);">10</div>
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-muted);">次の読み取り</div>
+          <div id="ocr-countdown" style="font-family:'DM Mono',monospace;font-size:18px;color:var(--c-text);">10</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);">次の読み取り</div>
         </div>
       </div>
     </div>
@@ -719,10 +718,10 @@ select.inp{cursor:pointer;}
     <div id="ocr-debug" class="ocr-debug" style="display:none!important;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div style="color:var(--c-accent);font-weight:500;">OCR デバッグログ</div>
-        <button onclick="copyOcrLog()" style="background:rgba(196,122,58,.2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--c-cream);font-size:10px;cursor:pointer;">📋 コピー</button>
+        <button onclick="copyOcrLog()" style="background:#fef3c7;border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--c-text);font-size:10px;cursor:pointer;">📋 コピー</button>
       </div>
       <div style="margin-bottom:4px;">
-        <div style="font-size:9px;color:var(--c-muted);margin-bottom:2px;">前処理プレビュー</div>
+        <div style="font-size:9px;color:var(--c-text-muted);margin-bottom:2px;">前処理プレビュー</div>
         <canvas id="ocr-preview" style="width:100%;border-radius:3px;border:1px solid var(--border);background:#000;display:block;max-height:60px;object-fit:contain;"></canvas>
       </div>
       <div id="ocr-debug-log"></div>
@@ -762,7 +761,7 @@ select.inp{cursor:pointer;}
     </div>
     <!-- イベントログ（折りたたみ） -->
     <div id="ro-ev-log" class="ro-ev-log">
-      <div id="ro-event-log-content" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-muted);"></div>
+      <div id="ro-event-log-content" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);"></div>
     </div>
   </div>
 </div>
@@ -1542,10 +1541,10 @@ function importFromText(){
 
   if(filled>0){
     st.textContent=`${filled}項目を認識しました。確認して登録してください。`;
-    st.style.color='#8cbf6a';
+    st.style.color='var(--c-green)';
   }else{
     st.textContent='情報を認識できませんでした。キーワード（国名・精製方法・スコアなど）が含まれているか確認してください。';
-    st.style.color='var(--c-muted)';
+    st.style.color='var(--c-text-muted)';
   }
 }
 
@@ -1789,7 +1788,7 @@ function addEventLog(time,text){
   if(ol){
     const d2=document.createElement('div');
     d2.style.cssText='padding:2px 0;border-bottom:1px solid rgba(196,122,58,.06);display:flex;gap:6px;';
-    d2.innerHTML=`<span style="color:var(--c-accent);min-width:42px;">${time}</span><span style="color:var(--c-muted);">${text}</span>`;
+    d2.innerHTML=`<span style="color:var(--c-accent);min-width:42px;">${time}</span><span style="color:var(--c-text-muted);">${text}</span>`;
     ol.insertBefore(d2,ol.firstChild);
   }
 }
@@ -2574,7 +2573,7 @@ function openRecordModal(id){
   let html=`<div class="sync-info" style="margin-bottom:12px;"><div class="sync-row"><span class="sync-label">焙煎日</span><span class="sync-val">${new Date(r.startTime).toLocaleString('ja-JP')}</span></div><div class="sync-row"><span class="sync-label">焙煎時間</span><span class="sync-val">${Math.floor(r.duration/60)}分${r.duration%60}秒</span></div>${r.startTemp?`<div class="sync-row"><span class="sync-label">スタート温度</span><span class="sync-val">${r.startTemp}°C</span></div>`:''}${r.finalTemp?`<div class="sync-row"><span class="sync-label">仕上がり温度</span><span class="sync-val">${r.finalTemp}°C</span></div>`:''}${r.roastLevel?`<div class="sync-row"><span class="sync-label">焙煎度</span><span class="sync-val">${rlLabel(r.roastLevel)}</span></div>`:''}${r.amount?`<div class="sync-row"><span class="sync-label">投入量</span><span class="sync-val">${r.amount}g</span></div>`:''}${r.weightBefore&&r.weightAfter?`<div class="sync-row"><span class="sync-label">重量</span><span class="sync-val">${r.weightBefore}g → ${r.weightAfter}g（歩留 ${r.yieldPct}%）</span></div>`:''}${r.dtr!==null&&r.dtr!==undefined?`<div class="sync-row"><span class="sync-label">DTR（発展時間率）</span><span class="sync-val">${r.dtr}%</span></div>`:''}<div class="sync-row"><span class="sync-label">水洗</span><span class="sync-val">${r.washing?'済み':'なし'}</span></div>${r.memo?`<div class="sync-row"><span class="sync-label">メモ</span><span class="sync-val">${r.memo}</span></div>`:''}</div>`;
   if(r.events&&r.events.length){html+=`<div class="label" style="margin-bottom:6px;">イベント</div><div class="event-log" style="max-height:120px;margin-bottom:12px;">`;r.events.forEach(ev=>{html+=`<div class="ev"><span class="ev-t">${ft(ev.time)}</span><span class="ev-x">${ev.label}${ev.temp?' @ '+ev.temp+'°C':''}</span></div>`;});html+=`</div>`;}
   if(r.tempData&&r.tempData.length)html+=`<div class="label" style="margin-bottom:6px;">温度カーブ</div><div class="chart-wrap"><canvas id="modal-chart" height="160"></canvas></div>`;
-  if(t){html+=`<div class="label" style="margin:12px 0 6px;">味わい評価</div><div class="sync-info" style="margin-bottom:10px;"><div class="sync-row"><span class="sync-label">総合評価</span><span class="sync-val">${'★'.repeat(t.stars)}</span></div><div class="sync-row"><span class="sync-label">焙煎後経過</span><span class="sync-val">${t.elapsedDays}日</span></div>${RADAR_LABELS.map((lb,i)=>`<div class="sync-row"><span class="sync-label">${lb}</span><span class="sync-val">${[t.acidity,t.sweetness,t.body,t.bitterness,t.aroma,t.aftertaste][i]}/5</span></div>`).join('')}${t.flavors&&t.flavors.length?`<div class="sync-row"><span class="sync-label">フレーバー</span><span class="sync-val" style="font-size:10px;">${t.flavors.join(', ')}</span></div>`:''}${t.notes?`<div class="sync-row"><span class="sync-label">ノート</span><span class="sync-val" style="font-size:10px;">${t.notes}</span></div>`:''}${t.brew?`<div class="sync-row"><span class="sync-label">抽出方法</span><span class="sync-val">${t.brew}</span></div>`:''}${t.beanG||t.waterMl||t.waterTemp||t.brewSec||t.grind?`<div class="sync-row"><span class="sync-label" style="font-size:9px;color:var(--c-muted);">抽出パラメータ</span><span class="sync-val" style="font-size:10px;">${[t.beanG?t.beanG+'g 豆':'',t.waterMl?t.waterMl+'ml':'',t.waterTemp?t.waterTemp+'°C':'',t.brewSec?Math.floor(t.brewSec/60)+'分'+(t.brewSec%60)+'秒':'',t.grind?t.grind:''].filter(Boolean).join(' / ')}</span></div>`:''}</div>`;}
+  if(t){html+=`<div class="label" style="margin:12px 0 6px;">味わい評価</div><div class="sync-info" style="margin-bottom:10px;"><div class="sync-row"><span class="sync-label">総合評価</span><span class="sync-val">${'★'.repeat(t.stars)}</span></div><div class="sync-row"><span class="sync-label">焙煎後経過</span><span class="sync-val">${t.elapsedDays}日</span></div>${RADAR_LABELS.map((lb,i)=>`<div class="sync-row"><span class="sync-label">${lb}</span><span class="sync-val">${[t.acidity,t.sweetness,t.body,t.bitterness,t.aroma,t.aftertaste][i]}/5</span></div>`).join('')}${t.flavors&&t.flavors.length?`<div class="sync-row"><span class="sync-label">フレーバー</span><span class="sync-val" style="font-size:10px;">${t.flavors.join(', ')}</span></div>`:''}${t.notes?`<div class="sync-row"><span class="sync-label">ノート</span><span class="sync-val" style="font-size:10px;">${t.notes}</span></div>`:''}${t.brew?`<div class="sync-row"><span class="sync-label">抽出方法</span><span class="sync-val">${t.brew}</span></div>`:''}${t.beanG||t.waterMl||t.waterTemp||t.brewSec||t.grind?`<div class="sync-row"><span class="sync-label" style="font-size:9px;color:var(--c-text-muted);">抽出パラメータ</span><span class="sync-val" style="font-size:10px;">${[t.beanG?t.beanG+'g 豆':'',t.waterMl?t.waterMl+'ml':'',t.waterTemp?t.waterTemp+'°C':'',t.brewSec?Math.floor(t.brewSec/60)+'分'+(t.brewSec%60)+'秒':'',t.grind?t.grind:''].filter(Boolean).join(' / ')}</span></div>`:''}</div>`;}
   html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;"><button class="btn btn-outline" onclick="openEditRoastModal(${r.id})">焙煎記録を編集</button><button class="btn btn-outline" onclick="editTasteFromRecord(${r.id})">${t?'味わいを編集':'味わいを記録'}</button></div><button class="btn btn-danger" style="width:100%;margin-top:8px;" onclick="deleteRoastRecord(${r.id})">この焙煎記録を削除</button>`;
   document.getElementById('modal-content').innerHTML=html;
   document.getElementById('record-modal').classList.add('open');
@@ -2614,8 +2613,8 @@ function calcEditWeightLoss(){
 }
 function renderErEvents(){
   const el=document.getElementById('er-events');
-  if(!erEventBuf.length){el.innerHTML='<div style="color:var(--c-muted);font-size:var(--fs-xs);padding:4px;">イベントなし</div>';return;}
-  el.innerHTML=erEventBuf.map((ev,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(196,122,58,.1);"><input type="text" value="${erFmt(ev.time)}" style="width:46px;background:rgba(26,15,7,.8);border:1px solid var(--border);border-radius:4px;padding:3px 5px;color:var(--c-cream);font-family:'DM Mono',monospace;font-size:10px;" onchange="erUpdateEventTime(${i},this.value)"><input type="text" value="${ev.label}" style="flex:1;background:rgba(26,15,7,.8);border:1px solid var(--border);border-radius:4px;padding:3px 5px;color:var(--c-cream);font-size:11px;" onchange="erUpdateEventLabel(${i},this.value)"><input type="number" value="${ev.temp||''}" placeholder="°C" style="width:52px;background:rgba(26,15,7,.8);border:1px solid var(--border);border-radius:4px;padding:3px 5px;color:var(--c-cream);font-family:'DM Mono',monospace;font-size:10px;" onchange="erUpdateEventTemp(${i},this.value)"><button onclick="erDeleteEvent(${i})" style="background:none;border:none;color:var(--c-danger);cursor:pointer;font-size:14px;padding:0 2px;">✕</button></div>`).join('');
+  if(!erEventBuf.length){el.innerHTML='<div style="color:var(--c-text-muted);font-size:var(--fs-xs);padding:4px;">イベントなし</div>';return;}
+  el.innerHTML=erEventBuf.map((ev,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(196,122,58,.1);"><input type="text" value="${erFmt(ev.time)}" style="width:46px;background:#f3f4f6 (rgb(243, 244, 246), opacity:.8);border:1px solid var(--border);border-radius:4px;padding:3px 5px;color:var(--c-text);font-family:'DM Mono',monospace;font-size:10px;" onchange="erUpdateEventTime(${i},this.value)"><input type="text" value="${ev.label}" style="flex:1;background:#f3f4f6 (rgb(243, 244, 246), opacity:.8);border:1px solid var(--border);border-radius:4px;padding:3px 5px;color:var(--c-text);font-size:11px;" onchange="erUpdateEventLabel(${i},this.value)"><input type="number" value="${ev.temp||''}" placeholder="°C" style="width:52px;background:#f3f4f6 (rgb(243, 244, 246), opacity:.8);border:1px solid var(--border);border-radius:4px;padding:3px 5px;color:var(--c-text);font-family:'DM Mono',monospace;font-size:10px;" onchange="erUpdateEventTemp(${i},this.value)"><button onclick="erDeleteEvent(${i})" style="background:none;border:none;color:var(--c-danger);cursor:pointer;font-size:14px;padding:0 2px;">✕</button></div>`).join('');
 }
 function erUpdateEventTime(i,val){const p=val.split(':');if(p.length!==2)return;erEventBuf[i].time=parseInt(p[0])*60+parseInt(p[1]);}
 function erUpdateEventLabel(i,val){erEventBuf[i].label=val;}
@@ -2624,8 +2623,8 @@ function erDeleteEvent(i){pushUndo();erEventBuf.splice(i,1);renderErEvents();}
 function erAddEvent(){erEventBuf.push({time:0,label:'',temp:null,rlVal:null});renderErEvents();setTimeout(()=>{const el=document.getElementById('er-events');el.scrollTop=el.scrollHeight;},50);}
 function renderErTemps(){
   const el=document.getElementById('er-temps');
-  if(!erTempBuf.length){el.innerHTML='<div style="color:var(--c-muted);padding:4px;">温度データなし</div>';return;}
-  el.innerHTML=erTempBuf.map((td,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(196,122,58,.06);"><span style="color:var(--c-accent);min-width:38px;">${erFmt(td.time)}</span><input type="number" value="${td.temp}" style="width:60px;background:rgba(26,15,7,.8);border:1px solid var(--border);border-radius:4px;padding:2px 5px;color:var(--c-cream);font-family:'DM Mono',monospace;font-size:10px;" onchange="erUpdateTemp(${i},this.value)"><span style="color:var(--c-muted);font-size:10px;">°C</span><button onclick="erDeleteTemp(${i})" style="background:none;border:none;color:var(--c-danger);cursor:pointer;font-size:13px;padding:0 2px;margin-left:auto;">✕</button></div>`).join('');
+  if(!erTempBuf.length){el.innerHTML='<div style="color:var(--c-text-muted);padding:4px;">温度データなし</div>';return;}
+  el.innerHTML=erTempBuf.map((td,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(196,122,58,.06);"><span style="color:var(--c-accent);min-width:38px;">${erFmt(td.time)}</span><input type="number" value="${td.temp}" style="width:60px;background:#f3f4f6 (rgb(243, 244, 246), opacity:.8);border:1px solid var(--border);border-radius:4px;padding:2px 5px;color:var(--c-text);font-family:'DM Mono',monospace;font-size:10px;" onchange="erUpdateTemp(${i},this.value)"><span style="color:var(--c-text-muted);font-size:10px;">°C</span><button onclick="erDeleteTemp(${i})" style="background:none;border:none;color:var(--c-danger);cursor:pointer;font-size:13px;padding:0 2px;margin-left:auto;">✕</button></div>`).join('');
 }
 function erUpdateTemp(i,val){erTempBuf[i].temp=parseFloat(val);}
 function erDeleteTemp(i){pushUndo();erTempBuf.splice(i,1);renderErTemps();}
@@ -2665,14 +2664,14 @@ function renderAnalysisChart(){
 }
 function renderCompareSection(){
   const el=document.getElementById('compare-checks');
-  if(!S.roastRecords.length){el.innerHTML='<div style="color:var(--c-muted);font-size:var(--fs-sm);">焙煎記録がありません</div>';return;}
-  el.innerHTML=S.roastRecords.slice().reverse().map(r=>{const b=S.beans.find(b=>b.id===r.beanId);return`<div class="compare-check"><input type="checkbox" id="cmp-${r.id}" value="${r.id}" onchange="updateCompareChart()"><label for="cmp-${r.id}" style="font-size:var(--fs-sm);color:var(--c-cream);cursor:pointer;">${b?b.name:'不明'} (${new Date(r.startTime).toLocaleDateString('ja-JP')})</label></div>`;}).join('');
+  if(!S.roastRecords.length){el.innerHTML='<div style="color:var(--c-text-muted);font-size:var(--fs-sm);">焙煎記録がありません</div>';return;}
+  el.innerHTML=S.roastRecords.slice().reverse().map(r=>{const b=S.beans.find(b=>b.id===r.beanId);return`<div class="compare-check"><input type="checkbox" id="cmp-${r.id}" value="${r.id}" onchange="updateCompareChart()"><label for="cmp-${r.id}" style="font-size:var(--fs-sm);color:var(--c-text);cursor:pointer;">${b?b.name:'不明'} (${new Date(r.startTime).toLocaleDateString('ja-JP')})</label></div>`;}).join('');
 }
 function updateCompareChart(){
   const checked=[...document.querySelectorAll('#compare-checks input:checked')].map(el=>parseInt(el.value));
   const ctx=document.getElementById('compare-chart').getContext('2d');
   if(compareChart)compareChart.destroy();
-  const colors=['#c47a3a','#5a8a3a','#7ab3f5','#e06040','#e8a040','#8cbf6a'];
+  const colors=['#c47a3a','#5a8a3a','#7ab3f5','#e06040','#e8a040','var(--c-green)'];
   const datasets=checked.map((id,i)=>{const r=S.roastRecords.find(r=>r.id===id);const b=S.beans.find(b=>b.id===r.beanId);return{label:(b?b.name:'不明')+' ('+new Date(r.startTime).toLocaleDateString('ja-JP')+')',data:r.tempData,borderColor:colors[i%colors.length],backgroundColor:'transparent',borderWidth:2,pointRadius:1,tension:0.4,fill:false};});
   const labels=checked.length?S.roastRecords.find(r=>r.id===checked[0]).timeData.map(t=>ft(t)):[];
   compareChart=new Chart(ctx,{type:'line',data:{labels,datasets},options:{responsive:true,plugins:{legend:{labels:{color:'#a07850',font:{size:9}}}},scales:{x:{ticks:{color:'#a07850',font:{size:8},maxTicksLimit:8},grid:{color:'rgba(196,122,58,0.08)'}},y:{ticks:{color:'#a07850',font:{size:8}},grid:{color:'rgba(196,122,58,0.08)'}}}}});
@@ -2906,10 +2905,10 @@ function setOcrMode(mode){
   if(!bg||!bs)return;
   if(mode==='gemini'){
     bg.style.background='var(--c-accent)';bg.style.color='#1a0f07';bg.style.borderColor='var(--c-accent)';bg.style.fontWeight='600';
-    bs.style.background='transparent';bs.style.color='var(--c-cream)';bs.style.borderColor='var(--border)';bs.style.fontWeight='400';
+    bs.style.background='transparent';bs.style.color='var(--c-text)';bs.style.borderColor='var(--border)';bs.style.fontWeight='400';
   }else{
     bs.style.background='var(--c-accent)';bs.style.color='#1a0f07';bs.style.borderColor='var(--c-accent)';bs.style.fontWeight='600';
-    bg.style.background='transparent';bg.style.color='var(--c-cream)';bg.style.borderColor='var(--border)';bg.style.fontWeight='400';
+    bg.style.background='transparent';bg.style.color='var(--c-text)';bg.style.borderColor='var(--border)';bg.style.fontWeight='400';
   }
   ocrLog('OCRモード: '+(mode==='gemini'?'Gemini API':'7セグ認識'));
 }
@@ -3142,7 +3141,7 @@ function loadDriveStorage(){
   ['clientId','driveToken','driveUser','driveFileId','driveBeansFid','driveRoastFid','driveTasteFid'].forEach(k=>{S[k]=localStorage.getItem('rj_'+k)||null;});
   S.tokenExpiry=parseInt(localStorage.getItem('rj_tokenExpiry'))||null;
   if(S.clientId)document.getElementById('client-id-inp').value=S.clientId;
-  if(S.driveToken&&S.tokenExpiry&&Date.now()<S.tokenExpiry){document.getElementById('drive-dot').classList.add('connected');document.getElementById('drive-status-txt').textContent='接続中';document.getElementById('drive-status-txt').style.color='#8cbf6a';}
+  if(S.driveToken&&S.tokenExpiry&&Date.now()<S.tokenExpiry){document.getElementById('drive-dot').classList.add('connected');document.getElementById('drive-status-txt').textContent='接続中';document.getElementById('drive-status-txt').style.color='var(--c-green)';}
   else if(S.driveToken){S.driveToken=null;toast('トークンが期限切れです。再接続してください');}
 }
 function connectDrive(){
@@ -3156,7 +3155,7 @@ async function fetchDriveUser(){
   try{
     const r=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+S.driveToken}});
     const d=await r.json();S.driveUser=d.email||d.name||'接続済み';
-    document.getElementById('drive-dot').classList.add('connected');document.getElementById('drive-status-txt').textContent='接続中';document.getElementById('drive-status-txt').style.color='#8cbf6a';
+    document.getElementById('drive-dot').classList.add('connected');document.getElementById('drive-status-txt').textContent='接続中';document.getElementById('drive-status-txt').style.color='var(--c-green)';
     saveDriveStorage();updateDriveUI();toast('Drive に接続しました。データを読み込んでいます...');
     await loadFromDrive();
     if(hasPendingSync()){await syncToDrive();clearPending();toast('オフライン中の変更をDriveに同期しました');}
@@ -3258,7 +3257,7 @@ async function loadFromDrive(){
 function disconnectDrive(){
   S.driveToken=null;S.driveFileId=null;S.driveUser=null;S.lastSync=null;S.tokenExpiry=null;
   ['rj_driveToken','rj_driveUser','rj_driveFileId','rj_tokenExpiry'].forEach(k=>localStorage.removeItem(k));
-  document.getElementById('drive-dot').classList.remove('connected','syncing');document.getElementById('drive-status-txt').textContent='未接続';document.getElementById('drive-status-txt').style.color='var(--c-muted)';
+  document.getElementById('drive-dot').classList.remove('connected','syncing');document.getElementById('drive-status-txt').textContent='未接続';document.getElementById('drive-status-txt').style.color='var(--c-text-muted)';
   updateDriveUI();toast('接続を解除しました');
 }
 document.addEventListener('DOMContentLoaded',()=>{
