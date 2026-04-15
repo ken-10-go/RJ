@@ -781,6 +781,12 @@ function migrateMasterArr(arr){
 }
 // enabled=true のマスタの name 一覧を返すヘルパー
 function masterNames(type){return(S.master[type]||[]).filter(r=>r.enabled!==false).map(r=>r.name||r);}
+// ID でマスタ行を引くヘルパー（Phase 2）
+function masterById(type,id){return(S.master[type]||[]).find(r=>r.id===id);}
+function countryName(id){return id!=null?masterById('countries',id)?.name||'':('')}
+function processNamesFromIds(ids){return(ids||[]).map(id=>masterById('processes',id)?.name).filter(Boolean);}
+function varietyNamesFromIds(ids){return(ids||[]).map(id=>masterById('varieties',id)?.name).filter(Boolean);}
+function rlLabelsFromVals(vals){return(vals||[]).map(v=>{const r=ROAST_LEVELS.find(r=>r.val===v);return r?rlLabel(v):null;}).filter(Boolean);}
 
 // 既存 bean データの整合性マイグレーション
 function migrateExistingData(){
@@ -822,6 +828,37 @@ function migrateExistingData(){
   return changed;
 }
 
+// Phase 2 マイグレーション: テキスト管理 → ID管理
+function migrateToPhase2(){
+  let changed=false;
+  S.beans.forEach(b=>{
+    if(b.countryId!==undefined)return; // 移行済み
+    changed=true;
+    // country 文字列 → countryId
+    if(b.country){
+      const c=S.master.countries.find(x=>x.name===b.country&&x.enabled!==false);
+      b.countryId=c?c.id:null;
+    }else{b.countryId=null;}
+    // processes 文字列配列 → processIds
+    b.processIds=(b.processes||[]).map(name=>{
+      const p=S.master.processes.find(x=>x.name===name&&x.enabled!==false);
+      return p?p.id:null;
+    }).filter(id=>id!==null);
+    // varieties 文字列配列 → varietyIds
+    b.varietyIds=(b.varieties||[]).map(name=>{
+      const v=S.master.varieties.find(x=>x.name===name&&x.enabled!==false);
+      return v?v.id:null;
+    }).filter(id=>id!==null);
+    // roastLevels "[1.0] ライト" → roastLevelVals [1.0]
+    b.roastLevelVals=(b.roastLevels||[]).map(label=>{
+      const match=label.match(/^\[(\d+\.\d+)\]/);
+      return match?parseFloat(match[1]):null;
+    }).filter(v=>v!==null);
+  });
+  if(changed){saveLocal();console.log('migrateToPhase2: ID管理に移行しました');}
+  return changed;
+}
+
 // ===== STATE =====
 const S={
   beans:[],roastRecords:[],tasteRecords:[],
@@ -835,9 +872,10 @@ const S={
   roastRunning:false,tempData:[],timeData:[],events:[],
   stars:0,selectedFlavors:[],activeFlavorCat:null,
   radarVals:[3,3,3,3,3,3],
-  beanSelectedCountry:null,beanSelectedProcesses:[],beanSelectedRLs:[],beanSelectedVarieties:[],filterPanelOpen:false,
-  filterCountries:[],filterRLs:[],filterYear:null,filterMonth:null,beanPhotoData:null,
+  beanSelectedCountryId:null,beanSelectedProcessIds:[],beanSelectedRLVals:[],beanSelectedVarietyIds:[],filterPanelOpen:false,
+  filterCountryIds:[],filterRLVals:[],filterYear:null,filterMonth:null,beanPhotoData:null,
   driveToken:null,driveFileId:null,driveUser:null,clientId:null,lastSync:null,tokenExpiry:null,
+  driveBeansFid:null,driveRoastFid:null,driveTasteFid:null,
   roastSetupOpen:true,
 };
 let roastChart=null,analysisChart=null,radarChart=null,compareChart=null;
@@ -907,46 +945,45 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('.multi-select-wrap'))closeAllDropdowns();
 });
 
+// --- 品種（複数選択・ID管理）---
 function renderVarietyDropdown(){
   const items=document.getElementById('variety-items');
-  items.innerHTML=masterNames('varieties').map(v=>{
-    const sel=S.beanSelectedVarieties.includes(v);
-    const esc=v.replace(/'/g,"\\'");
-    return '<div class="ms-item'+(sel?' selected':'')+'" onclick="toggleVariety(\''+esc+'\')">'+
-           '<div class="ms-check">'+(sel?'✓':'')+'</div><span>'+v+'</span></div>';
+  items.innerHTML=(S.master.varieties||[]).filter(r=>r.enabled!==false).map(v=>{
+    const sel=S.beanSelectedVarietyIds.includes(v.id);
+    return '<div class="ms-item'+(sel?' selected':'')+'" onclick="toggleVariety('+v.id+')">'+
+           '<div class="ms-check">'+(sel?'✓':'')+'</div><span>'+v.name+'</span></div>';
   }).join('');
   renderVarietyTags();
 }
 function renderVarietyTags(){
   const box=document.getElementById('variety-box');
   const ph=document.getElementById('variety-placeholder');
-  if(S.beanSelectedVarieties.length===0){
+  if(S.beanSelectedVarietyIds.length===0){
     ph.style.display='';
     box.querySelectorAll('.ms-tag').forEach(el=>el.remove());
   }else{
     ph.style.display='none';
     box.querySelectorAll('.ms-tag').forEach(el=>el.remove());
-    S.beanSelectedVarieties.forEach(v=>{
+    S.beanSelectedVarietyIds.forEach(id=>{
+      const name=masterById('varieties',id)?.name||'';
       const tag=document.createElement('div');
       tag.className='ms-tag';
-      tag.innerHTML=`${v}<button class="ms-tag-x" onclick="event.stopPropagation();toggleVariety('${v.replace(/'/g,"\\'")}')">×</button>`;
+      tag.innerHTML=`${name}<button class="ms-tag-x" onclick="event.stopPropagation();toggleVariety(${id})">×</button>`;
       box.appendChild(tag);
     });
   }
 }
-function toggleVariety(v){
-  if(S.beanSelectedVarieties.includes(v))S.beanSelectedVarieties=S.beanSelectedVarieties.filter(x=>x!==v);
-  else S.beanSelectedVarieties.push(v);
+function toggleVariety(id){
+  if(S.beanSelectedVarietyIds.includes(id))S.beanSelectedVarietyIds=S.beanSelectedVarietyIds.filter(x=>x!==id);
+  else S.beanSelectedVarietyIds.push(id);
   renderVarietyDropdown();
 }
 function addVarietyOption(){
   const inp=document.getElementById('variety-add-inp');
   const v=inp.value.trim();if(!v)return;
-  if(!masterNames('varieties').includes(v)){
-    S.master.varieties.push({id:Date.now(),name:v,enabled:true});
-    masterDirtyTypes.add('varieties');
-  }
-  if(!S.beanSelectedVarieties.includes(v))S.beanSelectedVarieties.push(v);
+  let row=S.master.varieties.find(r=>r.name===v&&r.enabled!==false);
+  if(!row){row={id:Date.now(),name:v,enabled:true};S.master.varieties.push(row);masterDirtyTypes.add('varieties');}
+  if(!S.beanSelectedVarietyIds.includes(row.id))S.beanSelectedVarietyIds.push(row.id);
   inp.value='';
   renderVarietyDropdown();
   autoSync();
@@ -959,108 +996,111 @@ function renderBeanForm(){
   renderRLDropdown();
   renderVarietyDropdown();
 }
-// --- 国（単一選択）---
+// --- 国（単一選択・ID管理）---
 function renderCountryDropdown(){
   const items=document.getElementById('country-items');
   const box=document.getElementById('country-box');
   const ph=document.getElementById('country-placeholder');
   if(!items)return;
-  items.innerHTML=masterNames('countries').map(c=>`
-    <div class="ms-item${S.beanSelectedCountry===c?' selected':''}" onclick="selectCountry('${c.replace(/'/g,'\\x27')}')">
-      <div class="ms-check">${S.beanSelectedCountry===c?'✓':''}</div>
-      <span>${c}</span>
+  items.innerHTML=(S.master.countries||[]).filter(r=>r.enabled!==false).map(c=>`
+    <div class="ms-item${S.beanSelectedCountryId===c.id?' selected':''}" onclick="selectCountry(${c.id})">
+      <div class="ms-check">${S.beanSelectedCountryId===c.id?'✓':''}</div>
+      <span>${c.name}</span>
     </div>`).join('');
   if(box&&ph){
     box.querySelectorAll('.ms-tag').forEach(t=>t.remove());
-    if(S.beanSelectedCountry){
+    const selName=countryName(S.beanSelectedCountryId);
+    if(S.beanSelectedCountryId!=null&&selName){
       ph.style.display='none';
       const tag=document.createElement('span');tag.className='ms-tag';
-      tag.innerHTML=`${S.beanSelectedCountry}<button class="ms-tag-x" onclick="event.stopPropagation();selectCountry('')">×</button>`;
+      tag.innerHTML=`${selName}<button class="ms-tag-x" onclick="event.stopPropagation();selectCountry(null)">×</button>`;
       box.insertBefore(tag,ph);
     }else{ph.style.display='';ph.textContent='国を選択...';}
   }
 }
-function selectCountry(c){
-  S.beanSelectedCountry=S.beanSelectedCountry===c?null:c;
+function selectCountry(id){
+  // id=null は選択解除
+  S.beanSelectedCountryId=S.beanSelectedCountryId===id?null:id;
   renderCountryDropdown();
-  if(c)closeAllDropdowns();
+  if(id!=null)closeAllDropdowns();
 }
 function addCountry(){
   const v=document.getElementById('b-country-free').value.trim();if(!v)return;
-  if(!masterNames('countries').includes(v)){
-    S.master.countries.push({id:Date.now(),name:v,enabled:true});
-    masterDirtyTypes.add('countries');
-  }
-  S.beanSelectedCountry=v;
+  let row=S.master.countries.find(r=>r.name===v&&r.enabled!==false);
+  if(!row){row={id:Date.now(),name:v,enabled:true};S.master.countries.push(row);masterDirtyTypes.add('countries');}
+  S.beanSelectedCountryId=row.id;
   document.getElementById('b-country-free').value='';
   renderCountryDropdown();closeAllDropdowns();
 }
-function getSelectedCountry(){return S.beanSelectedCountry||'';}
-// --- 精製方法（複数選択）---
+function getSelectedCountry(){return countryName(S.beanSelectedCountryId)||'';}
+// --- 精製方法（複数選択・ID管理）---
 function renderProcessDropdown(){
   const items=document.getElementById('process-items');
   const box=document.getElementById('process-box');
   const ph=document.getElementById('process-placeholder');
   if(!items)return;
-  items.innerHTML=masterNames('processes').map(p=>`
-    <div class="ms-item${S.beanSelectedProcesses.includes(p)?' selected':''}" onclick="toggleBeanProcessMs('${p.replace(/'/g,'\\x27')}')">
-      <div class="ms-check">${S.beanSelectedProcesses.includes(p)?'✓':''}</div>
-      <span>${p}</span>
+  items.innerHTML=(S.master.processes||[]).filter(r=>r.enabled!==false).map(p=>`
+    <div class="ms-item${S.beanSelectedProcessIds.includes(p.id)?' selected':''}" onclick="toggleBeanProcessMs(${p.id})">
+      <div class="ms-check">${S.beanSelectedProcessIds.includes(p.id)?'✓':''}</div>
+      <span>${p.name}</span>
     </div>`).join('');
   if(box&&ph){
     box.querySelectorAll('.ms-tag').forEach(t=>t.remove());
-    if(S.beanSelectedProcesses.length){
+    if(S.beanSelectedProcessIds.length){
       ph.style.display='none';
-      S.beanSelectedProcesses.forEach(p=>{
+      S.beanSelectedProcessIds.forEach(id=>{
+        const name=masterById('processes',id)?.name||'';
         const tag=document.createElement('span');tag.className='ms-tag';
-        tag.innerHTML=`${p}<button class="ms-tag-x" onclick="event.stopPropagation();toggleBeanProcessMs('${p.replace(/'/g,'\\x27')}')">×</button>`;
+        tag.innerHTML=`${name}<button class="ms-tag-x" onclick="event.stopPropagation();toggleBeanProcessMs(${id})">×</button>`;
         box.insertBefore(tag,ph);
       });
     }else{ph.style.display='';ph.textContent='精製方法を選択...';}
   }
 }
-function toggleBeanProcessMs(p){
-  if(S.beanSelectedProcesses.includes(p))S.beanSelectedProcesses=S.beanSelectedProcesses.filter(x=>x!==p);
-  else S.beanSelectedProcesses.push(p);
+function toggleBeanProcessMs(id){
+  if(S.beanSelectedProcessIds.includes(id))S.beanSelectedProcessIds=S.beanSelectedProcessIds.filter(x=>x!==id);
+  else S.beanSelectedProcessIds.push(id);
   renderProcessDropdown();
 }
 function addProcess(){
   const v=document.getElementById('b-process-free').value.trim();if(!v)return;
-  if(!masterNames('processes').includes(v)){
-    S.master.processes.push({id:Date.now(),name:v,enabled:true});
-    masterDirtyTypes.add('processes');
-  }
-  if(!S.beanSelectedProcesses.includes(v))S.beanSelectedProcesses.push(v);
+  let row=S.master.processes.find(r=>r.name===v&&r.enabled!==false);
+  if(!row){row={id:Date.now(),name:v,enabled:true};S.master.processes.push(row);masterDirtyTypes.add('processes');}
+  if(!S.beanSelectedProcessIds.includes(row.id))S.beanSelectedProcessIds.push(row.id);
   document.getElementById('b-process-free').value='';
   renderProcessDropdown();
 }
-// --- 推奨焙煎度（複数選択）---
+// --- 推奨焙煎度（複数選択・val管理）---
 function renderRLDropdown(){
   const items=document.getElementById('rl-items');
   const box=document.getElementById('rl-box');
   const ph=document.getElementById('rl-placeholder');
   if(!items)return;
-  const rlLabels=ROAST_LEVELS.map(r=>'['+r.val.toFixed(1)+'] '+r.ja);
-  items.innerHTML=rlLabels.map(label=>`
-    <div class="ms-item${S.beanSelectedRLs.includes(label)?' selected':''}" onclick="toggleBeanRLMs('${label.replace(/'/g,'\\x27')}')">
-      <div class="ms-check">${S.beanSelectedRLs.includes(label)?'✓':''}</div>
+  items.innerHTML=ROAST_LEVELS.map(r=>{
+    const label=rlLabel(r.val);
+    const sel=S.beanSelectedRLVals.includes(r.val);
+    return `<div class="ms-item${sel?' selected':''}" onclick="toggleBeanRLMs(${r.val})">
+      <div class="ms-check">${sel?'✓':''}</div>
       <span>${label}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   if(box&&ph){
     box.querySelectorAll('.ms-tag').forEach(t=>t.remove());
-    if(S.beanSelectedRLs.length){
+    if(S.beanSelectedRLVals.length){
       ph.style.display='none';
-      S.beanSelectedRLs.forEach(r=>{
+      S.beanSelectedRLVals.forEach(val=>{
+        const label=rlLabel(val);
         const tag=document.createElement('span');tag.className='ms-tag';
-        tag.innerHTML=`${r}<button class="ms-tag-x" onclick="event.stopPropagation();toggleBeanRLMs('${r.replace(/'/g,'\\x27')}')">×</button>`;
+        tag.innerHTML=`${label}<button class="ms-tag-x" onclick="event.stopPropagation();toggleBeanRLMs(${val})">×</button>`;
         box.insertBefore(tag,ph);
       });
     }else{ph.style.display='';ph.textContent='焙煎度を選択...';}
   }
 }
-function toggleBeanRLMs(label){
-  if(S.beanSelectedRLs.includes(label))S.beanSelectedRLs=S.beanSelectedRLs.filter(x=>x!==label);
-  else S.beanSelectedRLs.push(label);
+function toggleBeanRLMs(val){
+  val=parseFloat(val);
+  if(S.beanSelectedRLVals.includes(val))S.beanSelectedRLVals=S.beanSelectedRLVals.filter(x=>x!==val);
+  else S.beanSelectedRLVals.push(val);
   renderRLDropdown();
 }
 // --- フィルタパネル ---
@@ -1073,8 +1113,8 @@ function toggleFilterPanel(){
 }
 function updateFilterBadges(){
   const parts=[];
-  if(S.filterCountries.length)parts.push('国×'+S.filterCountries.length);
-  if(S.filterRLs.length)parts.push('焙煎度×'+S.filterRLs.length);
+  if(S.filterCountryIds.length)parts.push('国×'+S.filterCountryIds.length);
+  if(S.filterRLVals.length)parts.push('焙煎度×'+S.filterRLVals.length);
   if(S.filterYear)parts.push(S.filterYear+'年');
   if(S.filterMonth)parts.push(parseInt(S.filterMonth)+'月');
   const el=document.getElementById('filter-badges');
@@ -1094,37 +1134,38 @@ function addBrew(){
 function getSelectedBrew(){const v=document.getElementById('t-brew-sel').value;return v==='__free__'?document.getElementById('t-brew-free').value.trim():v;}
 function initFilterButtons(){
   updateFilterBadges();
-  // 国フィルタ（multi-select）
+  // 国フィルタ（multi-select・ID管理）
   const cItems=document.getElementById('country-filter-items');
   if(cItems){
-    cItems.innerHTML=masterNames('countries').map(c=>`
-      <div class="ms-item${S.filterCountries.includes(c)?' selected':''}" onclick="toggleCountryFilter('${c}')">
-        <div class="ms-check">${S.filterCountries.includes(c)?'✓':''}</div>
-        <span>${c}</span>
+    cItems.innerHTML=(S.master.countries||[]).filter(r=>r.enabled!==false).map(c=>`
+      <div class="ms-item${S.filterCountryIds.includes(c.id)?' selected':''}" onclick="toggleCountryFilter(${c.id})">
+        <div class="ms-check">${S.filterCountryIds.includes(c.id)?'✓':''}</div>
+        <span>${c.name}</span>
       </div>`).join('');
   }
   const cBox=document.getElementById('country-filter-box');
   const cPh=document.getElementById('country-filter-placeholder');
   if(cBox&&cPh){
     cBox.querySelectorAll('.ms-tag').forEach(t=>t.remove());
-    if(S.filterCountries.length){
+    if(S.filterCountryIds.length){
       cPh.style.display='none';
-      S.filterCountries.forEach(c=>{
+      S.filterCountryIds.forEach(id=>{
+        const name=countryName(id);
         const tag=document.createElement('span');tag.className='ms-tag';
-        tag.innerHTML=`${c}<button class="ms-tag-x" onclick="event.stopPropagation();toggleCountryFilter('${c}')">×</button>`;
+        tag.innerHTML=`${name}<button class="ms-tag-x" onclick="event.stopPropagation();toggleCountryFilter(${id})">×</button>`;
         cBox.insertBefore(tag,cPh);
       });
     } else {
       cPh.style.display='';cPh.textContent='すべての国';
     }
   }
-  // 焙煎度フィルタ（multi-select）
+  // 焙煎度フィルタ（multi-select・val管理）
   const rItems=document.getElementById('rl-filter-items');
   if(rItems){
     rItems.innerHTML=ROAST_LEVELS.map(r=>{
-      const label='['+r.val.toFixed(1)+'] '+r.ja;
-      return `<div class="ms-item${S.filterRLs.includes(r.ja)?' selected':''}" onclick="toggleRLFilter('${r.ja}')">
-        <div class="ms-check">${S.filterRLs.includes(r.ja)?'✓':''}</div>
+      const label=rlLabel(r.val);
+      return `<div class="ms-item${S.filterRLVals.includes(r.val)?' selected':''}" onclick="toggleRLFilter(${r.val})">
+        <div class="ms-check">${S.filterRLVals.includes(r.val)?'✓':''}</div>
         <span>${label}</span>
       </div>`;
     }).join('');
@@ -1133,11 +1174,12 @@ function initFilterButtons(){
   const rPh=document.getElementById('rl-filter-placeholder');
   if(rBox&&rPh){
     rBox.querySelectorAll('.ms-tag').forEach(t=>t.remove());
-    if(S.filterRLs.length){
+    if(S.filterRLVals.length){
       rPh.style.display='none';
-      S.filterRLs.forEach(ja=>{
+      S.filterRLVals.forEach(val=>{
+        const label=rlLabel(val);
         const tag=document.createElement('span');tag.className='ms-tag';
-        tag.innerHTML=`${ja}<button class="ms-tag-x" onclick="event.stopPropagation();toggleRLFilter('${ja}')">×</button>`;
+        tag.innerHTML=`${label}<button class="ms-tag-x" onclick="event.stopPropagation();toggleRLFilter(${val})">×</button>`;
         rBox.insertBefore(tag,rPh);
       });
     } else {
@@ -1154,18 +1196,19 @@ function initFilterButtons(){
 }
 function setYearFilter(v){S.filterYear=v||null;renderBeans();}
 function setMonthFilter(v){S.filterMonth=v||null;renderBeans();}
-function toggleCountryFilter(c){
-  if(S.filterCountries.includes(c))S.filterCountries=S.filterCountries.filter(x=>x!==c);
-  else S.filterCountries.push(c);
+function toggleCountryFilter(id){
+  if(S.filterCountryIds.includes(id))S.filterCountryIds=S.filterCountryIds.filter(x=>x!==id);
+  else S.filterCountryIds.push(id);
   initFilterButtons();renderBeans();
 }
-function toggleRLFilter(ja){
-  if(S.filterRLs.includes(ja))S.filterRLs=S.filterRLs.filter(x=>x!==ja);
-  else S.filterRLs.push(ja);
+function toggleRLFilter(val){
+  val=parseFloat(val);
+  if(S.filterRLVals.includes(val))S.filterRLVals=S.filterRLVals.filter(x=>x!==val);
+  else S.filterRLVals.push(val);
   initFilterButtons();renderBeans();
 }
-function setCountryFilter(c){toggleCountryFilter(c);}
-function setRLFilter(r){toggleRLFilter(r);}
+function setCountryFilter(id){toggleCountryFilter(id);}
+function setRLFilter(val){toggleRLFilter(val);}
 function changeQty(d){const i=document.getElementById('b-amount');i.value=Math.max(0,(parseInt(i.value)||0)+d);}
 
 // ===== BEANS CRUD =====
@@ -1173,13 +1216,19 @@ function saveBean(){
   const name=document.getElementById('b-name').value.trim();
   if(!name){toast('豆の名前を入力してください');return;}
   const editId=document.getElementById('b-edit-id').value;
+  // ID管理フィールド（新）＋ 文字列フィールド（後方互換）を両方保持
   const bean={
     id:editId?parseInt(editId):Date.now(),
-    name,country:getSelectedCountry(),
+    name,
+    countryId:S.beanSelectedCountryId,
+    country:countryName(S.beanSelectedCountryId),
     farm:document.getElementById('b-farm').value,
-    varieties:[...S.beanSelectedVarieties],
-    processes:[...S.beanSelectedProcesses],
-    roastLevels:[...S.beanSelectedRLs],
+    varietyIds:[...S.beanSelectedVarietyIds],
+    varieties:varietyNamesFromIds(S.beanSelectedVarietyIds),
+    processIds:[...S.beanSelectedProcessIds],
+    processes:processNamesFromIds(S.beanSelectedProcessIds),
+    roastLevelVals:[...S.beanSelectedRLVals],
+    roastLevels:rlLabelsFromVals(S.beanSelectedRLVals),
     shop:document.getElementById('b-shop').value,
     amount:document.getElementById('b-amount').value,
     purchaseDate:document.getElementById('b-purchase-date').value,
@@ -1207,7 +1256,7 @@ function clearBeanForm(){
   document.getElementById('bean-form-title').textContent='豆を登録';
   document.getElementById('bean-save-btn').textContent='豆を登録する';
   document.getElementById('bean-cancel-btn').style.display='none';
-  S.beanSelectedCountry=null;S.beanSelectedProcesses=[];S.beanSelectedRLs=[];S.beanPhotoData=null;S.beanSelectedVarieties=[];
+  S.beanSelectedCountryId=null;S.beanSelectedProcessIds=[];S.beanSelectedRLVals=[];S.beanPhotoData=null;S.beanSelectedVarietyIds=[];
   renderBeanForm();
 }
 
@@ -1223,10 +1272,15 @@ function editBean(id){
   document.getElementById('b-taste').value=b.taste||'';
   document.getElementById('b-memo').value=b.memo||'';
   document.getElementById('b-edit-id').value=b.id;
-  S.beanSelectedCountry=b.country||null;
-  S.beanSelectedProcesses=[...(b.processes||[])];
-  S.beanSelectedRLs=[...(b.roastLevels||[])];
-  S.beanSelectedVarieties=[...(b.varieties||[])];
+  // Phase2済みならID直接、未移行なら名前でルックアップ
+  S.beanSelectedCountryId=b.countryId!==undefined?b.countryId:
+    (b.country?(S.master.countries.find(r=>r.name===b.country&&r.enabled!==false)||{}).id||null:null);
+  S.beanSelectedProcessIds=b.processIds!==undefined?[...b.processIds]:
+    (b.processes||[]).map(nm=>(S.master.processes.find(r=>r.name===nm&&r.enabled!==false)||{}).id).filter(Boolean);
+  S.beanSelectedRLVals=b.roastLevelVals!==undefined?[...b.roastLevelVals]:
+    (b.roastLevels||[]).map(lbl=>{const m=lbl.match(/^\[(\d+\.\d+)\]/);return m?parseFloat(m[1]):null;}).filter(v=>v!==null);
+  S.beanSelectedVarietyIds=b.varietyIds!==undefined?[...b.varietyIds]:
+    (b.varieties||[]).map(nm=>(S.master.varieties.find(r=>r.name===nm&&r.enabled!==false)||{}).id).filter(Boolean);
   if(b.photo){const img=document.getElementById('b-photo-preview');img.src=b.photo;img.style.display='block';S.beanPhotoData=b.photo;}
   document.getElementById('bean-form-title').textContent='豆を編集';
   document.getElementById('bean-save-btn').textContent='更新する';
@@ -1238,7 +1292,9 @@ function editBean(id){
 function copyBean(id){
   const b=S.beans.find(b=>b.id===id);if(!b)return;
   const copy={...b,id:Date.now(),name:b.name+' (コピー)',photo:b.photo||null,
-    processes:[...(b.processes||[])],roastLevels:[...(b.roastLevels||[])],varieties:[...(b.varieties||[])]};
+    processIds:[...(b.processIds||[])],processes:[...(b.processes||[])],
+    roastLevelVals:[...(b.roastLevelVals||[])],roastLevels:[...(b.roastLevels||[])],
+    varietyIds:[...(b.varietyIds||[])],varieties:[...(b.varieties||[])]};
   S.beans.push(copy);renderBeans();updateBeanSelect();
   toast('「'+b.name+'」をコピーしました');autoSync();
 }
@@ -1262,16 +1318,23 @@ function renderBeans(){
   const el=document.getElementById('bean-list');
   initFilterButtons();
   let beans=S.beans;
-  if(S.filterCountries.length)beans=beans.filter(b=>S.filterCountries.includes(b.country));
-  if(S.filterRLs.length)beans=beans.filter(b=>b.roastLevels&&b.roastLevels.some(r=>S.filterRLs.some(ja=>r.includes(ja))));
+  if(S.filterCountryIds.length)beans=beans.filter(b=>
+    S.filterCountryIds.includes(b.countryId)||
+    (b.countryId==null&&S.filterCountryIds.some(id=>countryName(id)===b.country)));
+  if(S.filterRLVals.length)beans=beans.filter(b=>
+    (b.roastLevelVals&&b.roastLevelVals.some(v=>S.filterRLVals.includes(v)))||
+    (b.roastLevels&&b.roastLevels.some(lbl=>S.filterRLVals.some(v=>lbl.startsWith('['+v.toFixed(1)+']')))));
   if(S.filterYear)beans=beans.filter(b=>b.purchaseDate&&b.purchaseDate.startsWith(S.filterYear));
   if(S.filterMonth)beans=beans.filter(b=>b.purchaseDate&&b.purchaseDate.slice(5,7)===S.filterMonth);
   if(!beans.length){el.innerHTML='<div class="empty">該当する豆がありません</div>';return;}
   el.innerHTML=beans.map(b=>{
-    const proc=(b.processes||[]).join(' / ');
+    // ID管理優先、なければ旧文字列フォールバック
+    const cname=countryName(b.countryId)||(b.country||'');
+    const procs=b.processIds&&b.processIds.length?processNamesFromIds(b.processIds):(b.processes||[]);
+    const proc=procs.join(' / ');
     const pd=b.purchaseDate?b.purchaseDate.slice(0,7).replace('-','年')+'月購入':'';
     return`<div class="bean-item">
-      <div class="bean-name">${b.country?b.country+' / ':''}${b.name}</div>
+      <div class="bean-name">${cname?cname+' / ':''}${b.name}</div>
       <div class="bean-sub">${[proc,pd].filter(Boolean).join(' | ')}</div>
       <div class="bean-actions">
         <button class="btn btn-sm btn-outline" onclick="editBean(${b.id})">編集</button>
@@ -1285,15 +1348,19 @@ function renderBeans(){
 function updateBeanSelect(){
   const s=document.getElementById('r-bean');
   s.innerHTML=S.beans.length?S.beans.map(b=>{
-    const proc=b.processes&&b.processes.length?' / '+b.processes.join('·'):'';
-    return`<option value="${b.id}">${b.country?b.country+' / ':''}${b.name}${proc}</option>`;
+    const cname=countryName(b.countryId)||(b.country||'');
+    const procs=b.processIds&&b.processIds.length?processNamesFromIds(b.processIds):(b.processes||[]);
+    const proc=procs.length?' / '+procs.join('·'):'';
+    return`<option value="${b.id}">${cname?cname+' / ':''}${b.name}${proc}</option>`;
   }).join(''):'<option>先に豆を登録してください</option>';
   updateRoastLevelHint();
 }
 function updateRoastLevelHint(){
   const b=S.beans.find(b=>b.id===parseInt(document.getElementById('r-bean').value));
   const el=document.getElementById('r-rl-hint');
-  if(b&&b.roastLevels&&b.roastLevels.length)el.textContent='推奨: '+b.roastLevels.join(' / ');else el.textContent='';
+  if(!b){el.textContent='';return;}
+  const labels=b.roastLevelVals&&b.roastLevelVals.length?rlLabelsFromVals(b.roastLevelVals):(b.roastLevels||[]);
+  if(labels.length)el.textContent='推奨: '+labels.join(' / ');else el.textContent='';
 }
 
 // ===== URL IMPORT =====
@@ -1396,24 +1463,27 @@ function importFromText(){
   if(found.name){document.getElementById('b-name').value=found.name;filled++;}
 
   if(found.country){
-    if(!masterNames('countries').includes(found.country)){
-      S.master.countries.push({id:Date.now(),name:found.country,enabled:true});
-      masterDirtyTypes.add('countries');
-    }
-    S.beanSelectedCountry=found.country;
+    let row=S.master.countries.find(r=>r.name===found.country&&r.enabled!==false);
+    if(!row){row={id:Date.now(),name:found.country,enabled:true};S.master.countries.push(row);masterDirtyTypes.add('countries');}
+    S.beanSelectedCountryId=row.id;
     renderCountryDropdown();
     filled++;
   }
   if(found.farm){document.getElementById('b-farm').value=found.farm;filled++;}
 
   if(found.variety){
-    if(!S.master.varieties.includes(found.variety))S.master.varieties.push(found.variety);
-    S.beanSelectedVarieties=[found.variety];
+    let row=S.master.varieties.find(r=>r.name===found.variety&&r.enabled!==false);
+    if(!row){row={id:Date.now(),name:found.variety,enabled:true};S.master.varieties.push(row);masterDirtyTypes.add('varieties');}
+    S.beanSelectedVarietyIds=[row.id];
     renderVarietyDropdown();
     filled++;
   }
   if(found.processes&&found.processes.length){
-    S.beanSelectedProcesses=found.processes;
+    S.beanSelectedProcessIds=found.processes.map(name=>{
+      let row=S.master.processes.find(r=>r.name===name&&r.enabled!==false);
+      if(!row){row={id:Date.now()+(Math.random()*100|0),name,enabled:true};S.master.processes.push(row);masterDirtyTypes.add('processes');}
+      return row.id;
+    });
     renderProcessDropdown();
     filled++;
   }
@@ -2864,6 +2934,9 @@ function clearPending(){localStorage.removeItem(LS_PENDING);}
 // ===== DRIVE =====
 const DRIVE_FOLDER_PATH=['Coffee','App'];
 const DRIVE_FILE_NAME='roast_journal.json';
+const DRIVE_BEANS_FILE='beans.json';
+const DRIVE_ROAST_FILE='roast_records.json';
+const DRIVE_TASTE_FILE='taste_records.json';
 const BOUNDARY='rj_boundary_xyz';
 async function ensureFolderPath(token){
   let pid='root';
@@ -2890,6 +2963,39 @@ async function saveOrUpdateFile(token,folderId,jsonBody){
     const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':`multipart/related; boundary=${BOUNDARY}`},body});
     const d=await r.json();if(d.error)throw new Error(d.error.message);S.driveFileId=d.id;return d.id;
   }
+}
+// ===== DRIVE JSON FILE HELPERS (Phase 2) =====
+async function fetchJsonFile(token,folderId,fileName){
+  const q=`name='${fileName}' and '${folderId}' in parents and trashed=false`;
+  const sr=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)',{headers:{Authorization:'Bearer '+token}});
+  const sd=await sr.json();
+  if(!sd.files||!sd.files.length)return null;
+  const fid=sd.files[0].id;
+  const fr=await fetch('https://www.googleapis.com/drive/v3/files/'+fid+'?alt=media',{headers:{Authorization:'Bearer '+token}});
+  if(!fr.ok)return null;
+  const data=await fr.json();
+  return{fid,data};
+}
+async function saveJsonFile(token,folderId,fileName,jsonBody,existingFid){
+  if(existingFid){
+    const r=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+existingFid+'?uploadType=media',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:jsonBody});
+    const d=await r.json();
+    if(!d.error)return existingFid;
+    if(d.error.code!==404)throw new Error(d.error.message);
+    // 404 → fall through to search/create
+  }
+  const q=`name='${fileName}' and '${folderId}' in parents and trashed=false`;
+  const sr=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)',{headers:{Authorization:'Bearer '+token}});
+  const sd=await sr.json();
+  if(sd.files&&sd.files.length>0){
+    const fid=sd.files[0].id;
+    await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fid+'?uploadType=media',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:jsonBody});
+    return fid;
+  }
+  const body=buildMultipart({name:fileName,mimeType:'application/json',parents:[folderId]},jsonBody);
+  const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':`multipart/related; boundary=${BOUNDARY}`},body});
+  const d=await r.json();if(d.error)throw new Error(d.error.message);
+  return d.id;
 }
 // ===== MASTER CSV =====
 function parseCSV(text){
@@ -2975,9 +3081,9 @@ async function loadAllMasterFromDrive(){
   }catch(e){console.warn('loadAllMasterFromDrive',e);}
 }
 
-function saveDriveStorage(){['clientId','driveToken','driveUser','driveFileId','tokenExpiry'].forEach(k=>localStorage.setItem('rj_'+k,S[k]||''));}
+function saveDriveStorage(){['clientId','driveToken','driveUser','driveFileId','tokenExpiry','driveBeansFid','driveRoastFid','driveTasteFid'].forEach(k=>localStorage.setItem('rj_'+k,S[k]||''));}
 function loadDriveStorage(){
-  ['clientId','driveToken','driveUser','driveFileId'].forEach(k=>{S[k]=localStorage.getItem('rj_'+k)||null;});
+  ['clientId','driveToken','driveUser','driveFileId','driveBeansFid','driveRoastFid','driveTasteFid'].forEach(k=>{S[k]=localStorage.getItem('rj_'+k)||null;});
   S.tokenExpiry=parseInt(localStorage.getItem('rj_tokenExpiry'))||null;
   if(S.clientId)document.getElementById('client-id-inp').value=S.clientId;
   if(S.driveToken&&S.tokenExpiry&&Date.now()<S.tokenExpiry){document.getElementById('drive-dot').classList.add('connected');document.getElementById('drive-status-txt').textContent='接続中';document.getElementById('drive-status-txt').style.color='#8cbf6a';}
@@ -3012,9 +3118,15 @@ async function syncToDrive(){
   document.getElementById('drive-dot').classList.add('syncing');
   try{
     const fid=await ensureFolderPath(S.driveToken);
-    const body=JSON.stringify({version:5,exportedAt:new Date().toISOString(),beans:S.beans,roastRecords:S.roastRecords,tasteRecords:S.tasteRecords});
-    await saveOrUpdateFile(S.driveToken,fid,body);
-    S.lastSync=new Date().toISOString();saveDriveStorage();updateDriveUI();toast('Drive に保存しました');
+    const ts=new Date().toISOString();
+    // 3ファイルに分割保存（Phase 2）
+    S.driveBeansFid=await saveJsonFile(S.driveToken,fid,DRIVE_BEANS_FILE,
+      JSON.stringify({version:1,exportedAt:ts,beans:S.beans}),S.driveBeansFid);
+    S.driveRoastFid=await saveJsonFile(S.driveToken,fid,DRIVE_ROAST_FILE,
+      JSON.stringify({version:1,exportedAt:ts,roastRecords:S.roastRecords}),S.driveRoastFid);
+    S.driveTasteFid=await saveJsonFile(S.driveToken,fid,DRIVE_TASTE_FILE,
+      JSON.stringify({version:1,exportedAt:ts,tasteRecords:S.tasteRecords}),S.driveTasteFid);
+    S.lastSync=ts;saveDriveStorage();updateDriveUI();toast('Drive に保存しました');
   }catch(e){console.error('syncToDrive',e);toast('保存エラー: '+e.message);}
   finally{document.getElementById('drive-dot').classList.remove('syncing');if(btn)btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Drive に保存する';}
 }
@@ -3023,26 +3135,42 @@ async function loadFromDrive(){
   toast('Drive から読み込み中...');
   try{
     const fid=await ensureFolderPath(S.driveToken);
-    const q=`name='${DRIVE_FILE_NAME}' and '${fid}' in parents and trashed=false`;
-    const sr=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)',{headers:{Authorization:'Bearer '+S.driveToken}});
-    const sd=await sr.json();
-    if(!sd.files||!sd.files.length){toast('保存データがありません（新規スタート）');return;}
-    S.driveFileId=sd.files[0].id;
-    const fr=await fetch('https://www.googleapis.com/drive/v3/files/'+S.driveFileId+'?alt=media',{headers:{Authorization:'Bearer '+S.driveToken}});
-    if(!fr.ok){toast('保存データがありません（新規スタート）');return;}
-    const data=await fr.json();
-    // version<5の旧データにmasterが含まれている場合は後方互換でマイグレート
-    if(data.master&&(!data.version||data.version<5)){
-      if(data.master.countries)S.master.countries=migrateMasterArr(data.master.countries);
-      if(data.master.processes)S.master.processes=migrateMasterArr(data.master.processes);
-      if(data.master.varieties)S.master.varieties=migrateMasterArr(data.master.varieties);
+    // Phase 2: 3ファイルを並行取得
+    const [beansRes,roastRes,tasteRes]=await Promise.all([
+      fetchJsonFile(S.driveToken,fid,DRIVE_BEANS_FILE),
+      fetchJsonFile(S.driveToken,fid,DRIVE_ROAST_FILE),
+      fetchJsonFile(S.driveToken,fid,DRIVE_TASTE_FILE),
+    ]);
+    const hasNew=beansRes||roastRes||tasteRes;
+    if(hasNew){
+      // 新形式ファイル読み込み
+      if(beansRes){S.driveBeansFid=beansRes.fid;if(beansRes.data.beans)S.beans=beansRes.data.beans;}
+      if(roastRes){S.driveRoastFid=roastRes.fid;if(roastRes.data.roastRecords)S.roastRecords=roastRes.data.roastRecords;}
+      if(tasteRes){S.driveTasteFid=tasteRes.fid;if(tasteRes.data.tasteRecords)S.tasteRecords=tasteRes.data.tasteRecords;}
+    }else{
+      // レガシー: roast_journal.json にフォールバック
+      const q=`name='${DRIVE_FILE_NAME}' and '${fid}' in parents and trashed=false`;
+      const sr=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)',{headers:{Authorization:'Bearer '+S.driveToken}});
+      const sd=await sr.json();
+      if(!sd.files||!sd.files.length){toast('保存データがありません（新規スタート）');return;}
+      S.driveFileId=sd.files[0].id;
+      const fr=await fetch('https://www.googleapis.com/drive/v3/files/'+S.driveFileId+'?alt=media',{headers:{Authorization:'Bearer '+S.driveToken}});
+      if(!fr.ok){toast('保存データがありません（新規スタート）');return;}
+      const data=await fr.json();
+      if(data.master&&(!data.version||data.version<5)){
+        if(data.master.countries)S.master.countries=migrateMasterArr(data.master.countries);
+        if(data.master.processes)S.master.processes=migrateMasterArr(data.master.processes);
+        if(data.master.varieties)S.master.varieties=migrateMasterArr(data.master.varieties);
+      }
+      if(data.beans)S.beans=data.beans;
+      if(data.roastRecords)S.roastRecords=data.roastRecords;
+      if(data.tasteRecords)S.tasteRecords=data.tasteRecords;
     }
-    if(data.beans)S.beans=data.beans;if(data.roastRecords)S.roastRecords=data.roastRecords;if(data.tasteRecords)S.tasteRecords=data.tasteRecords;
     S.lastSync=new Date().toISOString();saveDriveStorage();
     migrateExistingData();
+    migrateToPhase2();
     renderBeanForm();renderBeans();updateBeanSelect();updateTasteSelect();updateDriveUI();initFilterButtons();
     toast('読み込みました（豆:'+S.beans.length+' 焙煎:'+S.roastRecords.length+'）');
-    // マスタCSVを別途読み込み（新形式）
     loadAllMasterFromDrive();
   }catch(e){console.error('loadFromDrive',e);toast('読み込みエラー: '+e.message);}
 }
@@ -3072,7 +3200,7 @@ document.getElementById('edit-roast-modal').addEventListener('click',function(e)
 // ===== INIT =====
 loadDriveStorage();
 loadMasterFileIds();
-if(loadLocal()){console.log('Loaded from localStorage');migrateExistingData();}
+if(loadLocal()){console.log('Loaded from localStorage');migrateExistingData();migrateToPhase2();}
 renderBeanForm();
 initOcrBox();
 initFilterButtons();
