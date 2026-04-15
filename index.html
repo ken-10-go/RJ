@@ -782,6 +782,46 @@ function migrateMasterArr(arr){
 // enabled=true のマスタの name 一覧を返すヘルパー
 function masterNames(type){return(S.master[type]||[]).filter(r=>r.enabled!==false).map(r=>r.name||r);}
 
+// 既存 bean データの整合性マイグレーション
+function migrateExistingData(){
+  let changed=false;
+  S.beans.forEach(b=>{
+    // ① roastLevels: 旧形式 "ライト[1.0]" → 新形式 "[1.0] ライト"
+    if(b.roastLevels&&b.roastLevels.length){
+      const converted=b.roastLevels.map(rl=>{
+        if(/^\[\d+\.\d+\]/.test(rl))return rl; // 新形式はそのまま
+        const match=ROAST_LEVELS.find(r=>rl.includes(r.ja));
+        return match?'['+match.val.toFixed(1)+'] '+match.ja:rl;
+      });
+      if(JSON.stringify(converted)!==JSON.stringify(b.roastLevels)){b.roastLevels=converted;changed=true;}
+    }
+    // ② country: マスタにない国名を追加
+    if(b.country&&!masterNames('countries').includes(b.country)){
+      S.master.countries.push({id:Date.now()+(Math.random()*1000|0),name:b.country,enabled:true});
+      masterDirtyTypes.add('countries');changed=true;
+    }
+    // ③ processes: マスタにない精製方法を追加
+    (b.processes||[]).forEach(p=>{
+      if(p&&!masterNames('processes').includes(p)){
+        S.master.processes.push({id:Date.now()+(Math.random()*1000|0),name:p,enabled:true});
+        masterDirtyTypes.add('processes');changed=true;
+      }
+    });
+    // ④ varieties: マスタにない品種を追加
+    (b.varieties||[]).forEach(v=>{
+      if(v&&!masterNames('varieties').includes(v)){
+        S.master.varieties.push({id:Date.now()+(Math.random()*1000|0),name:v,enabled:true});
+        masterDirtyTypes.add('varieties');changed=true;
+      }
+    });
+  });
+  if(changed){
+    saveLocal();
+    console.log('migrateExistingData: データ整合性を修正しました');
+  }
+  return changed;
+}
+
 // ===== STATE =====
 const S={
   beans:[],roastRecords:[],tasteRecords:[],
@@ -2999,6 +3039,7 @@ async function loadFromDrive(){
     }
     if(data.beans)S.beans=data.beans;if(data.roastRecords)S.roastRecords=data.roastRecords;if(data.tasteRecords)S.tasteRecords=data.tasteRecords;
     S.lastSync=new Date().toISOString();saveDriveStorage();
+    migrateExistingData();
     renderBeanForm();renderBeans();updateBeanSelect();updateTasteSelect();updateDriveUI();initFilterButtons();
     toast('読み込みました（豆:'+S.beans.length+' 焙煎:'+S.roastRecords.length+'）');
     // マスタCSVを別途読み込み（新形式）
@@ -3031,7 +3072,7 @@ document.getElementById('edit-roast-modal').addEventListener('click',function(e)
 // ===== INIT =====
 loadDriveStorage();
 loadMasterFileIds();
-if(loadLocal()){console.log('Loaded from localStorage');}
+if(loadLocal()){console.log('Loaded from localStorage');migrateExistingData();}
 renderBeanForm();
 initOcrBox();
 initFilterButtons();
