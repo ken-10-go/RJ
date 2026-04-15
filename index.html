@@ -986,7 +986,7 @@ function addVarietyOption(){
   if(!S.beanSelectedVarietyIds.includes(row.id))S.beanSelectedVarietyIds.push(row.id);
   inp.value='';
   renderVarietyDropdown();
-  autoSync();
+  saveLocal(); // 品種追加はlocalのみ、豆登録時に同期
 }
 
 // ===== MASTER DATA =====
@@ -1129,7 +1129,7 @@ function addBrew(){
   const v=document.getElementById('t-brew-free').value.trim();if(!v)return;
   if(!S.master.brews.includes(v))S.master.brews.push(v);
   initBrewSelect();document.getElementById('t-brew-sel').value=v;
-  document.getElementById('t-brew-free-wrap').style.display='none';document.getElementById('t-brew-free').value='';autoSync();
+  document.getElementById('t-brew-free-wrap').style.display='none';document.getElementById('t-brew-free').value='';saveLocal(); // 抽出方法追加はlocalのみ
 }
 function getSelectedBrew(){const v=document.getElementById('t-brew-sel').value;return v==='__free__'?document.getElementById('t-brew-free').value.trim():v;}
 function initFilterButtons(){
@@ -1296,7 +1296,7 @@ function copyBean(id){
     roastLevelVals:[...(b.roastLevelVals||[])],roastLevels:[...(b.roastLevels||[])],
     varietyIds:[...(b.varietyIds||[])],varieties:[...(b.varieties||[])]};
   S.beans.push(copy);renderBeans();updateBeanSelect();
-  toast('「'+b.name+'」をコピーしました');autoSync();
+  toast('「'+b.name+'」をコピーしました');saveLocal(); // コピーはlocalのみ、登録時に同期
 }
 
 function cancelEditBean(){clearBeanForm();}
@@ -3127,6 +3127,13 @@ async function syncToDrive(){
   const errors=[];
   try{
     const fid=await ensureFolderPath(S.driveToken);
+    const masterFid=await ensureMasterFolder(S.driveToken);
+
+    // マスタCSV保存
+    for(const type of ['countries','processes','varieties']){
+      await saveMasterToDrive(type).catch(e=>{errors.push(type+': '+e.message);console.error('syncToDrive master '+type,e);});
+    }
+
     // beans.json
     await saveJsonFile(S.driveToken,fid,DRIVE_BEANS_FILE,
       JSON.stringify({version:1,exportedAt:ts,beans:S.beans}),S.driveBeansFid)
@@ -3142,6 +3149,7 @@ async function syncToDrive(){
       JSON.stringify({version:1,exportedAt:ts,tasteRecords:S.tasteRecords}),S.driveTasteFid)
       .then(id=>{S.driveTasteFid=id;})
       .catch(e=>{errors.push('taste: '+e.message);console.error('syncToDrive taste',e);});
+
     S.lastSync=ts;saveDriveStorage();updateDriveUI();
     if(errors.length)toast('一部保存エラー: '+errors.join(' / '));
     else toast('Drive に保存しました');
