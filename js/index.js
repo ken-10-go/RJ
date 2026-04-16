@@ -38,8 +38,23 @@ if (typeof GoogleDriveService !== 'undefined') {
 function initializeApp() {
   console.log('🚀 Coffee Roasting Manager v1.2 initialized');
 
-  // localStorage からデータを読み込む
-  const savedState = loadFromStorage('appState');
+  // localStorage からデータを読み込む（新形式と旧形式の互換性）
+  let savedState = loadFromStorage('appState');
+
+  // 新形式がない場合は旧形式（rj_offline_data）から読み込む
+  if (!savedState) {
+    const legacyKey = 'rj_offline_data';
+    const legacyData = localStorage.getItem(legacyKey);
+    if (legacyData) {
+      try {
+        savedState = JSON.parse(legacyData);
+        console.log('📂 Loading saved state from legacy localStorage key...');
+      } catch (e) {
+        console.warn('Failed to parse legacy localStorage data:', e);
+      }
+    }
+  }
+
   if (savedState) {
     console.log('📂 Loading saved state from localStorage...');
     window.appState.beans = savedState.beans || [];
@@ -79,12 +94,21 @@ function initializeApp() {
       event.startsWith('taste:') ||
       event.startsWith('master:')
     ) {
+      console.log(`📝 AppState event: ${event}`, data);
       saveAppState(window.appState);
+
+      // StateCompat に即座に同期
+      if (typeof window.stateCompat !== 'undefined') {
+        window.stateCompat.syncToLegacy();
+      }
     }
 
     // Undo復元後の UI更新
     if (event === 'undo:restored') {
       console.log('🔄 Undo restored');
+      if (typeof window.stateCompat !== 'undefined') {
+        window.stateCompat.syncToLegacy();
+      }
     }
   });
 
@@ -197,11 +221,18 @@ window.__DEBUG__ = {
   },
 };
 
+// アプリケーション初期化を実行
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  initializeApp();
+}
+
 console.log(
   '%c🍵 Coffee Roasting Manager',
   'color: #d97706; font-size: 16px; font-weight: bold;'
 );
-console.log('%cVersion: 1.1', 'color: #8b6f4d;');
+console.log('%cVersion: 1.2', 'color: #8b6f4d;');
 console.log(
   '%cDebug: Use window.__DEBUG__ to access app state and utilities',
   'color: #059669;'

@@ -72,11 +72,11 @@ class StateCompat {
   syncToLegacy() {
     if (!this.legacyS) return;
 
-    // 主要データを同期
-    this.legacyS.beans = this.appState.beans;
-    this.legacyS.roastRecords = this.appState.roastRecords;
-    this.legacyS.tasteRecords = this.appState.tasteRecords;
-    this.legacyS.master = this.appState.master;
+    // 主要データを深くコピーして同期（参照ではなく値をコピー）
+    this.legacyS.beans = JSON.parse(JSON.stringify(this.appState.beans));
+    this.legacyS.roastRecords = JSON.parse(JSON.stringify(this.appState.roastRecords));
+    this.legacyS.tasteRecords = JSON.parse(JSON.stringify(this.appState.tasteRecords));
+    this.legacyS.master = JSON.parse(JSON.stringify(this.appState.master));
 
     // UI状態を同期
     this.legacyS.beanSelectedCountryId = this.appState.ui.beanForm.countryId;
