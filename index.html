@@ -3227,5 +3227,22 @@ if(S.driveToken)loadFromDrive();
 setOcrMode(ocrMode);
 loadGeminiKeyStatus();
 </script>
+
+<!-- ===== Phase B: モジュール化（新） ===== -->
+<!-- Core: 状態管理 -->
+<script src="js/core/AppState.js"></script>
+
+<!-- Utils: ユーティリティ -->
+<script src="js/utils/validators.js"></script>
+<script src="js/utils/formatters.js"></script>
+<script src="js/utils/storage.js"></script>
+
+<!-- Services: ビジネスロジック -->
+<script src="js/services/MasterDataService.js"></script>
+<script src="js/services/BeanService.js"></script>
+
+<!-- App: 初期化 -->
+<script src="js/index.js"></script>
+
 </body>
 </html>
