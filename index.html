@@ -273,11 +273,11 @@ select.inp{cursor:pointer;}
       <span class="tab-lbl">焙煎</span>
     </button>
     <button class="tab" onclick="switchTab('records')">
-      <span class="tab-icon">📋</span>
+      <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="12" width="3" height="8" fill="currentColor"/><rect x="7" y="8" width="3" height="12" fill="currentColor"/><rect x="12" y="4" width="3" height="16" fill="currentColor"/><rect x="17" y="10" width="3" height="10" fill="currentColor"/></svg></span>
       <span class="tab-lbl">焙煎ログ</span>
     </button>
     <button class="tab" onclick="switchTab('taste')">
-      <span class="tab-icon">☕</span>
+      <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6,6 L6,20 Q6,22 8,22 L16,22 Q18,22 18,20 L18,6 M3,6 L21,6"/><rect x="9" y="2" width="6" height="4" fill="currentColor"/></svg></span>
       <span class="tab-lbl">味わい</span>
     </button>
     <button class="tab" onclick="switchTab('analysis')">
@@ -672,6 +672,20 @@ select.inp{cursor:pointer;}
   </div>
 </div>
 
+<!-- ===== 焙煎フローティングバー ===== -->
+<div id="roast-floating-bar" style="display:none;position:fixed;top:0;left:0;right:0;height:60px;background:var(--c-surface);border-bottom:1px solid var(--border);z-index:100;padding-top:env(safe-area-inset-top,0px);display:flex;align-items:center;padding-left:12px;padding-right:12px;gap:12px;box-shadow:var(--shadow-sm);">
+  <div style="flex:1;">
+    <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:700;color:var(--c-accent);line-height:1;" id="ro-timer-float">00:00</div>
+  </div>
+  <div style="flex:1;overflow:hidden;">
+    <div style="font-size:13px;font-weight:600;color:var(--c-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="ro-bean-name-float">—</div>
+    <div style="font-size:10px;color:var(--c-text-muted);margin-top:2px;" id="ro-status-float">準備中</div>
+  </div>
+  <button id="ro-start-btn-float" onclick="doStartRoast()" style="background:var(--c-accent);color:white;border:none;border-radius:6px;padding:6px 12px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">▶ スタート</button>
+  <button id="ro-camera-btn-float" onclick="toggleCameraOCR()" style="background:#fef3c7;color:var(--c-text);border:none;border-radius:6px;padding:6px 10px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">📷</button>
+  <button onclick="exitRoastMode()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--c-text-muted);">✕</button>
+</div>
+
 <!-- ===== 焙煎FloatingPanel ===== -->
 <div id="roast-overlay">
   <!-- パネルヘッダー -->
@@ -971,6 +985,14 @@ function switchTab(t){
   next.style.opacity='0';next.style.transform='translateY(8px)';
   next.classList.add('active');
   requestAnimationFrame(()=>requestAnimationFrame(()=>{next.style.opacity='';next.style.transform='';}));
+  // 焙煎中に焙煎パネルを表示・非表示
+  if(S.currentRoast&&document.getElementById('roast-floating-bar').style.display==='flex'){
+    if(t==='roast'){
+      document.getElementById('roast-overlay').classList.add('active');
+    } else {
+      document.getElementById('roast-overlay').classList.remove('active');
+    }
+  }
   if(t==='records')renderRecords();
   if(t==='analysis')renderAnalysis();
   if(t==='roast'){updateBeanSelect();updateRoastLevelHint();}
@@ -1641,7 +1663,13 @@ function startRoastAndOverlay(){
   showRoastOverlay();
 }
 function exitRoastMode(){
-  // 焙煎パネルを非表示（焙煎情報は保持）
+  // 焙煎を一時停止
+  if(S.roastRunning){
+    pauseRoast();
+  }
+  // フローティングバーを非表示
+  document.getElementById('roast-floating-bar').style.display='none';
+  // 焙煎パネルを非表示
   const panel=document.getElementById('roast-overlay');
   if(window.innerWidth<768){
     // スマートフォン：アニメーション付きで非表示
@@ -1658,7 +1686,7 @@ function exitRoastMode(){
   switchTab('beans');
 }
 function showRoastOverlay(){
-  // 使用豆情報をパネルに表示
+  // 使用豆情報をパネル・フローティングバーに表示
   const bean=S.beans.find(b=>b.id===S.currentRoast.beanId);
   if(bean){
     const country=bean.country||'—';
@@ -1666,41 +1694,36 @@ function showRoastOverlay(){
     const processes=bean.processes&&bean.processes.length>0?bean.processes.join(' '):'—';
     const display=`${country} ${name} ${processes}`;
     document.getElementById('ro-bean-header').textContent=display;
+    // フローティングバーに豆名を表示
+    document.getElementById('ro-bean-name-float').textContent=name;
   } else {
     document.getElementById('ro-bean-header').textContent='—';
+    document.getElementById('ro-bean-name-float').textContent='—';
   }
   document.getElementById('roast-overlay').classList.add('active');
+  document.getElementById('roast-floating-bar').style.display='flex';
   if(!S.roastRunning){
-    // 準備中状態：「▶ スタート」ボタン表示、カメラ起動
+    // 準備中状態：「▶ スタート」ボタン表示、カメラは自動起動しない
     const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='▶ スタート';
     const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='準備中';
+    const sf=document.getElementById('ro-status-float');if(sf)sf.textContent='準備中';
     if(!roastChart)initRoastChart();
-    if(!cameraStream){
-      startCameraOCR().catch(e=>{toast('カメラ起動エラー: '+e.message);});
-    }
+    // カメラは自動起動しない（ユーザーがボタンを押したときのみ）
   }
 }
 function hideRoastOverlay(){
   document.getElementById('roast-overlay').classList.remove('active');
+  document.getElementById('roast-floating-bar').style.display='none';
 }
 function doStartRoast(){
   S.roastRunning=true;
   const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='⏸ 停止';
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='焙煎中';
+  const sf=document.getElementById('ro-status-float');if(sf)sf.textContent='焙煎中';
+  const sb=document.getElementById('ro-start-btn-float');if(sb)sb.textContent='⏸ 停止';
   S.timerInterval=setInterval(()=>{S.elapsed++;updateTimer();},1000);
   if(!roastChart)initRoastChart();
-  if(!cameraStream){
-    startCameraOCR().catch(e=>{toast('カメラ起動エラー: '+e.message+'\n手動で開始してください');});
-  } else {
-    // カメラ停止中だったOCRカウントダウンを再開
-    if(!ocrCDInterval){
-      ocrCDInterval=setInterval(()=>{
-        ocrCD--;
-        const oc=document.getElementById('ocr-countdown');if(oc)oc.textContent=ocrCD;
-        if(ocrCD<=0){ocrCD=10;runOCRCapture();}
-      },1000);
-    }
-  }
+  // カメラは自動起動しない（ユーザーがボタンを押したときのみ）
   toast('焙煎を開始しました');
 }
 function toggleRoastPause(){if(!S.roastRunning)resumeRoast();else pauseRoast();}
@@ -1717,8 +1740,12 @@ function pauseRoast(){
   clearInterval(S.timerInterval);
   // OCRカウントダウンも一時停止（APIリクエスト節約）
   if(ocrCDInterval){clearInterval(ocrCDInterval);ocrCDInterval=null;}
+  // カメラも停止
+  if(cameraStream){stopCameraOCR();}
   const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='▶ 再開';
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='一時停止中';
+  const sf=document.getElementById('ro-status-float');if(sf)sf.textContent='一時停止中';
+  const sb=document.getElementById('ro-start-btn-float');if(sb)sb.textContent='▶ 再開';
   const td=document.getElementById('timer-status');if(td)td.textContent='一時停止中';
   const rb=document.getElementById('roast-btn');if(rb)rb.textContent='▶ 再開';
 }
@@ -1775,6 +1802,7 @@ function updateTimer(){
   const ts=m+':'+s;
   const td=document.getElementById('timer-display');if(td)td.textContent=ts;
   const rt=document.getElementById('ro-timer');if(rt)rt.textContent=ts;
+  const rtf=document.getElementById('ro-timer-float');if(rtf)rtf.textContent=ts;
   if(S.elapsed>0&&S.elapsed%60===0)playBell();
 }
 // logManualTemp removed
