@@ -221,8 +221,12 @@ window.__DEBUG__ = {
   },
 };
 
-// アプリケーション初期化を即座に実行（スクリプト読み込み完了時点で実行）
-initializeApp();
+// アプリケーション初期化を実行
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  initializeApp();
+}
 
 console.log(
   '%c🍵 Coffee Roasting Manager',
