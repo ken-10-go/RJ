@@ -1218,8 +1218,26 @@ function saveBean(){
     photo:S.beanPhotoData||null,
   };
   pushUndo();
-  if(editId){const i=S.beans.findIndex(b=>b.id===parseInt(editId));if(i>=0)S.beans[i]=bean;}
-  else S.beans.push(bean);
+
+  // === Week 3: BeanService 統合 ===
+  if(typeof window.beanService !== 'undefined'){
+    try{
+      if(editId){
+        window.beanService.updateBean(parseInt(editId),bean);
+      }else{
+        window.beanService.registerBean(bean);
+      }
+    }catch(e){
+      console.error('BeanService error:',e);
+      toast('豆の保存に失敗しました：'+e.message);
+      return;
+    }
+  }else{
+    // フォールバック: 既存の S 直接操作
+    if(editId){const i=S.beans.findIndex(b=>b.id===parseInt(editId));if(i>=0)S.beans[i]=bean;}
+    else S.beans.push(bean);
+  }
+
   clearBeanForm();renderBeans();updateBeanSelect();
   toast(editId?'豆情報を更新しました':'豆「'+bean.name+'」を登録しました');
   masterDirtyTypes.forEach(t=>saveMasterToDrive(t));masterDirtyTypes.clear();
@@ -1283,7 +1301,22 @@ function cancelEditBean(){clearBeanForm();}
 function deleteBean(id){
   if(!confirm('この豆を削除しますか？'))return;
   pushUndo();
-  S.beans=S.beans.filter(b=>b.id!==id);renderBeans();updateBeanSelect();toast('削除しました');autoSync();
+
+  // === Week 3: BeanService 統合 ===
+  if(typeof window.beanService !== 'undefined'){
+    try{
+      window.beanService.deleteBean(id);
+    }catch(e){
+      console.error('BeanService error:',e);
+      toast('豆の削除に失敗しました：'+e.message);
+      return;
+    }
+  }else{
+    // フォールバック: 既存の S 直接操作
+    S.beans=S.beans.filter(b=>b.id!==id);
+  }
+
+  renderBeans();updateBeanSelect();toast('削除しました');autoSync();
 }
 
 function previewBeanPhoto(input){
@@ -3236,6 +3269,10 @@ loadGeminiKeyStatus();
 <script src="js/utils/validators.js"></script>
 <script src="js/utils/formatters.js"></script>
 <script src="js/utils/storage.js"></script>
+
+<!-- Compat: 互換性レイヤー（Week 3） -->
+<script src="js/compat/StateCompat.js"></script>
+<script src="js/compat/StorageCompat.js"></script>
 
 <!-- Services: ビジネスロジック -->
 <!-- Week 1 -->

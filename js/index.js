@@ -36,7 +36,7 @@ if (typeof GoogleDriveService !== 'undefined') {
 
 // アプリケーション初期化
 function initializeApp() {
-  console.log('🚀 Coffee Roasting Manager v1.1 initialized');
+  console.log('🚀 Coffee Roasting Manager v1.2 initialized');
 
   // localStorage からデータを読み込む
   const savedState = loadFromStorage('appState');
@@ -56,7 +56,21 @@ function initializeApp() {
   // UI状態をリセット
   resetUIState();
 
-  // オブザーバーを登録（自動保存）
+  // StateCompat を初期化（既存 S との同期）
+  if (typeof window.S !== 'undefined' && typeof StateCompat !== 'undefined') {
+    window.stateCompat = new StateCompat(window.appState);
+    window.stateCompat.migrateFromLegacy(window.S);
+    window.stateCompat.setupAutoSync(1000); // 1秒ごとに同期
+    console.log('✅ StateCompat initialized');
+  }
+
+  // UndoStack を初期化
+  if (typeof UndoStackCompat !== 'undefined') {
+    window.undoStackCompat = new UndoStackCompat(window.appState, 5);
+    console.log('✅ UndoStack initialized');
+  }
+
+  // オブザーバーを登録（自動保存・UI更新）
   window.appState.subscribe((event, data) => {
     // 主要なイベントで自動保存
     if (
@@ -66,6 +80,11 @@ function initializeApp() {
       event.startsWith('master:')
     ) {
       saveAppState(window.appState);
+    }
+
+    // Undo復元後の UI更新
+    if (event === 'undo:restored') {
+      console.log('🔄 Undo restored');
     }
   });
 
