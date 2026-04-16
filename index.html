@@ -992,34 +992,68 @@ function closeAllDropdowns(){
 document.addEventListener('click',e=>{
   if(!e.target.closest('.multi-select-wrap'))closeAllDropdowns();
 });
+// ===== MULTI-SELECT 共有関数（重複排除） =====
+// 複数選択ドロップダウンの items 一覧を統一的に描画
+function renderMultiSelectList(itemsElementId, items, selectedArray, toggleFunc, enabledKey = 'enabled', textKey = 'name', idKey = 'id', getDisplayFunc = null) {
+  const itemsEl = document.getElementById(itemsElementId);
+  if(!itemsEl) return;
+  itemsEl.innerHTML = (items || [])
+    .filter(r => r[enabledKey] !== false)
+    .map(item => {
+      const id = item[idKey];
+      const text = getDisplayFunc ? getDisplayFunc(id) : item[textKey];
+      const isSelected = selectedArray.includes(id);
+      return `<div class="ms-item${isSelected ? ' selected' : ''}" onclick="${toggleFunc}(${typeof id === 'number' ? id : "'" + id + "'"})">
+        <div class="ms-check">${isSelected ? '✓' : ''}</div>
+        <span>${text}</span>
+      </div>`;
+    }).join('');
+}
+
+// 複数選択ドロップダウンの tags（選択済みアイテム）を統一的に描画
+function renderMultiSelectTags(boxElementId, placeholderElementId, selectedArray, items, toggleFunc, emptyLabel, textKey = 'name', idKey = 'id', getNameFunc = null) {
+  const box = document.getElementById(boxElementId);
+  const ph = document.getElementById(placeholderElementId);
+  if(!box || !ph) return;
+
+  box.querySelectorAll('.ms-tag').forEach(t => t.remove());
+
+  if(selectedArray.length === 0) {
+    ph.style.display = '';
+    ph.textContent = emptyLabel;
+  } else {
+    ph.style.display = 'none';
+    selectedArray.forEach(id => {
+      let name = '';
+      if(getNameFunc) {
+        name = getNameFunc(id);
+      } else {
+        const item = items.find(i => i[idKey] === id);
+        name = item ? item[textKey] : '';
+      }
+      const tag = document.createElement('span');
+      tag.className = 'ms-tag';
+      tag.innerHTML = `${name}<button class="ms-tag-x" onclick="event.stopPropagation();${toggleFunc}(${typeof id === 'number' ? id : "'" + id + "'"})">×</button>`;
+      box.insertBefore(tag, ph);
+    });
+  }
+}
+
+// 複数選択の切り替え（ID配列 or 数値配列対応）
+function toggleMultiSelectItem(stateArray, itemId, shouldParseFloat = false) {
+  const val = shouldParseFloat ? parseFloat(itemId) : itemId;
+  if(stateArray.includes(val)) {
+    return stateArray.filter(x => x !== val);
+  } else {
+    stateArray.push(val);
+    return stateArray;
+  }
+}
 
 // --- 品種（複数選択・ID管理）---
 function renderVarietyDropdown(){
-  const items=document.getElementById('variety-items');
-  items.innerHTML=(S.master.varieties||[]).filter(r=>r.enabled!==false).map(v=>{
-    const sel=S.beanSelectedVarietyIds.includes(v.id);
-    return '<div class="ms-item'+(sel?' selected':'')+'" onclick="toggleVariety('+v.id+')">'+
-           '<div class="ms-check">'+(sel?'✓':'')+'</div><span>'+v.name+'</span></div>';
-  }).join('');
-  renderVarietyTags();
-}
-function renderVarietyTags(){
-  const box=document.getElementById('variety-box');
-  const ph=document.getElementById('variety-placeholder');
-  if(S.beanSelectedVarietyIds.length===0){
-    ph.style.display='';
-    box.querySelectorAll('.ms-tag').forEach(el=>el.remove());
-  }else{
-    ph.style.display='none';
-    box.querySelectorAll('.ms-tag').forEach(el=>el.remove());
-    S.beanSelectedVarietyIds.forEach(id=>{
-      const name=masterById('varieties',id)?.name||'';
-      const tag=document.createElement('div');
-      tag.className='ms-tag';
-      tag.innerHTML=`${name}<button class="ms-tag-x" onclick="event.stopPropagation();toggleVariety(${id})">×</button>`;
-      box.appendChild(tag);
-    });
-  }
+  renderMultiSelectList('variety-items', S.master.varieties, S.beanSelectedVarietyIds, 'toggleVariety', 'enabled', 'name', 'id');
+  renderMultiSelectTags('variety-box', 'variety-placeholder', S.beanSelectedVarietyIds, S.master.varieties, 'toggleVariety', '品種を選択...', 'name', 'id');
 }
 function toggleVariety(id){
   if(S.beanSelectedVarietyIds.includes(id))S.beanSelectedVarietyIds=S.beanSelectedVarietyIds.filter(x=>x!==id);
@@ -1046,25 +1080,9 @@ function renderBeanForm(){
 }
 // --- 国（単一選択・ID管理）---
 function renderCountryDropdown(){
-  const items=document.getElementById('country-items');
-  const box=document.getElementById('country-box');
-  const ph=document.getElementById('country-placeholder');
-  if(!items)return;
-  items.innerHTML=(S.master.countries||[]).filter(r=>r.enabled!==false).map(c=>`
-    <div class="ms-item${S.beanSelectedCountryId===c.id?' selected':''}" onclick="selectCountry(${c.id})">
-      <div class="ms-check">${S.beanSelectedCountryId===c.id?'✓':''}</div>
-      <span>${c.name}</span>
-    </div>`).join('');
-  if(box&&ph){
-    box.querySelectorAll('.ms-tag').forEach(t=>t.remove());
-    const selName=countryName(S.beanSelectedCountryId);
-    if(S.beanSelectedCountryId!=null&&selName){
-      ph.style.display='none';
-      const tag=document.createElement('span');tag.className='ms-tag';
-      tag.innerHTML=`${selName}<button class="ms-tag-x" onclick="event.stopPropagation();selectCountry(null)">×</button>`;
-      box.insertBefore(tag,ph);
-    }else{ph.style.display='';ph.textContent='国を選択...';}
-  }
+  const countryArray = S.beanSelectedCountryId != null ? [S.beanSelectedCountryId] : [];
+  renderMultiSelectList('country-items', S.master.countries, countryArray, 'selectCountry', 'enabled', 'name', 'id');
+  renderMultiSelectTags('country-box', 'country-placeholder', countryArray, S.master.countries, 'selectCountry', '国を選択...', 'name', 'id', countryName);
 }
 function selectCountry(id){
   // id=null は選択解除
@@ -1083,27 +1101,8 @@ function addCountry(){
 function getSelectedCountry(){return countryName(S.beanSelectedCountryId)||'';}
 // --- 精製方法（複数選択・ID管理）---
 function renderProcessDropdown(){
-  const items=document.getElementById('process-items');
-  const box=document.getElementById('process-box');
-  const ph=document.getElementById('process-placeholder');
-  if(!items)return;
-  items.innerHTML=(S.master.processes||[]).filter(r=>r.enabled!==false).map(p=>`
-    <div class="ms-item${S.beanSelectedProcessIds.includes(p.id)?' selected':''}" onclick="toggleBeanProcessMs(${p.id})">
-      <div class="ms-check">${S.beanSelectedProcessIds.includes(p.id)?'✓':''}</div>
-      <span>${p.name}</span>
-    </div>`).join('');
-  if(box&&ph){
-    box.querySelectorAll('.ms-tag').forEach(t=>t.remove());
-    if(S.beanSelectedProcessIds.length){
-      ph.style.display='none';
-      S.beanSelectedProcessIds.forEach(id=>{
-        const name=masterById('processes',id)?.name||'';
-        const tag=document.createElement('span');tag.className='ms-tag';
-        tag.innerHTML=`${name}<button class="ms-tag-x" onclick="event.stopPropagation();toggleBeanProcessMs(${id})">×</button>`;
-        box.insertBefore(tag,ph);
-      });
-    }else{ph.style.display='';ph.textContent='精製方法を選択...';}
-  }
+  renderMultiSelectList('process-items', S.master.processes, S.beanSelectedProcessIds, 'toggleBeanProcessMs', 'enabled', 'name', 'id');
+  renderMultiSelectTags('process-box', 'process-placeholder', S.beanSelectedProcessIds, S.master.processes, 'toggleBeanProcessMs', '精製方法を選択...', 'name', 'id');
 }
 function toggleBeanProcessMs(id){
   if(S.beanSelectedProcessIds.includes(id))S.beanSelectedProcessIds=S.beanSelectedProcessIds.filter(x=>x!==id);
@@ -1120,30 +1119,8 @@ function addProcess(){
 }
 // --- 推奨焙煎度（複数選択・val管理）---
 function renderRLDropdown(){
-  const items=document.getElementById('rl-items');
-  const box=document.getElementById('rl-box');
-  const ph=document.getElementById('rl-placeholder');
-  if(!items)return;
-  items.innerHTML=ROAST_LEVELS.map(r=>{
-    const label=rlLabel(r.val);
-    const sel=S.beanSelectedRLVals.includes(r.val);
-    return `<div class="ms-item${sel?' selected':''}" onclick="toggleBeanRLMs(${r.val})">
-      <div class="ms-check">${sel?'✓':''}</div>
-      <span>${label}</span>
-    </div>`;
-  }).join('');
-  if(box&&ph){
-    box.querySelectorAll('.ms-tag').forEach(t=>t.remove());
-    if(S.beanSelectedRLVals.length){
-      ph.style.display='none';
-      S.beanSelectedRLVals.forEach(val=>{
-        const label=rlLabel(val);
-        const tag=document.createElement('span');tag.className='ms-tag';
-        tag.innerHTML=`${label}<button class="ms-tag-x" onclick="event.stopPropagation();toggleBeanRLMs(${val})">×</button>`;
-        box.insertBefore(tag,ph);
-      });
-    }else{ph.style.display='';ph.textContent='焙煎度を選択...';}
-  }
+  renderMultiSelectList('rl-items', ROAST_LEVELS, S.beanSelectedRLVals, 'toggleBeanRLMs', 'enabled', 'val', 'val', rlLabel);
+  renderMultiSelectTags('rl-box', 'rl-placeholder', S.beanSelectedRLVals, ROAST_LEVELS, 'toggleBeanRLMs', '焙煎度を選択...', 'val', 'val', rlLabel);
 }
 function toggleBeanRLMs(val){
   val=parseFloat(val);
@@ -1183,57 +1160,11 @@ function getSelectedBrew(){const v=document.getElementById('t-brew-sel').value;r
 function initFilterButtons(){
   updateFilterBadges();
   // 国フィルタ（multi-select・ID管理）
-  const cItems=document.getElementById('country-filter-items');
-  if(cItems){
-    cItems.innerHTML=(S.master.countries||[]).filter(r=>r.enabled!==false).map(c=>`
-      <div class="ms-item${S.filterCountryIds.includes(c.id)?' selected':''}" onclick="toggleCountryFilter(${c.id})">
-        <div class="ms-check">${S.filterCountryIds.includes(c.id)?'✓':''}</div>
-        <span>${c.name}</span>
-      </div>`).join('');
-  }
-  const cBox=document.getElementById('country-filter-box');
-  const cPh=document.getElementById('country-filter-placeholder');
-  if(cBox&&cPh){
-    cBox.querySelectorAll('.ms-tag').forEach(t=>t.remove());
-    if(S.filterCountryIds.length){
-      cPh.style.display='none';
-      S.filterCountryIds.forEach(id=>{
-        const name=countryName(id);
-        const tag=document.createElement('span');tag.className='ms-tag';
-        tag.innerHTML=`${name}<button class="ms-tag-x" onclick="event.stopPropagation();toggleCountryFilter(${id})">×</button>`;
-        cBox.insertBefore(tag,cPh);
-      });
-    } else {
-      cPh.style.display='';cPh.textContent='すべての国';
-    }
-  }
+  renderMultiSelectList('country-filter-items', S.master.countries, S.filterCountryIds, 'toggleCountryFilter', 'enabled', 'name', 'id');
+  renderMultiSelectTags('country-filter-box', 'country-filter-placeholder', S.filterCountryIds, S.master.countries, 'toggleCountryFilter', 'すべての国', 'name', 'id', countryName);
   // 焙煎度フィルタ（multi-select・val管理）
-  const rItems=document.getElementById('rl-filter-items');
-  if(rItems){
-    rItems.innerHTML=ROAST_LEVELS.map(r=>{
-      const label=rlLabel(r.val);
-      return `<div class="ms-item${S.filterRLVals.includes(r.val)?' selected':''}" onclick="toggleRLFilter(${r.val})">
-        <div class="ms-check">${S.filterRLVals.includes(r.val)?'✓':''}</div>
-        <span>${label}</span>
-      </div>`;
-    }).join('');
-  }
-  const rBox=document.getElementById('rl-filter-box');
-  const rPh=document.getElementById('rl-filter-placeholder');
-  if(rBox&&rPh){
-    rBox.querySelectorAll('.ms-tag').forEach(t=>t.remove());
-    if(S.filterRLVals.length){
-      rPh.style.display='none';
-      S.filterRLVals.forEach(val=>{
-        const label=rlLabel(val);
-        const tag=document.createElement('span');tag.className='ms-tag';
-        tag.innerHTML=`${label}<button class="ms-tag-x" onclick="event.stopPropagation();toggleRLFilter(${val})">×</button>`;
-        rBox.insertBefore(tag,rPh);
-      });
-    } else {
-      rPh.style.display='';rPh.textContent='すべての焙煎度';
-    }
-  }
+  renderMultiSelectList('rl-filter-items', ROAST_LEVELS, S.filterRLVals, 'toggleRLFilter', 'enabled', 'val', 'val', rlLabel);
+  renderMultiSelectTags('rl-filter-box', 'rl-filter-placeholder', S.filterRLVals, ROAST_LEVELS, 'toggleRLFilter', 'すべての焙煎度', 'val', 'val', rlLabel);
   // 購入年・月フィルタ
   const years=[...new Set(S.beans.map(b=>b.purchaseDate?.slice(0,4)).filter(Boolean))].sort((a,b)=>b-a);
   const yEl=document.getElementById('year-filter');
