@@ -220,19 +220,9 @@ select.inp{cursor:pointer;}
   #landscape-roast{display:grid!important;grid-template-columns:1fr 1fr;gap:10px;}
   .timer-display{font-size:38px;}
 }
-/* ===== 焙煎FloatingPanel ===== */
-#roast-overlay{position:fixed;z-index:95;background:var(--c-bg);display:none;flex-direction:column;border:1px solid var(--border);border-radius:16px 16px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,0.1);overflow:hidden;}
+/* ===== 焙煎フルスクリーンオーバーレイ ===== */
+#roast-overlay{position:fixed;inset:0;z-index:95;background:#f5f1ed;display:none;flex-direction:column;width:100%;max-width:430px;left:50%;transform:translateX(-50%);}
 #roast-overlay.active{display:flex;}
-/* スマートフォン：ボトムシート */
-@media (max-width:767px){
-  #roast-overlay{bottom:0;left:0;right:0;height:65vh;border-radius:20px 20px 0 0;width:100%;}
-  #roast-overlay .ro-cam-section{flex:0.6;}
-}
-/* デスクトップ：サイドパネル */
-@media (min-width:768px){
-  #roast-overlay{right:20px;bottom:20px;width:380px;max-height:90vh;border-radius:16px;overflow-y:auto;}
-  .ro-cam-section{flex:0!important;}
-}
 .ro-statusbar{background:var(--c-surface);border-bottom:1px solid #e5e7eb;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0;box-shadow:var(--shadow-sm);}
 .ro-timer-big{font-family:'DM Mono',monospace;font-size:44px;font-weight:700;color:var(--c-accent);letter-spacing:.04em;min-width:100px;line-height:1;}
 .ro-status-info{flex:1;display:flex;flex-direction:column;}
@@ -265,28 +255,28 @@ select.inp{cursor:pointer;}
   </div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('beans')">
-      <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="5" fill="currentColor"/><path d="M12,13 Q9,15 9,18 Q9,20 12,21 Q15,20 15,18 Q15,15 12,13" fill="currentColor"/></svg></span>
+      <span class="tab-icon">☕</span>
       <span class="tab-lbl">豆</span>
     </button>
     <button class="tab" onclick="switchTab('roast')">
-      <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12,2 L12,20"/><circle cx="12" cy="8" r="3" fill="currentColor"/><path d="M9,22 L15,22"/></svg></span>
+      <span class="tab-icon">🌡️</span>
       <span class="tab-lbl">焙煎</span>
     </button>
     <button class="tab" onclick="switchTab('records')">
-      <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="12" width="3" height="8" fill="currentColor"/><rect x="7" y="8" width="3" height="12" fill="currentColor"/><rect x="12" y="4" width="3" height="16" fill="currentColor"/><rect x="17" y="10" width="3" height="10" fill="currentColor"/></svg></span>
-      <span class="tab-lbl">焙煎ログ</span>
+      <span class="tab-icon">📋</span>
+      <span class="tab-lbl">記録</span>
     </button>
     <button class="tab" onclick="switchTab('taste')">
-      <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6,6 L6,20 Q6,22 8,22 L16,22 Q18,22 18,20 L18,6 M3,6 L21,6"/><rect x="9" y="2" width="6" height="4" fill="currentColor"/></svg></span>
+      <span class="tab-icon">🍷</span>
       <span class="tab-lbl">味わい</span>
     </button>
     <button class="tab" onclick="switchTab('analysis')">
-      <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="12" width="3" height="8" fill="currentColor"/><rect x="7" y="8" width="3" height="12" fill="currentColor"/><rect x="12" y="4" width="3" height="16" fill="currentColor"/><rect x="17" y="10" width="3" height="10" fill="currentColor"/></svg></span>
+      <span class="tab-icon">📊</span>
       <span class="tab-lbl">分析</span>
     </button>
     <button class="tab" onclick="switchTab('drive')">
-      <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12,5 L12,3 M12,21 L12,19 M19,12 L21,12 M3,12 L5,12 M17,7 L18.6,5.4 M5.4,18.6 L7,17 M7,7 L5.4,5.4 M18.6,18.6 L17,17"/></svg></span>
-      <span class="tab-lbl">設定</span>
+      <span class="tab-icon">☁️</span>
+      <span class="tab-lbl">Drive</span>
     </button>
   </div>
   <div class="content">
@@ -302,43 +292,25 @@ select.inp{cursor:pointer;}
       </details>
       <details class="card" open>
         <summary id="bean-form-title">豆を登録</summary>
-        <!-- 国 -->
-        <div class="inp-w">
-          <div class="multi-select-wrap" id="country-wrap">
-            <div class="multi-select-box" id="country-box" onclick="toggleMsDropdown('country')">
-              <span id="country-placeholder" style="color:var(--c-text-muted);font-size:var(--fs-sm);">国を選択...</span>
-            </div>
-            <div class="multi-select-dropdown" id="country-dropdown">
-              <div id="country-items"></div>
-              <div class="ms-add-row">
-                <input id="b-country-free" placeholder="国を追加..." onkeydown="if(event.key==='Enter')addCountry()">
-                <button class="btn btn-sm btn-outline" onclick="addCountry()" style="padding:5px 10px;white-space:nowrap;">追加</button>
+        <div class="inp-row">
+          <div class="inp-w">
+            <div class="multi-select-wrap" id="country-wrap">
+              <div class="multi-select-box" id="country-box" onclick="toggleMsDropdown('country')">
+                <span id="country-placeholder" style="color:var(--c-text-muted);font-size:var(--fs-sm);">国を選択...</span>
+              </div>
+              <div class="multi-select-dropdown" id="country-dropdown">
+                <div id="country-items"></div>
+                <div class="ms-add-row">
+                  <input id="b-country-free" placeholder="国を追加..." onkeydown="if(event.key==='Enter')addCountry()">
+                  <button class="btn btn-sm btn-outline" onclick="addCountry()" style="padding:5px 10px;white-space:nowrap;">追加</button>
+                </div>
               </div>
             </div>
           </div>
+          <div class="inp-w"><input class="inp" id="b-name" placeholder="豆の名前"></div>
         </div>
-        <!-- 豆の名前 -->
-        <div class="inp-w">
-          <input class="inp" id="b-name" placeholder="豆の名前">
-        </div>
-        <!-- 農園 / 農協 -->
         <div class="inp-w">
           <input class="inp" id="b-farm" placeholder="農園 / 農協">
-        </div>
-        <!-- 精製方法: multi-select dropdown -->
-        <div class="inp-w">
-          <div class="multi-select-wrap" id="process-wrap">
-            <div class="multi-select-box" id="process-box" onclick="toggleMsDropdown('process')">
-              <span id="process-placeholder" style="color:var(--c-text-muted);font-size:var(--fs-sm);">精製方法を選択...</span>
-            </div>
-            <div class="multi-select-dropdown" id="process-dropdown">
-              <div id="process-items"></div>
-              <div class="ms-add-row">
-                <input id="b-process-free" placeholder="精製方法を追加..." onkeydown="if(event.key==='Enter')addProcess()">
-                <button class="btn btn-sm btn-outline" onclick="addProcess()" style="padding:5px 10px;white-space:nowrap;">追加</button>
-              </div>
-            </div>
-          </div>
         </div>
         <!-- 品種: multi-select dropdown -->
         <div class="inp-w">
@@ -351,6 +323,20 @@ select.inp{cursor:pointer;}
               <div class="ms-add-row">
                 <input id="variety-add-inp" placeholder="品種を追加..." onkeydown="if(event.key==='Enter')addVarietyOption()">
                 <button class="btn btn-sm btn-outline" onclick="addVarietyOption()" style="padding:5px 10px;white-space:nowrap;">追加</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="inp-w">
+          <div class="multi-select-wrap" id="process-wrap">
+            <div class="multi-select-box" id="process-box" onclick="toggleMsDropdown('process')">
+              <span id="process-placeholder" style="color:var(--c-text-muted);font-size:var(--fs-sm);">精製方法を選択...</span>
+            </div>
+            <div class="multi-select-dropdown" id="process-dropdown">
+              <div id="process-items"></div>
+              <div class="ms-add-row">
+                <input id="b-process-free" placeholder="精製方法を追加..." onkeydown="if(event.key==='Enter')addProcess()">
+                <button class="btn btn-sm btn-outline" onclick="addProcess()" style="padding:5px 10px;white-space:nowrap;">追加</button>
               </div>
             </div>
           </div>
@@ -378,8 +364,8 @@ select.inp{cursor:pointer;}
           <div class="inp-w"><div class="label">購入日（年月）</div><input class="inp" id="b-purchase-date" type="month"></div>
         </div>
         <div class="inp-row">
-          <div class="inp-w"><div class="label">購入金額（円）</div><input class="inp" id="b-purchase-amount" type="number" placeholder="1200" value="0" oninput="calculateUnitPrice()"></div>
-          <div class="inp-w"><div class="label">単価 (円/100g)</div><input class="inp" id="b-unit-price" type="number" placeholder="0" readonly></div>
+          <div class="inp-w"><div class="label">価格 (円/100g)</div><input class="inp" id="b-price" type="number" placeholder="1200"></div>
+          <div class="inp-w"><div class="label">SCAスコア</div><input class="inp" id="b-score" type="number" placeholder="86.5" step="0.5"></div>
         </div>
         <div class="inp-w"><div class="label">テイストノート</div><input class="inp" id="b-taste" placeholder="Floral, Berry, Peach"></div>
         <div class="inp-w"><div class="label">メモ</div><textarea class="inp" id="b-memo" rows="2" placeholder="備考..."></textarea></div>
@@ -672,15 +658,8 @@ select.inp{cursor:pointer;}
   </div>
 </div>
 
-<!-- ===== 焙煎パネル ===== -->
+<!-- ===== 焙煎フルスクリーンオーバーレイ ===== -->
 <div id="roast-overlay">
-  <!-- パネルヘッダー -->
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--c-surface);">
-    <div style="font-weight:700;font-size:14px;color:var(--c-text);">焙煎中</div>
-    <button onclick="exitRoastMode()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--c-text-muted);">✕</button>
-  </div>
-  <!-- 豆情報ヘッダー -->
-  <div id="ro-bean-header" style="padding:10px 12px;background:var(--c-surface);border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--c-text);flex-shrink:0;word-wrap:break-word;">—</div>
   <!-- ステータスバー -->
   <div class="ro-statusbar">
     <div id="ro-timer" class="ro-timer-big">00:00</div>
@@ -770,15 +749,15 @@ select.inp{cursor:pointer;}
   <div class="ro-footer">
     <div class="footer-grid-4" style="margin-bottom:5px;">
       <button class="ctrl-footer c0" onclick="markEventWithTemp('Charge',null)">CHARGE<br><span style="font-size:10px;opacity:.8;">投入</span></button>
-      <button class="ctrl-footer c0" onclick="markEventWithTemp('Steam End',null)">STEAM END<br><span style="font-size:10px;opacity:.8;">乾燥完了</span></button>
-      <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack Start',1.0)">1<sup>st</sup> Crack<br><span style="font-size:10px;opacity:.8;">開始</span></button>
-      <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack End',1.5)">1<sup>st</sup> Crack<br><span style="font-size:10px;opacity:.8;">終了</span></button>
+      <button class="ctrl-footer c0" onclick="markEventWithTemp('Steam End',null)">STEAM<br><span style="font-size:10px;opacity:.8;">END</span></button>
+      <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack Start',1.0)">1stCR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
+      <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack End',1.5)">1stCR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
     </div>
     <div class="footer-grid-4">
       <button class="ctrl-footer c0" onclick="toggleRoEvLog()">📋<br><span style="font-size:10px;opacity:.8;">ログ</span></button>
       <button class="ctrl-footer c0" onclick="markEventWithTemp('Note',null)">📝<br><span style="font-size:10px;opacity:.8;">メモ</span></button>
-      <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack Start',2.0)">2<sup>nd</sup> Crack<br><span style="font-size:10px;opacity:.8;">開始</span></button>
-      <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack End',2.5)">2<sup>nd</sup> Crack<br><span style="font-size:10px;opacity:.8;">終了</span></button>
+      <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack Start',2.0)">2ndCR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
+      <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack End',2.5)">2ndCR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
     </div>
     <!-- イベントログ（折りたたみ） -->
     <div id="ro-ev-log" class="ro-ev-log">
@@ -971,14 +950,6 @@ function switchTab(t){
   next.style.opacity='0';next.style.transform='translateY(8px)';
   next.classList.add('active');
   requestAnimationFrame(()=>requestAnimationFrame(()=>{next.style.opacity='';next.style.transform='';}));
-  // 焙煎中に焙煎パネルを表示・非表示
-  if(S.currentRoast&&document.getElementById('roast-floating-bar').style.display==='flex'){
-    if(t==='roast'){
-      document.getElementById('roast-overlay').classList.add('active');
-    } else {
-      document.getElementById('roast-overlay').classList.remove('active');
-    }
-  }
   if(t==='records')renderRecords();
   if(t==='analysis')renderAnalysis();
   if(t==='roast'){updateBeanSelect();updateRoastLevelHint();}
@@ -1286,21 +1257,9 @@ function toggleRLFilter(val){
 }
 function setCountryFilter(id){toggleCountryFilter(id);}
 function setRLFilter(val){toggleRLFilter(val);}
-function changeQty(d){const i=document.getElementById('b-amount');i.value=Math.max(0,(parseInt(i.value)||0)+d);calculateUnitPrice();}
+function changeQty(d){const i=document.getElementById('b-amount');i.value=Math.max(0,(parseInt(i.value)||0)+d);}
 
 // ===== BEANS CRUD =====
-function calculateUnitPrice(){
-  const purchaseAmount=parseFloat(document.getElementById('b-purchase-amount').value)||0;
-  const purchaseQty=parseFloat(document.getElementById('b-amount').value)||0;
-  let unitPrice=0;
-  if(purchaseQty>0){
-    // (購入金額 * 100) / 購入量 で100g当たりの金額を計算
-    // 小数点以下は切り上げ（Math.ceil）
-    unitPrice=Math.ceil((purchaseAmount*100)/purchaseQty*100)/100;
-  }
-  document.getElementById('b-unit-price').value=unitPrice.toFixed(2);
-}
-
 function saveBean(){
   const name=document.getElementById('b-name').value.trim();
   if(!name){toast('豆の名前を入力してください');return;}
@@ -1321,8 +1280,8 @@ function saveBean(){
     shop:document.getElementById('b-shop').value,
     amount:document.getElementById('b-amount').value,
     purchaseDate:document.getElementById('b-purchase-date').value,
-    purchaseAmount:document.getElementById('b-purchase-amount').value,
-    unitPrice:document.getElementById('b-unit-price').value,
+    price:document.getElementById('b-price').value,
+    score:document.getElementById('b-score').value,
     taste:document.getElementById('b-taste').value,
     memo:document.getElementById('b-memo').value,
     photo:S.beanPhotoData||null,
@@ -1337,7 +1296,7 @@ function saveBean(){
 }
 
 function clearBeanForm(){
-  ['b-name','b-farm','b-purchase-amount','b-unit-price','b-taste','b-memo','b-purchase-date'].forEach(id=>document.getElementById(id).value='');
+  ['b-name','b-farm','b-price','b-score','b-taste','b-memo','b-purchase-date'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('b-amount').value='1000';
   document.getElementById('b-edit-id').value='';
   document.getElementById('b-photo-preview').style.display='none';
@@ -1356,8 +1315,8 @@ function editBean(id){
   document.getElementById('b-shop').value=b.shop||'';
   document.getElementById('b-amount').value=b.amount||'';
   document.getElementById('b-purchase-date').value=b.purchaseDate||'';
-  document.getElementById('b-purchase-amount').value=b.purchaseAmount||'0';
-  document.getElementById('b-unit-price').value=b.unitPrice||'0';
+  document.getElementById('b-price').value=b.price||'';
+  document.getElementById('b-score').value=b.score||'';
   document.getElementById('b-taste').value=b.taste||'';
   document.getElementById('b-memo').value=b.memo||'';
   document.getElementById('b-edit-id').value=b.id;
@@ -1415,7 +1374,6 @@ function renderBeans(){
     (b.roastLevels&&b.roastLevels.some(lbl=>S.filterRLVals.some(v=>lbl.startsWith('['+v.toFixed(1)+']')))));
   if(S.filterYear)beans=beans.filter(b=>b.purchaseDate&&b.purchaseDate.startsWith(S.filterYear));
   if(S.filterMonth)beans=beans.filter(b=>b.purchaseDate&&b.purchaseDate.slice(5,7)===S.filterMonth);
-  beans=beans.reverse();
   if(!beans.length){el.innerHTML='<div class="empty">該当する豆がありません</div>';return;}
   el.innerHTML=beans.map(b=>{
     // ID管理優先、なければ旧文字列フォールバック
@@ -1437,7 +1395,7 @@ function renderBeans(){
 
 function updateBeanSelect(){
   const s=document.getElementById('r-bean');
-  s.innerHTML=S.beans.length?[...S.beans].reverse().map(b=>{
+  s.innerHTML=S.beans.length?S.beans.map(b=>{
     const cname=countryName(b.countryId)||(b.country||'');
     const procs=b.processIds&&b.processIds.length?processNamesFromIds(b.processIds):(b.processes||[]);
     const proc=procs.length?' / '+procs.join('·'):'';
@@ -1449,19 +1407,8 @@ function updateRoastLevelHint(){
   const b=S.beans.find(b=>b.id===parseInt(document.getElementById('r-bean').value));
   const el=document.getElementById('r-rl-hint');
   if(!b){el.textContent='';return;}
-  let hint='';
-  // 購入年月を表示
-  if(b.purchaseDate){
-    const [year,month]=b.purchaseDate.split('-');
-    hint+=year+'年'+month+'月購入';
-  }
-  // 推奨焙煎度を表示
   const labels=b.roastLevelVals&&b.roastLevelVals.length?rlLabelsFromVals(b.roastLevelVals):(b.roastLevels||[]);
-  if(labels.length){
-    if(hint)hint+=' / ';
-    hint+='推奨: '+labels.join(' / ');
-  }
-  el.textContent=hint;
+  if(labels.length)el.textContent='推奨: '+labels.join(' / ');else el.textContent='';
 }
 
 // ===== URL IMPORT =====
@@ -1648,65 +1595,42 @@ function startRoastAndOverlay(){
   // オーバーレイを「準備中」状態で表示（タイマーはまだ開始しない）
   showRoastOverlay();
 }
-function exitRoastMode(){
-  // 焙煎を一時停止
-  if(S.roastRunning){
-    pauseRoast();
-  }
-  // フローティングバーを非表示
-  document.getElementById('roast-floating-bar').style.display='none';
-  // 焙煎パネルを非表示
-  const panel=document.getElementById('roast-overlay');
-  if(window.innerWidth<768){
-    // スマートフォン：アニメーション付きで非表示
-    panel.style.transform='translateY(100%)';
-    setTimeout(()=>{
-      panel.classList.remove('active');
-      panel.style.transform='';
-    },300);
-  } else {
-    // デスクトップ：即座に非表示
-    panel.classList.remove('active');
-  }
-  // 豆タブに戻る
-  switchTab('beans');
-}
 function showRoastOverlay(){
-  // 使用豆情報をパネル・フローティングバーに表示
+  // 使用豆名をオーバーレイに表示
   const bean=S.beans.find(b=>b.id===S.currentRoast.beanId);
-  if(bean){
-    const country=bean.country||'—';
-    const name=bean.name||'—';
-    const processes=bean.processes&&bean.processes.length>0?bean.processes.join(' '):'—';
-    const display=`${country} ${name} ${processes}`;
-    document.getElementById('ro-bean-header').textContent=display;
-    // フローティングバーに豆名を表示
-    document.getElementById('ro-bean-name-float').textContent=name;
-  } else {
-    document.getElementById('ro-bean-header').textContent='—';
-    document.getElementById('ro-bean-name-float').textContent='—';
-  }
+  const bl=document.getElementById('ro-bean-lbl');if(bl)bl.textContent=bean?bean.name:'—';
   document.getElementById('roast-overlay').classList.add('active');
   if(!S.roastRunning){
-    // 準備中状態：「▶ スタート」ボタン表示、カメラは自動起動しない
+    // 準備中状態：「▶ スタート」ボタン表示、カメラ起動
     const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='▶ スタート';
     const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='準備中';
     if(!roastChart)initRoastChart();
-    // カメラは自動起動しない（ユーザーがボタンを押したときのみ）
+    if(!cameraStream){
+      startCameraOCR().catch(e=>{toast('カメラ起動エラー: '+e.message);});
+    }
   }
 }
 function hideRoastOverlay(){
   document.getElementById('roast-overlay').classList.remove('active');
 }
 function doStartRoast(){
-  // 既存のタイマーを先にクリア（二重起動を防止）
-  if(S.timerInterval){clearInterval(S.timerInterval);S.timerInterval=null;}
   S.roastRunning=true;
   const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='⏸ 停止';
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='焙煎中';
   S.timerInterval=setInterval(()=>{S.elapsed++;updateTimer();},1000);
   if(!roastChart)initRoastChart();
-  // カメラは自動起動しない（ユーザーがボタンを押したときのみ）
+  if(!cameraStream){
+    startCameraOCR().catch(e=>{toast('カメラ起動エラー: '+e.message+'\n手動で開始してください');});
+  } else {
+    // カメラ停止中だったOCRカウントダウンを再開
+    if(!ocrCDInterval){
+      ocrCDInterval=setInterval(()=>{
+        ocrCD--;
+        const oc=document.getElementById('ocr-countdown');if(oc)oc.textContent=ocrCD;
+        if(ocrCD<=0){ocrCD=10;runOCRCapture();}
+      },1000);
+    }
+  }
   toast('焙煎を開始しました');
 }
 function toggleRoastPause(){if(!S.roastRunning)resumeRoast();else pauseRoast();}
@@ -1723,8 +1647,6 @@ function pauseRoast(){
   clearInterval(S.timerInterval);
   // OCRカウントダウンも一時停止（APIリクエスト節約）
   if(ocrCDInterval){clearInterval(ocrCDInterval);ocrCDInterval=null;}
-  // カメラも停止
-  if(cameraStream){stopCameraOCR();}
   const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='▶ 再開';
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='一時停止中';
   const td=document.getElementById('timer-status');if(td)td.textContent='一時停止中';
