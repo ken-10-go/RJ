@@ -19,22 +19,10 @@ class BeanService {
       throw new ValidationError('豆データが無効です', errors);
     }
 
-    // ID とタイムスタンプを付与
+    // ID とタイムスタンプを付与（beanData のすべてのフィールドを保持）
     const bean = {
+      ...beanData,
       id: beanData.id || Date.now(),
-      name: beanData.name.trim(),
-      countryId: beanData.countryId,
-      country: beanData.country || null, // 旧形式互換性
-      processIds: beanData.processIds || [],
-      processes: beanData.processes || [], // 旧形式互換性
-      varietyIds: beanData.varietyIds || [],
-      varieties: beanData.varieties || [], // 旧形式互換性
-      recommendedRoastLevel: beanData.recommendedRoastLevel || null,
-      tasteNote: beanData.tasteNote || '',
-      photoUrl: beanData.photoUrl || null,
-      purchaseDate: beanData.purchaseDate || formatDate(new Date()),
-      purchasedFrom: beanData.purchasedFrom || '',
-      amount: beanData.amount || 0,
       createdAt: beanData.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
