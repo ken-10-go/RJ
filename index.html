@@ -1217,6 +1217,7 @@ function saveBean(){
     memo:document.getElementById('b-memo').value,
     photo:S.beanPhotoData||null,
   };
+  console.log('📦 saveBean() - bean object created:', { id: bean.id, name: bean.name, countryId: bean.countryId, editId: editId });
   pushUndo();
 
   // === Week 3: BeanService 統合 ===
@@ -1327,6 +1328,7 @@ function previewBeanPhoto(input){
 }
 
 function renderBeans(){
+  console.log(\'🎨 renderBeans() called - S.beans count:\', S.beans.length);
   const el=document.getElementById('bean-list');
   initFilterButtons();
   let beans=S.beans;
