@@ -25,13 +25,13 @@ class BeanService {
       name: beanData.name.trim(),
       countryId: beanData.countryId,
       country: beanData.country || null,
-      farm: beanData.farm || '',
-      varietyIds: beanData.varietyIds || [],
-      varieties: beanData.varieties || [],
       processIds: beanData.processIds || [],
       processes: beanData.processes || [],
+      varietyIds: beanData.varietyIds || [],
+      varieties: beanData.varieties || [],
       roastLevelVals: beanData.roastLevelVals || [],
       roastLevels: beanData.roastLevels || [],
+      farm: beanData.farm || '',
       shop: beanData.shop || '',
       amount: beanData.amount || 0,
       purchaseDate: beanData.purchaseDate || '',
@@ -109,190 +109,31 @@ class BeanService {
 
     // 焙煎度でフィルタ
     if (criteria.roastLevels && criteria.roastLevels.length > 0) {
-      filtered = filtered.filter(b =>
-        b.recommendedRoastLevel && criteria.roastLevels.includes(b.recommendedRoastLevel)
-      );
-    }
-
-    // 購入年でフィルタ
-    if (criteria.purchaseYear) {
-      filtered = filtered.filter(b =>
-        b.purchaseDate && b.purchaseDate.startsWith(criteria.purchaseYear)
-      );
-    }
-
-    // 購入月でフィルタ
-    if (criteria.purchaseMonth) {
       filtered = filtered.filter(b => {
-        if (!b.purchaseDate) return false;
-        const [year, month] = b.purchaseDate.split('-');
-        return month === String(criteria.purchaseMonth).padStart(2, '0');
+        // ID ベース
+        if (b.roastLevelVals && b.roastLevelVals.some(v => criteria.roastLevels.includes(v))) {
+          return true;
+        }
+        // 旧形式互換性
+        if (b.roastLevels && b.roastLevels.some(lbl => 
+          criteria.roastLevels.some(v => lbl.startsWith(`[${v.toFixed(1)}]`))
+        )) {
+          return true;
+        }
+        return false;
       });
     }
 
-    // テキスト検索
-    if (criteria.searchText) {
-      const text = criteria.searchText.toLowerCase();
-      filtered = filtered.filter(b =>
-        b.name.toLowerCase().includes(text) ||
-        b.tasteNote.toLowerCase().includes(text) ||
-        (b.country && b.country.toLowerCase().includes(text))
-      );
+    // 日付でフィルタ（年）
+    if (criteria.year) {
+      filtered = filtered.filter(b => b.purchaseDate && b.purchaseDate.startsWith(criteria.year));
+    }
+
+    // 日付でフィルタ（月）
+    if (criteria.month) {
+      filtered = filtered.filter(b => b.purchaseDate && b.purchaseDate.slice(5, 7) === criteria.month);
     }
 
     return filtered;
   }
-
-  /**
-   * 豆を検索（名前）
-   */
-  searchBeansByName(name) {
-    const text = name.toLowerCase();
-    return this.appState.beans.filter(b =>
-      b.name.toLowerCase().includes(text)
-    );
-  }
-
-  /**
-   * 国ごとの豆の個数を集計
-   */
-  countBeansByCountry() {
-    const counts = {};
-    this.appState.beans.forEach(bean => {
-      const countryId = bean.countryId;
-      counts[countryId] = (counts[countryId] || 0) + 1;
-    });
-    return counts;
-  }
-
-  /**
-   * 焙煎度ごとの推奨豆を取得
-   */
-  getBeansByRecommendedRoastLevel(roastLevel) {
-    return this.appState.beans.filter(b =>
-      b.recommendedRoastLevel === roastLevel
-    );
-  }
-
-  /**
-   * 購入日で並び替え（新しい順）
-   */
-  sortBeansByPurchaseDate() {
-    return [...this.appState.beans].sort((a, b) => {
-      const dateA = new Date(a.purchaseDate || 0);
-      const dateB = new Date(b.purchaseDate || 0);
-      return dateB - dateA;
-    });
-  }
-
-  /**
-   * 豆の総数
-   */
-  getTotalBeanCount() {
-    return this.appState.beans.length;
-  }
-
-  /**
-   * 全豆の焙煎回数を集計
-   */
-  getTotalRoastCount() {
-    return this.appState.roastRecords.length;
-  }
-
-  /**
-   * 豆ごとの焙煎回数を集計
-   */
-  countRoastsByBean() {
-    const counts = {};
-    this.appState.roastRecords.forEach(record => {
-      const beanId = record.beanId;
-      counts[beanId] = (counts[beanId] || 0) + 1;
-    });
-    return counts;
-  }
-
-  /**
-   * 豆の写真を更新
-   */
-  updateBeanPhoto(id, photoUrl) {
-    this.updateBean(id, { photoUrl });
-  }
-
-  /**
-   * 豆のテイストノートを更新
-   */
-  updateBeanTasteNote(id, tasteNote) {
-    this.updateBean(id, { tasteNote });
-  }
-
-  /**
-   * 豆の推奨焙煎度を更新
-   */
-  updateBeanRecommendedRoastLevel(id, roastLevel) {
-    this.updateBean(id, { recommendedRoastLevel: roastLevel });
-  }
-
-  /**
-   * 複数の豆を一括削除
-   */
-  deleteBeans(ids) {
-    ids.forEach(id => this.deleteBean(id));
-  }
-
-  /**
-   * 豆をインポート（CSV形式）
-   */
-  importBeansFromCSV(csvData) {
-    // CSV パース処理（簡易版）
-    const lines = csvData.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
-    const beans = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
-      const row = {};
-      headers.forEach((h, idx) => {
-        row[h] = values[idx];
-      });
-
-      try {
-        const bean = this.registerBean({
-          name: row.name,
-          countryId: parseInt(row.countryId) || null,
-          recommendedRoastLevel: parseFloat(row.recommendedRoastLevel) || null,
-          tasteNote: row.tasteNote || '',
-          purchaseDate: row.purchaseDate || formatDate(new Date()),
-          purchasedFrom: row.purchasedFrom || '',
-          amount: parseFloat(row.amount) || 0,
-        });
-        beans.push(bean);
-      } catch (e) {
-        console.warn(`Failed to import bean at row ${i}:`, e);
-      }
-    }
-
-    return beans;
-  }
-
-  /**
-   * 豆をエクスポート（CSV形式）
-   */
-  exportBeansToCSV() {
-    const headers = [
-      'id',
-      'name',
-      'countryId',
-      'recommendedRoastLevel',
-      'tasteNote',
-      'purchaseDate',
-      'purchasedFrom',
-      'amount',
-      'createdAt',
-    ];
-
-    return exportToCSV(this.appState.beans, headers);
-  }
 }
-
-// グローバルに BeanService インスタンスを公開
-window.beanService = null; // 後で初期化

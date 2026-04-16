@@ -1216,9 +1216,7 @@ function saveBean(){
     taste:document.getElementById('b-taste').value,
     memo:document.getElementById('b-memo').value,
     photo:S.beanPhotoData||null,
-  };
-  console.log('📦 saveBean() - bean object created:', { id: bean.id, name: bean.name, countryId: bean.countryId, editId: editId });
-  pushUndo();
+  };  pushUndo();
 
   // === Week 3: BeanService 統合 ===
   if(typeof window.beanService !== 'undefined'){
@@ -1327,9 +1325,7 @@ function previewBeanPhoto(input){
   r.readAsDataURL(file);
 }
 
-function renderBeans(){
-  console.log('🎨 renderBeans() called - S.beans count:', S.beans.length);
-  const el=document.getElementById('bean-list');
+function renderBeans(){  const el=document.getElementById('bean-list');
   initFilterButtons();
   let beans=S.beans;
   if(S.filterCountryIds.length)beans=beans.filter(b=>
@@ -1954,7 +1950,6 @@ function recognizeDisplay(canvas){
   ocrLog(`閾値=${thresh} 数字=${darkDigits?'暗(v<'+thresh+')':'明(v>'+thresh+')'}`);
   // 数字=明(背景暗): 数字は平均より明るい → 閾値 = 平均+（ピーク-平均）*0.3
   // 数字=暗(背景明): 数字は平均より暗い  → 閾値 = 平均-（平均-ピーク）*0.3
-
 
   // Step2: 行スコアで垂直トリム
   const rowScore=new Float32Array(h);
@@ -3245,8 +3240,6 @@ initModalSwipe('finish-modal',closeFinishModal);
 initModalSwipe('record-modal',closeRecordModal);
 initModalSwipe('edit-roast-modal',closeEditRoastModal);
 
-
-
 // ===== INIT =====
 loadDriveStorage();
 loadMasterFileIds();
@@ -3274,7 +3267,6 @@ loadGeminiKeyStatus();
 
 <!-- Compat: 互換性レイヤー（Week 3） -->
 <script src="js/compat/StateCompat.js"></script>
-<script src="js/compat/StorageCompat.js"></script>
 
 <!-- Services: ビジネスロジック -->
 <!-- Week 1 -->
