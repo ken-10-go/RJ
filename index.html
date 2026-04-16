@@ -245,7 +245,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.0</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.1</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -3238,8 +3238,14 @@ loadGeminiKeyStatus();
 <script src="js/utils/storage.js"></script>
 
 <!-- Services: ビジネスロジック -->
+<!-- Week 1 -->
 <script src="js/services/MasterDataService.js"></script>
 <script src="js/services/BeanService.js"></script>
+<!-- Week 2 -->
+<script src="js/services/RoastService.js"></script>
+<script src="js/services/TasteService.js"></script>
+<script src="js/services/OcrService.js"></script>
+<script src="js/services/GoogleDriveService.js"></script>
 
 <!-- App: 初期化 -->
 <script src="js/index.js"></script>
