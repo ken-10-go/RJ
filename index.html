@@ -221,12 +221,12 @@ select.inp{cursor:pointer;}
   .timer-display{font-size:38px;}
 }
 /* ===== 焙煎FloatingPanel ===== */
-#roast-overlay{position:fixed;z-index:95;background:var(--c-bg);display:none;flex-direction:column;border:1px solid var(--border);border-radius:16px 16px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,0.1);overflow-y:auto;}
+#roast-overlay{position:fixed;z-index:95;background:var(--c-bg);display:none;flex-direction:column;border:1px solid var(--border);border-radius:16px 16px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,0.1);overflow:hidden;}
 #roast-overlay.active{display:flex;}
 /* スマートフォン：ボトムシート */
 @media (max-width:767px){
-  #roast-overlay{bottom:0;left:0;right:0;height:65vh;border-radius:20px 20px 0 0;width:100%;overflow-y:auto;}
-  #roast-overlay .ro-cam-section{flex:0.6;overflow:auto;}
+  #roast-overlay{bottom:0;left:0;right:0;height:65vh;border-radius:20px 20px 0 0;width:100%;}
+  #roast-overlay .ro-cam-section{flex:0.6;}
 }
 /* デスクトップ：サイドパネル */
 @media (min-width:768px){
@@ -245,7 +245,7 @@ select.inp{cursor:pointer;}
 .ro-metric-val.ror-accent{color:var(--c-accent);}
 .ro-metric-lbl{font-family:'Poppins',sans-serif;font-size:9px;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:4px;font-weight:600;}
 .ro-chart-wrap{padding:6px 8px;border-bottom:1px solid var(--border);flex-shrink:0;}
-.ro-cam-section{padding:6px 8px;border-bottom:1px solid var(--border);flex:1;display:flex;flex-direction:column;min-height:0;overflow:auto;}
+.ro-cam-section{padding:6px 8px;border-bottom:1px solid var(--border);flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
 .ro-footer{background:var(--c-bg);border-top:2px solid var(--border);padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));flex-shrink:0;}
 .ro-ev-log{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:7px;padding:5px 8px;margin-top:5px;max-height:80px;overflow-y:auto;display:none;color:var(--c-text);}
 .ro-ev-log.open{display:block;}
@@ -1663,9 +1663,13 @@ function startRoastAndOverlay(){
   showRoastOverlay();
 }
 function exitRoastMode(){
-  // ※ pauseRoast() は呼ばない（焙煎タイマーは継続）
-  // フローティングバーは表示したまま（焙煎状態を確認可能）
-  // 焙煎パネルのみ非表示
+  // 焙煎を一時停止
+  if(S.roastRunning){
+    pauseRoast();
+  }
+  // フローティングバーを非表示
+  document.getElementById('roast-floating-bar').style.display='none';
+  // 焙煎パネルを非表示
   const panel=document.getElementById('roast-overlay');
   if(window.innerWidth<768){
     // スマートフォン：アニメーション付きで非表示
