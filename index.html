@@ -221,13 +221,12 @@ select.inp{cursor:pointer;}
   .timer-display{font-size:38px;}
 }
 /* ===== 焙煎FloatingPanel ===== */
-#roast-overlay{position:fixed;z-index:95;background:var(--c-bg);display:none;flex-direction:column;border:1px solid var(--border);border-radius:16px 16px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,0.1);overflow:hidden;}
+#roast-overlay{position:fixed;z-index:95;background:var(--c-bg);display:none;flex-direction:column;border:1px solid var(--border);border-radius:16px 16px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,0.1);overflow-y:auto;-webkit-overflow-scrolling:touch;}
 #roast-overlay.active{display:flex;}
 /* スマートフォン：ボトムシート */
 @media (max-width:767px){
-  #roast-overlay{bottom:0;left:0;right:0;height:65vh;border-radius:20px 20px 0 0;width:100%;overflow-y:auto;padding-bottom:120px;}
-  #roast-overlay .ro-cam-section{flex:0.6;}
-  #roast-overlay .ro-footer{position:fixed;bottom:0;left:0;right:0;background:var(--c-bg);max-width:430px;margin:0 auto;border-top:2px solid var(--border);z-index:10;}
+  #roast-overlay{bottom:0;left:0;right:0;height:65vh;border-radius:20px 20px 0 0;width:100%;}
+  #roast-overlay .ro-cam-section{flex:0.6;overflow-y:auto;}
 }
 /* デスクトップ：サイドパネル */
 @media (min-width:768px){
