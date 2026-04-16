@@ -221,12 +221,12 @@ select.inp{cursor:pointer;}
   .timer-display{font-size:38px;}
 }
 /* ===== 焙煎FloatingPanel ===== */
-#roast-overlay{position:fixed;z-index:95;background:var(--c-bg);display:none;flex-direction:column;border:1px solid var(--border);border-radius:16px 16px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,0.1);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#roast-overlay{position:fixed;z-index:95;background:var(--c-bg);display:none;flex-direction:column;border:1px solid var(--border);border-radius:16px 16px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,0.1);overflow:hidden;}
 #roast-overlay.active{display:flex;}
 /* スマートフォン：ボトムシート */
 @media (max-width:767px){
   #roast-overlay{bottom:0;left:0;right:0;height:65vh;border-radius:20px 20px 0 0;width:100%;}
-  #roast-overlay .ro-cam-section{flex:0.6;overflow-y:auto;}
+  #roast-overlay .ro-cam-section{flex:0.6;}
 }
 /* デスクトップ：サイドパネル */
 @media (min-width:768px){
@@ -672,21 +672,7 @@ select.inp{cursor:pointer;}
   </div>
 </div>
 
-<!-- ===== 焙煎フローティングバー ===== -->
-<div id="roast-floating-bar" style="display:none;position:fixed;top:0;left:0;right:0;height:60px;background:var(--c-surface);border-bottom:1px solid var(--border);z-index:100;padding-top:env(safe-area-inset-top,0px);display:flex;align-items:center;padding-left:12px;padding-right:12px;gap:12px;box-shadow:var(--shadow-sm);">
-  <div style="flex:1;">
-    <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:700;color:var(--c-accent);line-height:1;" id="ro-timer-float">00:00</div>
-  </div>
-  <div style="flex:1;overflow:hidden;">
-    <div style="font-size:13px;font-weight:600;color:var(--c-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="ro-bean-name-float">—</div>
-    <div style="font-size:10px;color:var(--c-text-muted);margin-top:2px;" id="ro-status-float">準備中</div>
-  </div>
-  <button id="ro-start-btn-float" onclick="doStartRoast()" style="background:var(--c-accent);color:white;border:none;border-radius:6px;padding:6px 12px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">▶ スタート</button>
-  <button id="ro-camera-btn-float" onclick="toggleCameraOCR()" style="background:#fef3c7;color:var(--c-text);border:none;border-radius:6px;padding:6px 10px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">📷</button>
-  <button onclick="exitRoastMode()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--c-text-muted);">✕</button>
-</div>
-
-<!-- ===== 焙煎FloatingPanel ===== -->
+<!-- ===== 焙煎パネル ===== -->
 <div id="roast-overlay">
   <!-- パネルヘッダー -->
   <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--c-surface);">
@@ -1701,19 +1687,16 @@ function showRoastOverlay(){
     document.getElementById('ro-bean-name-float').textContent='—';
   }
   document.getElementById('roast-overlay').classList.add('active');
-  document.getElementById('roast-floating-bar').style.display='flex';
   if(!S.roastRunning){
     // 準備中状態：「▶ スタート」ボタン表示、カメラは自動起動しない
     const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='▶ スタート';
     const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='準備中';
-    const sf=document.getElementById('ro-status-float');if(sf)sf.textContent='準備中';
     if(!roastChart)initRoastChart();
     // カメラは自動起動しない（ユーザーがボタンを押したときのみ）
   }
 }
 function hideRoastOverlay(){
   document.getElementById('roast-overlay').classList.remove('active');
-  document.getElementById('roast-floating-bar').style.display='none';
 }
 function doStartRoast(){
   // 既存のタイマーを先にクリア（二重起動を防止）
@@ -1721,8 +1704,6 @@ function doStartRoast(){
   S.roastRunning=true;
   const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='⏸ 停止';
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='焙煎中';
-  const sf=document.getElementById('ro-status-float');if(sf)sf.textContent='焙煎中';
-  const sb=document.getElementById('ro-start-btn-float');if(sb)sb.textContent='⏸ 停止';
   S.timerInterval=setInterval(()=>{S.elapsed++;updateTimer();},1000);
   if(!roastChart)initRoastChart();
   // カメラは自動起動しない（ユーザーがボタンを押したときのみ）
@@ -1746,8 +1727,6 @@ function pauseRoast(){
   if(cameraStream){stopCameraOCR();}
   const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='▶ 再開';
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='一時停止中';
-  const sf=document.getElementById('ro-status-float');if(sf)sf.textContent='一時停止中';
-  const sb=document.getElementById('ro-start-btn-float');if(sb)sb.textContent='▶ 再開';
   const td=document.getElementById('timer-status');if(td)td.textContent='一時停止中';
   const rb=document.getElementById('roast-btn');if(rb)rb.textContent='▶ 再開';
 }
@@ -1804,7 +1783,6 @@ function updateTimer(){
   const ts=m+':'+s;
   const td=document.getElementById('timer-display');if(td)td.textContent=ts;
   const rt=document.getElementById('ro-timer');if(rt)rt.textContent=ts;
-  const rtf=document.getElementById('ro-timer-float');if(rtf)rtf.textContent=ts;
   if(S.elapsed>0&&S.elapsed%60===0)playBell();
 }
 // logManualTemp removed
