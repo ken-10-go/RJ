@@ -225,8 +225,9 @@ select.inp{cursor:pointer;}
 #roast-overlay.active{display:flex;}
 /* スマートフォン：ボトムシート */
 @media (max-width:767px){
-  #roast-overlay{bottom:0;left:0;right:0;height:65vh;border-radius:20px 20px 0 0;width:100%;}
+  #roast-overlay{bottom:0;left:0;right:0;height:65vh;border-radius:20px 20px 0 0;width:100%;overflow-y:auto;padding-bottom:120px;}
   #roast-overlay .ro-cam-section{flex:0.6;}
+  #roast-overlay .ro-footer{position:fixed;bottom:0;left:0;right:0;background:var(--c-bg);max-width:430px;margin:0 auto;border-top:2px solid var(--border);z-index:10;}
 }
 /* デスクトップ：サイドパネル */
 @media (min-width:768px){
@@ -1716,6 +1717,8 @@ function hideRoastOverlay(){
   document.getElementById('roast-floating-bar').style.display='none';
 }
 function doStartRoast(){
+  // 既存のタイマーを先にクリア（二重起動を防止）
+  if(S.timerInterval){clearInterval(S.timerInterval);S.timerInterval=null;}
   S.roastRunning=true;
   const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='⏸ 停止';
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='焙煎中';
