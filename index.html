@@ -245,7 +245,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.0</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.1</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -1656,7 +1656,6 @@ function recordTemp(temp){
   const cd=document.getElementById('cur-dev');if(cd)cd.textContent=devStr;
   const rd=document.getElementById('ro-dev');if(rd)rd.textContent=devStr;
   updateRoastChart();
-  addEventLog(ft(S.elapsed),temp+'°C 記録');
   checkAutoTurningPoint();
   updateSliderFromLast();
 }
@@ -1698,12 +1697,11 @@ function checkAutoTurningPoint(){
 function ft(s){return Math.floor(s/60).toString().padStart(2,'0')+':'+(s%60).toString().padStart(2,'0');}
 function markEventWithTemp(label,rlVal){
   if(!S.roastRunning){toast('焙煎中にマークしてください');return;}
-  const temp=S.tempData.length?S.tempData[S.tempData.length-1]:null;
-  S.events.push({time:S.elapsed,label,temp,rlVal});
+  S.events.push({time:S.elapsed,label,temp:null,rlVal});
   if(label==='1st Crack Start'&&S.firstCrackTime===null)S.firstCrackTime=S.elapsed;
   const rlStr=rlVal!==null?'['+rlLabel(rlVal)+']':'';
-  addEventLog(ft(S.elapsed),label+(temp?' @ '+temp+'°C ':' ')+rlStr);
-  toast(label+(temp?' @ '+temp+'°C':'')+' をマーク');
+  addEventLog(ft(S.elapsed),label+(rlStr?' '+rlStr:''));
+  toast(label+' をマーク');
 }
 function addEventLog(time,text){
   const el=document.getElementById('event-log');
@@ -2305,7 +2303,9 @@ function testOcrFromFile(input){
       ocrLog('識別エラー','err');
       document.getElementById('ocr-temp').textContent='識別エラー';
     }else{
-      const num=parseFloat(result);
+      let nr=result.trim();
+      if(/^\d{3,4}$/.test(nr)){nr=nr.slice(0,-1)+'.'+nr.slice(-1);ocrLog('小数点補完: '+result+' → '+nr);}
+      const num=parseFloat(nr);
       if(num>=20&&num<=250){
         ocrLog('OK: '+num+'°C','ok');
         document.getElementById('ocr-temp').textContent=num+'°C (テスト)';
@@ -2350,7 +2350,9 @@ async function runOCRCapture(){
       ocrLog('識別エラー','err');
       document.getElementById('ocr-temp').textContent='識別エラー';
     }else{
-      const num=parseFloat(result);
+      let nr=result.trim();
+      if(/^\d{3,4}$/.test(nr)){nr=nr.slice(0,-1)+'.'+nr.slice(-1);ocrLog('小数点補完: '+result+' → '+nr);}
+      const num=parseFloat(nr);
       const lastTemp=S.tempData.length?S.tempData[S.tempData.length-1]:null;
       const inRange=num>=20&&num<=250;
       const plausible=lastTemp===null||Math.abs(num-lastTemp)<=40;
