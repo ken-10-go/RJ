@@ -245,7 +245,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.1</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.2</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -1640,8 +1640,8 @@ function updateTimer(){
 }
 // logManualTemp removed
 function recordTemp(temp){
-  if(temp<60)return;
-  if(!S.roastRunning){toast('焙煎を開始してください');return;}
+  if(temp<20)return;
+  if(!S.currentRoast){toast('焙煎を開始してください');return;}
   if(S.currentRoast&&S.currentRoast.startTemp===null)S.currentRoast.startTemp=temp;
   S.tempData.push(temp);S.timeData.push(S.elapsed);
   const ct=document.getElementById('cur-temp');if(ct)ct.textContent=temp;
@@ -2359,7 +2359,7 @@ async function runOCRCapture(){
       if(inRange&&plausible){
         ocrLog('OK: '+num+'°C','ok');
         document.getElementById('ocr-temp').textContent=num+'°C';
-        if(S.roastRunning)recordTemp(num);
+        if(S.currentRoast)recordTemp(num);
       }else{
         ocrLog('範囲外: '+num+'°C (前回:'+lastTemp+')','err');
         document.getElementById('ocr-temp').textContent=num+'°C?';
