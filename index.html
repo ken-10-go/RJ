@@ -223,7 +223,7 @@ select.inp{cursor:pointer;}
 /* ===== 焙煎フルスクリーンオーバーレイ ===== */
 #roast-overlay{position:fixed;inset:0;z-index:95;background:#f5f1ed;display:none;flex-direction:column;width:100%;max-width:430px;left:50%;transform:translateX(-50%);}
 #roast-overlay.active{display:flex;}
-.ro-statusbar{background:var(--c-surface);border-bottom:1px solid #e5e7eb;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0;box-shadow:var(--shadow-sm);}
+.ro-statusbar{background:var(--c-surface);border-bottom:1px solid #e5e7eb;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;box-shadow:var(--shadow-sm);}
 .ro-timer-big{font-family:'DM Mono',monospace;font-size:44px;font-weight:700;color:var(--c-accent);letter-spacing:.04em;min-width:100px;line-height:1;}
 .ro-status-info{flex:1;display:flex;flex-direction:column;}
 .ro-status-lbl{font-family:'Poppins',sans-serif;font-size:10px;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600;}
@@ -672,7 +672,7 @@ select.inp{cursor:pointer;}
 <!-- ===== 焙煎フルスクリーンオーバーレイ ===== -->
 <div id="roast-overlay">
   <!-- ステータスバー -->
-  <div class="ro-statusbar" style="flex-direction:column;gap:6px;align-items:stretch;">
+  <div class="ro-statusbar">
     <!-- 1行目: タイマー＋最小化 -->
     <div style="display:flex;align-items:center;gap:8px;">
       <div id="ro-timer" class="ro-timer-big" style="flex:1;">00:00</div>
