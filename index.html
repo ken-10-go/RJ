@@ -245,7 +245,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.2</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.3</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -741,6 +741,25 @@ select.inp{cursor:pointer;}
             <div class="temp-slider-val"><span id="slider-val">150</span>°C</div>
           </div>
           <button class="btn btn-outline" style="width:100%;padding:7px;font-size:var(--fs-sm);" onclick="logSliderTemp()">この温度を記録</button>
+        </div>
+      </div>
+    </div>
+    <!-- 温度履歴（焙煎中リアルタイム編集） -->
+    <div style="margin-top:4px;">
+      <div class="roast-collapse-hdr" onclick="toggleRoastSection('live-temp-history-section','live-temp-arrow')" style="padding:5px 0;">
+        <span class="roast-collapse-hdr-lbl" style="font-size:11px;">📋 温度履歴・修正</span>
+        <span class="roast-collapse-arrow" id="live-temp-arrow">▼</span>
+      </div>
+      <div class="roast-collapse-body" id="live-temp-history-section" style="max-height:0;">
+        <div style="padding:8px;margin-top:4px;">
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+            <input id="manual-temp-input" type="number" placeholder="°C を入力" step="0.1"
+              style="flex:1;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--c-bg);color:var(--c-text);">
+            <button onclick="addManualTemp()" style="font-size:12px;padding:4px 12px;background:var(--c-accent);color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">追加</button>
+          </div>
+          <div id="live-temp-list" style="max-height:120px;overflow-y:auto;font-family:'DM Mono',monospace;font-size:11px;">
+            <div style="color:var(--c-text-muted);padding:4px 0;">記録なし</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1656,8 +1675,28 @@ function recordTemp(temp){
   const cd=document.getElementById('cur-dev');if(cd)cd.textContent=devStr;
   const rd=document.getElementById('ro-dev');if(rd)rd.textContent=devStr;
   updateRoastChart();
+  renderLiveTempList();
   checkAutoTurningPoint();
   updateSliderFromLast();
+}
+
+function renderLiveTempList(){
+  const el=document.getElementById('live-temp-list');
+  if(!el)return;
+  if(!S.tempData.length){el.innerHTML='<div style="color:var(--c-text-muted);padding:4px 0;">記録なし</div>';return;}
+  el.innerHTML=[...S.tempData].map((t,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(196,122,58,0.08);"><span style="color:var(--c-accent);min-width:38px;">${ft(S.timeData[i])}</span><span style="flex:1;">${t}°C</span><button onclick="deleteLiveTemp(${i})" style="background:none;border:none;color:var(--c-danger);cursor:pointer;font-size:14px;padding:0 3px;line-height:1;">✕</button></div>`).reverse().join('');
+}
+function deleteLiveTemp(i){
+  S.tempData.splice(i,1);S.timeData.splice(i,1);
+  updateRoastChart();renderLiveTempList();
+  toast('温度記録を削除しました');
+}
+function addManualTemp(){
+  const inp=document.getElementById('manual-temp-input');
+  const val=parseFloat(inp.value);
+  if(isNaN(val)||val<20||val>350){toast('有効な温度を入力してください（20〜350°C）');return;}
+  if(!S.currentRoast){toast('焙煎を開始してください');return;}
+  recordTemp(val);inp.value='';
 }
 
 // ===== T.Point 自動検出 =====
