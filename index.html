@@ -235,17 +235,28 @@ select.inp{cursor:pointer;}
 .ro-metric-val.ror-accent{color:var(--c-accent);}
 .ro-metric-lbl{font-family:'Poppins',sans-serif;font-size:9px;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:4px;font-weight:600;}
 .ro-chart-wrap{padding:6px 8px;border-bottom:1px solid var(--border);flex-shrink:0;}
-.ro-cam-section{padding:6px 8px;border-bottom:1px solid var(--border);flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.ro-cam-section{padding:0;border-bottom:1px solid var(--border);flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
 .ro-footer{background:var(--c-bg);border-top:2px solid var(--border);padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));flex-shrink:0;}
 .ro-ev-log{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:7px;padding:5px 8px;margin-top:5px;max-height:80px;overflow-y:auto;display:none;color:var(--c-text);}
 .ro-ev-log.open{display:block;}
+.ro-tab-bar{display:flex;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--c-surface);}
+.ro-tab-btn{flex:1;padding:10px 4px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:var(--c-text-muted);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
+.ro-tab-btn.active{color:var(--c-accent);border-bottom-color:var(--c-accent);}
+.ro-tab-panel{display:none;flex:1;flex-direction:column;min-height:0;overflow-y:auto;padding:8px;}
+.ro-tab-panel.active{display:flex;}
+.live-temp-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(196,122,58,0.1);}
+.live-temp-row:last-child{border-bottom:none;}
+.live-temp-time{font-family:'DM Mono',monospace;font-size:13px;color:var(--c-accent);min-width:44px;flex-shrink:0;}
+.live-temp-input{flex:1;font-family:'DM Mono',monospace;font-size:16px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--c-bg);color:var(--c-text);text-align:right;}
+.live-temp-unit{font-size:13px;color:var(--c-text-muted);flex-shrink:0;}
+.live-temp-del{width:40px;height:40px;background:none;border:1px solid #fecaca;border-radius:8px;color:#dc2626;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 </style>
 </head>
 <body>
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.3</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.4</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -687,80 +698,62 @@ select.inp{cursor:pointer;}
   </div>
   <!-- 温度カーブ -->
   <div class="ro-chart-wrap">
-    <canvas id="roast-chart" height="120"></canvas>
+    <canvas id="roast-chart" height="150"></canvas>
   </div>
-  <!-- カメラセクション -->
+  <!-- タブ付きカメラ／温度履歴セクション -->
   <div class="ro-cam-section">
-    <div id="camera-preview-wrap" style="display:none;position:relative;touch-action:none;flex:1;min-height:0;">
-      <video id="camera-video" autoplay playsinline muted style="width:100%;border-radius:8px;border:1px solid var(--border);background:#000;max-height:140px;object-fit:cover;display:block;"></video>
-      <canvas id="camera-canvas" style="display:none;"></canvas>
-      <canvas id="guide-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;touch-action:none;cursor:move;"></canvas>
-      <div style="position:absolute;bottom:6px;left:6px;right:6px;background:#f3f4f6 (rgb(243, 244, 246), opacity:0.88);border-radius:6px;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;">
-        <div>
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);text-transform:uppercase;">読み取り温度</div>
-          <div id="ocr-temp" style="font-family:'DM Mono',monospace;font-size:20px;color:var(--c-accent);">—</div>
-        </div>
-        <div style="text-align:right;">
-          <div id="ocr-countdown" style="font-family:'DM Mono',monospace;font-size:18px;color:var(--c-text);">10</div>
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);">次の読み取り</div>
-        </div>
-      </div>
+    <!-- タブバー -->
+    <div class="ro-tab-bar">
+      <button class="ro-tab-btn active" id="ro-tab-cam-btn" onclick="switchRoTab('cam')">📷 カメラ</button>
+      <button class="ro-tab-btn" id="ro-tab-temp-btn" onclick="switchRoTab('temp')">📋 温度履歴 <span id="ro-temp-count" style="font-size:10px;opacity:.7;"></span></button>
     </div>
-    <button class="camera-btn" id="cam-toggle-btn" onclick="toggleCameraOCR()" style="padding:8px;margin-top:4px;width:100%;">
-      <span id="cam-btn-icon" style="font-size:16px;">📷</span>
-      <span id="cam-btn-text" style="font-size:var(--fs-sm);font-weight:500;">自動読み取り開始</span>
-    </button>
-    <!-- 画像ファイルOCRテスト（非表示/ソース保持） -->
-    <div style="display:none;">
-      <input type="file" id="ocr-test-file" accept="image/*" onchange="testOcrFromFile(this)">
-    </div>
-    <!-- OCRデバッグパネル（非表示/ソース保持） -->
-    <div id="ocr-debug" class="ocr-debug" style="display:none!important;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <div style="color:var(--c-accent);font-weight:500;">OCR デバッグログ</div>
-        <button onclick="copyOcrLog()" style="background:#fef3c7;border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--c-text);font-size:10px;cursor:pointer;">📋 コピー</button>
-      </div>
-      <div style="margin-bottom:4px;">
-        <div style="font-size:9px;color:var(--c-text-muted);margin-bottom:2px;">前処理プレビュー</div>
-        <canvas id="ocr-preview" style="width:100%;border-radius:3px;border:1px solid var(--border);background:#000;display:block;max-height:60px;object-fit:contain;"></canvas>
-      </div>
-      <div id="ocr-debug-log"></div>
-    </div>
-    <!-- 手動温度入力（折りたたみ） -->
-    <div style="margin-top:4px;">
-      <div class="roast-collapse-hdr" onclick="toggleRoastSection('slider-section','slider-arrow')" style="padding:5px 0;">
-        <span class="roast-collapse-hdr-lbl" style="font-size:11px;">🌡 手動入力</span>
-        <span class="roast-collapse-arrow" id="slider-arrow">▼</span>
-      </div>
-      <div class="roast-collapse-body" id="slider-section" style="max-height:0;">
-        <div class="temp-slider-wrap" style="margin-top:4px;padding:8px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-            <button class="qty-btn" onclick="adjustSlider(-1)" style="flex-shrink:0;">−</button>
-            <input type="range" class="temp-slider" id="temp-slider" min="20" max="250" value="150" step="1" oninput="onTempSlider()">
-            <button class="qty-btn" onclick="adjustSlider(1)" style="flex-shrink:0;">＋</button>
-            <div class="temp-slider-val"><span id="slider-val">150</span>°C</div>
+    <!-- カメラタブ -->
+    <div class="ro-tab-panel active" id="ro-tab-cam">
+      <div id="camera-preview-wrap" style="display:none;position:relative;touch-action:none;width:100%;">
+        <video id="camera-video" autoplay playsinline muted style="width:100%;border-radius:8px;border:1px solid var(--border);background:#000;max-height:150px;object-fit:cover;display:block;"></video>
+        <canvas id="camera-canvas" style="display:none;"></canvas>
+        <canvas id="guide-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;touch-action:none;cursor:move;"></canvas>
+        <div style="position:absolute;bottom:6px;left:6px;right:6px;background:rgba(243,244,246,0.92);border-radius:6px;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;">
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);text-transform:uppercase;">読み取り温度</div>
+            <div id="ocr-temp" style="font-family:'DM Mono',monospace;font-size:22px;color:var(--c-accent);">—</div>
           </div>
-          <button class="btn btn-outline" style="width:100%;padding:7px;font-size:var(--fs-sm);" onclick="logSliderTemp()">この温度を記録</button>
-        </div>
-      </div>
-    </div>
-    <!-- 温度履歴（焙煎中リアルタイム編集） -->
-    <div style="margin-top:4px;">
-      <div class="roast-collapse-hdr" onclick="toggleRoastSection('live-temp-history-section','live-temp-arrow')" style="padding:5px 0;">
-        <span class="roast-collapse-hdr-lbl" style="font-size:11px;">📋 温度履歴・修正</span>
-        <span class="roast-collapse-arrow" id="live-temp-arrow">▼</span>
-      </div>
-      <div class="roast-collapse-body" id="live-temp-history-section" style="max-height:0;">
-        <div style="padding:8px;margin-top:4px;">
-          <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-            <input id="manual-temp-input" type="number" placeholder="°C を入力" step="0.1"
-              style="flex:1;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--c-bg);color:var(--c-text);">
-            <button onclick="addManualTemp()" style="font-size:12px;padding:4px 12px;background:var(--c-accent);color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">追加</button>
-          </div>
-          <div id="live-temp-list" style="max-height:120px;overflow-y:auto;font-family:'DM Mono',monospace;font-size:11px;">
-            <div style="color:var(--c-text-muted);padding:4px 0;">記録なし</div>
+          <div style="text-align:right;">
+            <div id="ocr-countdown" style="font-family:'DM Mono',monospace;font-size:20px;color:var(--c-text);">10</div>
+            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);">次の読み取り</div>
           </div>
         </div>
+      </div>
+      <button class="camera-btn" id="cam-toggle-btn" onclick="toggleCameraOCR()" style="padding:10px;width:100%;">
+        <span id="cam-btn-icon" style="font-size:18px;">📷</span>
+        <span id="cam-btn-text" style="font-size:var(--fs-sm);font-weight:500;">自動読み取り開始</span>
+      </button>
+      <!-- 画像ファイルOCRテスト（非表示/ソース保持） -->
+      <div style="display:none;"><input type="file" id="ocr-test-file" accept="image/*" onchange="testOcrFromFile(this)"></div>
+      <!-- OCRデバッグパネル（非表示/ソース保持） -->
+      <div id="ocr-debug" class="ocr-debug" style="display:none!important;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="color:var(--c-accent);font-weight:500;">OCR デバッグログ</div>
+          <button onclick="copyOcrLog()" style="background:#fef3c7;border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--c-text);font-size:10px;cursor:pointer;">📋 コピー</button>
+        </div>
+        <div style="margin-bottom:4px;">
+          <div style="font-size:9px;color:var(--c-text-muted);margin-bottom:2px;">前処理プレビュー</div>
+          <canvas id="ocr-preview" style="width:100%;border-radius:3px;border:1px solid var(--border);background:#000;display:block;max-height:60px;object-fit:contain;"></canvas>
+        </div>
+        <div id="ocr-debug-log"></div>
+      </div>
+    </div>
+    <!-- 温度履歴タブ -->
+    <div class="ro-tab-panel" id="ro-tab-temp">
+      <!-- 手動追加 -->
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-shrink:0;">
+        <input id="manual-temp-input" type="number" placeholder="温度を入力 °C" step="0.1"
+          style="flex:1;font-family:'DM Mono',monospace;font-size:16px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--c-bg);color:var(--c-text);">
+        <button onclick="addManualTemp()" style="height:40px;padding:0 16px;background:var(--c-accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">追加</button>
+      </div>
+      <!-- 温度リスト（新しい順、直接編集可） -->
+      <div id="live-temp-list" style="flex:1;overflow-y:auto;">
+        <div style="color:var(--c-text-muted);padding:8px 0;font-size:13px;text-align:center;">記録なし</div>
       </div>
     </div>
   </div>
@@ -1683,8 +1676,27 @@ function recordTemp(temp){
 function renderLiveTempList(){
   const el=document.getElementById('live-temp-list');
   if(!el)return;
-  if(!S.tempData.length){el.innerHTML='<div style="color:var(--c-text-muted);padding:4px 0;">記録なし</div>';return;}
-  el.innerHTML=[...S.tempData].map((t,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(196,122,58,0.08);"><span style="color:var(--c-accent);min-width:38px;">${ft(S.timeData[i])}</span><span style="flex:1;">${t}°C</span><button onclick="deleteLiveTemp(${i})" style="background:none;border:none;color:var(--c-danger);cursor:pointer;font-size:14px;padding:0 3px;line-height:1;">✕</button></div>`).reverse().join('');
+  const cnt=document.getElementById('ro-temp-count');
+  if(cnt)cnt.textContent=S.tempData.length?'('+S.tempData.length+')':'';
+  if(!S.tempData.length){el.innerHTML='<div style="color:var(--c-text-muted);padding:8px 0;font-size:13px;text-align:center;">記録なし</div>';return;}
+  // 新しい順で表示（インデックスは元の配列インデックス）
+  const rows=[...S.tempData.keys()].reverse().map(i=>`
+    <div class="live-temp-row">
+      <span class="live-temp-time">${ft(S.timeData[i])}</span>
+      <input class="live-temp-input" type="number" value="${S.tempData[i]}" step="0.1"
+        onchange="editLiveTemp(${i},this.value)" onblur="editLiveTemp(${i},this.value)">
+      <span class="live-temp-unit">°C</span>
+      <button class="live-temp-del" onclick="deleteLiveTemp(${i})">✕</button>
+    </div>`).join('');
+  el.innerHTML=rows;
+}
+function editLiveTemp(i,val){
+  const v=parseFloat(val);
+  if(isNaN(v)||v<20||v>350){toast('20〜350°Cの範囲で入力してください');renderLiveTempList();return;}
+  S.tempData[i]=v;
+  updateRoastChart();
+  const cnt=document.getElementById('ro-temp-count');
+  if(cnt)cnt.textContent='('+S.tempData.length+')';
 }
 function deleteLiveTemp(i){
   S.tempData.splice(i,1);S.timeData.splice(i,1);
@@ -1697,6 +1709,13 @@ function addManualTemp(){
   if(isNaN(val)||val<20||val>350){toast('有効な温度を入力してください（20〜350°C）');return;}
   if(!S.currentRoast){toast('焙煎を開始してください');return;}
   recordTemp(val);inp.value='';
+}
+function switchRoTab(tab){
+  document.getElementById('ro-tab-cam').classList.toggle('active',tab==='cam');
+  document.getElementById('ro-tab-temp').classList.toggle('active',tab==='temp');
+  document.getElementById('ro-tab-cam-btn').classList.toggle('active',tab==='cam');
+  document.getElementById('ro-tab-temp-btn').classList.toggle('active',tab==='temp');
+  if(tab==='temp')renderLiveTempList();
 }
 
 // ===== T.Point 自動検出 =====
