@@ -256,7 +256,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v2.2</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v2.3</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -1562,9 +1562,17 @@ function showRoastOverlay(){
   document.getElementById('roast-overlay').classList.add('active');
   if(!S.roastRunning){
     // 準備中状態：「▶ スタート」ボタン表示（カメラは手動起動）
-    const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='▶ スタート';
+    const pb=document.getElementById('ro-pause-btn');
+    if(pb){pb.innerHTML='▶ スタート<br><span style="font-size:10px;opacity:.8;">開始</span>';pb.style.background='#dcfce7';pb.style.borderColor='#bbf7d0';pb.style.color='#16a34a';}
     const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='準備中';
-    if(!roastChart)initRoastChart();
+    // 新焙煎（elapsed=0）のときチャートとタイムラインをリセット
+    if(S.elapsed===0){
+      if(roastChart){roastChart.destroy();roastChart=null;}
+      initRoastChart();
+      renderLiveTempList();
+    } else if(!roastChart){
+      initRoastChart();
+    }
   }
 }
 function hideRoastOverlay(){
@@ -1730,9 +1738,11 @@ function renderLiveTempList(){
     } else {
       const c=(EVENT_STYLE[item.label]||{color:'#9ca3af'}).color;
       const isNote=item.label.startsWith('📝');
+      const evT=S.events[item.idx].temp;
       return `<div class="live-temp-row">
         <span class="live-temp-time">${ft(item.time)}</span>
         <span style="flex:1;font-size:12px;color:${c};font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">▲ ${item.label}</span>
+        ${evT!=null?`<span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--c-text-muted);white-space:nowrap;">${parseFloat(evT).toFixed(1)}°C</span>`:''}
         <button class="live-temp-del" onclick="deleteEventEntry(${item.idx})">✕</button>
       </div>`;
     }
@@ -1818,7 +1828,8 @@ function checkAutoTurningPoint(){
 function ft(s){return Math.floor(s/60).toString().padStart(2,'0')+':'+(s%60).toString().padStart(2,'0');}
 function markEventWithTemp(label,rlVal){
   if(!S.roastRunning){toast('焙煎中にマークしてください');return;}
-  S.events.push({time:S.elapsed,label,temp:null,rlVal});
+  const evTemp=S.tempData.length?S.tempData[S.tempData.length-1]:null;
+  S.events.push({time:S.elapsed,label,temp:evTemp,rlVal});
   if(label==='1st Crack Start'&&S.firstCrackTime===null)S.firstCrackTime=S.elapsed;
   updateRoastChart();
   renderLiveTempList();
