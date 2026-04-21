@@ -672,15 +672,21 @@ select.inp{cursor:pointer;}
 <!-- ===== 焙煎フルスクリーンオーバーレイ ===== -->
 <div id="roast-overlay">
   <!-- ステータスバー -->
-  <div class="ro-statusbar">
-    <div id="ro-timer" class="ro-timer-big">00:00</div>
-    <div class="ro-status-info">
-      <div id="ro-status-lbl" class="ro-status-lbl">焙煎中</div>
-      <div id="ro-bean-lbl" class="ro-bean-lbl">—</div>
+  <div class="ro-statusbar" style="flex-direction:column;gap:6px;align-items:stretch;">
+    <!-- 1行目: タイマー＋最小化 -->
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div id="ro-timer" class="ro-timer-big" style="flex:1;">00:00</div>
+      <button onclick="minimizeRoastOverlay()" style="background:var(--c-bg);border:1px solid var(--border);color:var(--c-text-muted);border-radius:7px;font-size:12px;padding:5px 10px;cursor:pointer;white-space:nowrap;font-family:'Poppins',sans-serif;font-weight:600;">▼ 最小化</button>
     </div>
-    <button id="ro-pause-btn" onclick="toggleRoastPause()" style="background:#dcfce7;border:1px solid #bbf7d0;color:var(--c-green);border-radius:7px;padding:7px 11px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">⏸ 停止</button>
-    <button onclick="openFinishModal()" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;border-radius:7px;padding:7px 11px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">■ 排出</button>
-    <button onclick="minimizeRoastOverlay()" style="background:none;border:none;color:var(--c-text-muted);font-size:18px;padding:4px 6px;cursor:pointer;line-height:1;" title="最小化">▼</button>
+    <!-- 2行目: ステータス/豆名＋操作ボタン -->
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="ro-status-info" style="flex:1;min-width:0;">
+        <div id="ro-status-lbl" class="ro-status-lbl">焙煎中</div>
+        <div id="ro-bean-lbl" class="ro-bean-lbl" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div>
+      </div>
+      <button id="ro-pause-btn" onclick="toggleRoastPause()" style="background:#dcfce7;border:1px solid #bbf7d0;color:var(--c-green);border-radius:7px;padding:7px 11px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">⏸ 停止</button>
+      <button onclick="openFinishModal()" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;border-radius:7px;padding:7px 11px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">■ 排出</button>
+    </div>
   </div>
   <!-- 温度・ROR・DT メトリクス -->
   <div class="ro-metrics">
