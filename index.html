@@ -256,7 +256,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.4</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.5</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -1539,18 +1539,17 @@ function startRoastAndOverlay(){
   showRoastOverlay();
 }
 function showRoastOverlay(){
+  // カメラが残っていれば停止してからオーバーレイ表示
+  if(cameraStream)stopCameraOCR();
   // 使用豆名をオーバーレイに表示
   const bean=S.beans.find(b=>b.id===S.currentRoast.beanId);
   const bl=document.getElementById('ro-bean-lbl');if(bl)bl.textContent=bean?bean.name:'—';
   document.getElementById('roast-overlay').classList.add('active');
   if(!S.roastRunning){
-    // 準備中状態：「▶ スタート」ボタン表示、カメラ起動
+    // 準備中状態：「▶ スタート」ボタン表示（カメラは手動起動）
     const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='▶ スタート';
     const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='準備中';
     if(!roastChart)initRoastChart();
-    if(!cameraStream){
-      startCameraOCR().catch(e=>{toast('カメラ起動エラー: '+e.message);});
-    }
   }
 }
 function hideRoastOverlay(){
@@ -1562,17 +1561,13 @@ function doStartRoast(){
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='焙煎中';
   S.timerInterval=setInterval(()=>{S.elapsed++;updateTimer();},1000);
   if(!roastChart)initRoastChart();
-  if(!cameraStream){
-    startCameraOCR().catch(e=>{toast('カメラ起動エラー: '+e.message+'\n手動で開始してください');});
-  } else {
-    // カメラ停止中だったOCRカウントダウンを再開
-    if(!ocrCDInterval){
-      ocrCDInterval=setInterval(()=>{
-        ocrCD--;
-        const oc=document.getElementById('ocr-countdown');if(oc)oc.textContent=ocrCD;
-        if(ocrCD<=0){ocrCD=10;runOCRCapture();}
-      },1000);
-    }
+  // カメラが既に起動中ならOCRカウントダウンを開始（停止中は手動起動）
+  if(cameraStream&&!ocrCDInterval){
+    ocrCDInterval=setInterval(()=>{
+      ocrCD--;
+      const oc=document.getElementById('ocr-countdown');if(oc)oc.textContent=ocrCD;
+      if(ocrCD<=0){ocrCD=10;runOCRCapture();}
+    },1000);
   }
   toast('焙煎を開始しました');
 }
@@ -1653,7 +1648,7 @@ function updateTimer(){
 // logManualTemp removed
 function recordTemp(temp){
   if(temp<20)return;
-  if(!S.currentRoast){toast('焙煎を開始してください');return;}
+  if(!S.roastRunning){toast('▶ スタートを押してから記録されます');return;}
   if(S.currentRoast&&S.currentRoast.startTemp===null)S.currentRoast.startTemp=temp;
   S.tempData.push(temp);S.timeData.push(S.elapsed);
   const ct=document.getElementById('cur-temp');if(ct)ct.textContent=temp;
@@ -2381,7 +2376,7 @@ function testOcrFromFile(input){
 async function runOCRCapture(){
   if(ocrBusy||!cameraStream)return;
   ocrBusy=true;
-  document.getElementById('ocr-temp').textContent='読み取り中...';
+  const oc2=document.getElementById('ocr-countdown');if(oc2)oc2.textContent='…';
   ocrLog('--- キャプチャ ('+(ocrMode==='gemini'?'Gemini':'7セグ')+') ---');
   try{
     const video=document.getElementById('camera-video');
@@ -2417,7 +2412,7 @@ async function runOCRCapture(){
       if(inRange&&plausible){
         ocrLog('OK: '+num+'°C','ok');
         document.getElementById('ocr-temp').textContent=num+'°C';
-        if(S.currentRoast)recordTemp(num);
+        if(S.roastRunning)recordTemp(num);
       }else{
         ocrLog('範囲外: '+num+'°C (前回:'+lastTemp+')','err');
         document.getElementById('ocr-temp').textContent=num+'°C?';
