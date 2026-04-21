@@ -1848,26 +1848,41 @@ function toggleRoEvLog(){
 }
 const crZonePlugin={
   id:'crZone',
-  beforeDatasetsDraw(chart){
-    const{ctx,chartArea,scales}=chart;
-    if(!chartArea||!scales.x||!S.timeData.length)return;
-    function getX(time){
-      let closest=-1,minDiff=Infinity;
-      S.timeData.forEach((t,i)=>{const d=Math.abs(t-time);if(d<minDiff){minDiff=d;closest=i;}});
-      if(closest<0)return null;
-      const lbl=chart.data.labels[closest];
-      return lbl!=null?scales.x.getPixelForValue(lbl):null;
-    }
-    function drawZone(startEv,endEv,color){
-      if(!startEv)return;
-      const x1=getX(startEv.time);if(x1===null)return;
-      const x2=endEv?getX(endEv.time):chartArea.right;
-      ctx.save();ctx.fillStyle=color;
-      ctx.fillRect(x1,chartArea.top,(x2??chartArea.right)-x1,chartArea.height);
-      ctx.restore();
-    }
-    drawZone(S.events.find(e=>e.label==='1st Crack Start'),S.events.find(e=>e.label==='1st Crack End'),'rgba(254,240,138,0.35)');
-    drawZone(S.events.find(e=>e.label==='2nd Crack Start'),S.events.find(e=>e.label==='2nd Crack End'),'rgba(254,215,170,0.45)');
+  beforeDatasetsDraw:function(chart){
+    try{
+      var ca=chart.chartArea,sc=chart.scales;
+      if(!ca||!sc||!sc.x||!S.timeData.length)return;
+      var ctx=chart.ctx;
+      function getX(time){
+        var closest=-1,minDiff=Infinity;
+        for(var i=0;i<S.timeData.length;i++){var d=Math.abs(S.timeData[i]-time);if(d<minDiff){minDiff=d;closest=i;}}
+        if(closest<0)return null;
+        var lbl=chart.data.labels[closest];
+        if(lbl==null)return null;
+        return sc.x.getPixelForValue(lbl);
+      }
+      function drawZone(startEv,endEv,color){
+        if(!startEv)return;
+        var x1=getX(startEv.time);if(x1===null)return;
+        var x2=endEv?getX(endEv.time):ca.right;
+        if(x2===null)x2=ca.right;
+        var w=x2-x1;if(w<=0)return;
+        ctx.save();ctx.fillStyle=color;
+        ctx.fillRect(x1,ca.top,w,ca.bottom-ca.top);
+        ctx.restore();
+      }
+      var ev=S.events;
+      drawZone(
+        ev.find(function(e){return e.label==='1st Crack Start';}),
+        ev.find(function(e){return e.label==='1st Crack End';}),
+        'rgba(254,240,138,0.35)'
+      );
+      drawZone(
+        ev.find(function(e){return e.label==='2nd Crack Start';}),
+        ev.find(function(e){return e.label==='2nd Crack End';}),
+        'rgba(254,215,170,0.45)'
+      );
+    }catch(e){}
   }
 };
 function initRoastChart(){
