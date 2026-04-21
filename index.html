@@ -223,7 +223,7 @@ select.inp{cursor:pointer;}
 /* ===== 焙煎フルスクリーンオーバーレイ ===== */
 #roast-overlay{position:fixed;inset:0;z-index:95;background:#f5f1ed;display:none;flex-direction:column;width:100%;max-width:430px;left:50%;transform:translateX(-50%);}
 #roast-overlay.active{display:flex;}
-.ro-statusbar{background:var(--c-surface);border-bottom:1px solid #e5e7eb;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;box-shadow:var(--shadow-sm);}
+.ro-statusbar{background:var(--c-surface);border-bottom:1px solid #e5e7eb;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0;box-shadow:var(--shadow-sm);}
 .ro-timer-big{font-family:'DM Mono',monospace;font-size:44px;font-weight:700;color:var(--c-accent);letter-spacing:.04em;min-width:100px;line-height:1;}
 .ro-status-info{flex:1;display:flex;flex-direction:column;}
 .ro-status-lbl{font-family:'Poppins',sans-serif;font-size:10px;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600;}
@@ -256,7 +256,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v2.1</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v2.2</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -673,20 +673,12 @@ select.inp{cursor:pointer;}
 <div id="roast-overlay">
   <!-- ステータスバー -->
   <div class="ro-statusbar">
-    <!-- 1行目: タイマー＋最小化 -->
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div id="ro-timer" class="ro-timer-big" style="flex:1;">00:00</div>
-      <button onclick="minimizeRoastOverlay()" style="background:var(--c-bg);border:1px solid var(--border);color:var(--c-text-muted);border-radius:7px;font-size:12px;padding:5px 10px;cursor:pointer;white-space:nowrap;font-family:'Poppins',sans-serif;font-weight:600;">▼ 最小化</button>
+    <div id="ro-timer" class="ro-timer-big">00:00</div>
+    <div class="ro-status-info" style="flex:1;min-width:0;">
+      <div id="ro-status-lbl" class="ro-status-lbl">準備中</div>
+      <div id="ro-bean-lbl" class="ro-bean-lbl">—</div>
     </div>
-    <!-- 2行目: ステータス/豆名＋操作ボタン -->
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div class="ro-status-info" style="flex:1;min-width:0;">
-        <div id="ro-status-lbl" class="ro-status-lbl">焙煎中</div>
-        <div id="ro-bean-lbl" class="ro-bean-lbl" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div>
-      </div>
-      <button id="ro-pause-btn" onclick="toggleRoastPause()" style="background:#dcfce7;border:1px solid #bbf7d0;color:var(--c-green);border-radius:7px;padding:7px 11px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">⏸ 停止</button>
-      <button onclick="openFinishModal()" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;border-radius:7px;padding:7px 11px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">■ 排出</button>
-    </div>
+    <button onclick="minimizeRoastOverlay()" style="background:var(--c-bg);border:1px solid var(--border);color:var(--c-text-muted);border-radius:7px;font-size:11px;padding:5px 9px;cursor:pointer;white-space:nowrap;font-family:'Poppins',sans-serif;font-weight:600;">▼</button>
   </div>
   <!-- 温度・ROR・DT メトリクス -->
   <div class="ro-metrics">
@@ -755,39 +747,38 @@ select.inp{cursor:pointer;}
     </div>
     <!-- 温度履歴タブ -->
     <div class="ro-tab-panel" id="ro-tab-temp">
-      <!-- 温度バー（手動記録） -->
-      <div class="temp-slider-wrap" style="flex-shrink:0;padding:8px;margin-bottom:6px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <!-- コンパクト温度バー -->
+      <div style="flex-shrink:0;padding:8px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:6px;">
           <button class="qty-btn" onclick="adjustSlider(-1)">−</button>
-          <input type="range" class="temp-slider" id="temp-slider" min="20" max="250" value="150" step="1" oninput="onTempSlider()">
+          <input type="range" class="temp-slider" id="temp-slider" min="20" max="250" value="150" step="1" oninput="onTempSlider()" style="flex:1;">
           <button class="qty-btn" onclick="adjustSlider(1)">＋</button>
-          <div class="temp-slider-val"><span id="slider-val">150</span>°C</div>
+          <div class="temp-slider-val" style="min-width:50px;"><span id="slider-val">150</span>°C</div>
+          <button onclick="logSliderTemp()" style="background:var(--c-accent);color:#fff;border:none;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'Poppins',sans-serif;">記録</button>
         </div>
-        <button class="btn btn-outline" style="width:100%;padding:8px;font-size:var(--fs-sm);" onclick="logSliderTemp()">この温度を記録</button>
       </div>
-      <!-- 温度リスト（新しい順、直接編集可） -->
-      <div id="live-temp-list" style="flex:1;overflow-y:auto;">
-        <div style="color:var(--c-text-muted);padding:8px 0;font-size:13px;text-align:center;">記録なし</div>
+      <!-- メモ追加 -->
+      <div style="flex-shrink:0;padding:6px 8px;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center;">
+        <input id="memo-input" type="text" placeholder="📝 メモ..." style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--c-bg);color:var(--c-text);">
+        <button onclick="addMemoEntry()" style="background:var(--c-surface);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap;color:var(--c-text);">追加</button>
       </div>
+      <!-- 統合タイムライン（温度＋イベント＋メモ） -->
+      <div id="live-temp-list" style="flex:1;overflow-y:auto;"></div>
     </div>
   </div>
-  <!-- フッター（イベントボタン） -->
+  <!-- フッター（イベントボタン＋スタート/終了） -->
   <div class="ro-footer">
     <div class="footer-grid-4" style="margin-bottom:5px;">
+      <button id="ro-pause-btn" class="ctrl-footer" onclick="toggleRoastPause()" style="background:#dcfce7;border:1px solid #bbf7d0;color:#16a34a;">▶ スタート<br><span style="font-size:10px;opacity:.8;">開始</span></button>
       <button class="ctrl-footer c0" onclick="markEventWithTemp('Charge',null)">CHARGE<br><span style="font-size:10px;opacity:.8;">投入</span></button>
-      <button class="ctrl-footer c0" onclick="markEventWithTemp('Steam End',null)">STEAM<br><span style="font-size:10px;opacity:.8;">END</span></button>
       <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack Start',1.0)">1stCR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
       <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack End',1.5)">1stCR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
     </div>
     <div class="footer-grid-4">
-      <button class="ctrl-footer c0" onclick="toggleRoEvLog()">📋<br><span style="font-size:10px;opacity:.8;">ログ</span></button>
-      <button class="ctrl-footer c0" onclick="markEventWithTemp('Note',null)">📝<br><span style="font-size:10px;opacity:.8;">メモ</span></button>
+      <button class="ctrl-footer" onclick="openFinishModal()" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;">■ 終了<br><span style="font-size:10px;opacity:.8;">排出</span></button>
+      <button class="ctrl-footer c0" onclick="markEventWithTemp('Steam End',null)">STEAM<br><span style="font-size:10px;opacity:.8;">END</span></button>
       <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack Start',2.0)">2ndCR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
       <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack End',2.5)">2ndCR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
-    </div>
-    <!-- イベントログ（折りたたみ） -->
-    <div id="ro-ev-log" class="ro-ev-log">
-      <div id="ro-event-log-content" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);"></div>
     </div>
   </div>
 </div>
@@ -1581,7 +1572,8 @@ function hideRoastOverlay(){
 }
 function doStartRoast(){
   S.roastRunning=true;
-  const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='⏸ 停止';
+  const pb=document.getElementById('ro-pause-btn');
+  if(pb){pb.innerHTML='⏸ 停止<br><span style="font-size:10px;opacity:.8;">一時停止</span>';pb.style.background='#dcfce7';pb.style.borderColor='#bbf7d0';pb.style.color='#16a34a';}
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='焙煎中';
   S.timerInterval=setInterval(()=>{S.elapsed++;updateTimer();},1000);
   if(!roastChart)initRoastChart();
@@ -1609,7 +1601,8 @@ function pauseRoast(){
   clearInterval(S.timerInterval);
   // OCRカウントダウンも一時停止（APIリクエスト節約）
   if(ocrCDInterval){clearInterval(ocrCDInterval);ocrCDInterval=null;}
-  const pb=document.getElementById('ro-pause-btn');if(pb)pb.textContent='▶ 再開';
+  const pb=document.getElementById('ro-pause-btn');
+  if(pb){pb.innerHTML='▶ 再開<br><span style="font-size:10px;opacity:.8;">再開</span>';pb.style.background='#dcfce7';pb.style.borderColor='#bbf7d0';pb.style.color='#16a34a';}
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='一時停止中';
   const td=document.getElementById('timer-status');if(td)td.textContent='一時停止中';
   const rb=document.getElementById('roast-btn');if(rb)rb.textContent='▶ 再開';
@@ -1716,19 +1709,34 @@ function recordTemp(temp){
 function renderLiveTempList(){
   const el=document.getElementById('live-temp-list');
   if(!el)return;
+  const total=S.tempData.length+S.events.length;
   const cnt=document.getElementById('ro-temp-count');
-  if(cnt)cnt.textContent=S.tempData.length?'('+S.tempData.length+')':'';
-  if(!S.tempData.length){el.innerHTML='<div style="color:var(--c-text-muted);padding:8px 0;font-size:13px;text-align:center;">記録なし</div>';return;}
-  // 新しい順で表示（インデックスは元の配列インデックス）
-  const rows=[...S.tempData.keys()].reverse().map(i=>`
-    <div class="live-temp-row">
-      <span class="live-temp-time">${ft(S.timeData[i])}</span>
-      <input class="live-temp-input" type="number" value="${parseFloat(S.tempData[i]).toFixed(1)}" step="0.1"
-        onchange="editLiveTemp(${i},this.value)" onblur="editLiveTemp(${i},this.value)">
-      <span class="live-temp-unit">°C</span>
-      <button class="live-temp-del" onclick="deleteLiveTemp(${i})">✕</button>
-    </div>`).join('');
-  el.innerHTML=rows;
+  if(cnt)cnt.textContent=total?'('+total+')':'';
+  // 温度とイベントを統合して時刻順（新しい順）に表示
+  const items=[];
+  S.tempData.forEach((temp,i)=>items.push({type:'temp',time:S.timeData[i],temp,idx:i}));
+  S.events.forEach((ev,i)=>items.push({type:'event',time:ev.time,label:ev.label,idx:i}));
+  items.sort((a,b)=>b.time-a.time);
+  if(!items.length){el.innerHTML='<div style="color:var(--c-text-muted);padding:8px 0;font-size:13px;text-align:center;">記録なし</div>';return;}
+  el.innerHTML=items.map(item=>{
+    if(item.type==='temp'){
+      return `<div class="live-temp-row">
+        <span class="live-temp-time">${ft(item.time)}</span>
+        <input class="live-temp-input" type="number" value="${parseFloat(item.temp).toFixed(1)}" step="0.1"
+          onchange="editLiveTemp(${item.idx},this.value)" onblur="editLiveTemp(${item.idx},this.value)">
+        <span class="live-temp-unit">°C</span>
+        <button class="live-temp-del" onclick="deleteLiveTemp(${item.idx})">✕</button>
+      </div>`;
+    } else {
+      const c=(EVENT_STYLE[item.label]||{color:'#9ca3af'}).color;
+      const isNote=item.label.startsWith('📝');
+      return `<div class="live-temp-row">
+        <span class="live-temp-time">${ft(item.time)}</span>
+        <span style="flex:1;font-size:12px;color:${c};font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">▲ ${item.label}</span>
+        <button class="live-temp-del" onclick="deleteEventEntry(${item.idx})">✕</button>
+      </div>`;
+    }
+  }).join('');
 }
 function editLiveTemp(i,val){
   const v=parseFloat(val);
@@ -1742,6 +1750,21 @@ function deleteLiveTemp(i){
   S.tempData.splice(i,1);S.timeData.splice(i,1);
   updateRoastChart();renderLiveTempList();
   toast('温度記録を削除しました');
+}
+function deleteEventEntry(i){
+  S.events.splice(i,1);
+  updateRoastChart();renderLiveTempList();
+  toast('イベントを削除しました');
+}
+function addMemoEntry(){
+  const inp=document.getElementById('memo-input');
+  const text=(inp.value||'').trim();
+  if(!text){toast('メモを入力してください');return;}
+  if(!S.roastRunning){toast('焙煎中のみメモを追加できます');return;}
+  S.events.push({time:S.elapsed,label:'📝 '+text,temp:null,rlVal:null});
+  inp.value='';
+  renderLiveTempList();
+  toast('メモを追加しました');
 }
 function addManualTemp(){
   const inp=document.getElementById('manual-temp-input');
@@ -1797,9 +1820,8 @@ function markEventWithTemp(label,rlVal){
   if(!S.roastRunning){toast('焙煎中にマークしてください');return;}
   S.events.push({time:S.elapsed,label,temp:null,rlVal});
   if(label==='1st Crack Start'&&S.firstCrackTime===null)S.firstCrackTime=S.elapsed;
-  const rlStr=rlVal!==null?'['+rlLabel(rlVal)+']':'';
-  addEventLog(ft(S.elapsed),label+(rlStr?' '+rlStr:''));
   updateRoastChart();
+  renderLiveTempList();
   toast(label+' をマーク');
 }
 function addEventLog(time,text){
@@ -1824,6 +1846,28 @@ function toggleRoEvLog(){
   const el=document.getElementById('ro-ev-log');
   if(el)el.classList.toggle('open');
 }
+const crZonePlugin={
+  id:'crZone',
+  beforeDatasetsDraw(chart){
+    const{ctx,chartArea,scales}=chart;
+    if(!chartArea||!scales.x||!S.timeData.length)return;
+    function getX(time){
+      let closest=-1,minDiff=Infinity;
+      S.timeData.forEach((t,i)=>{const d=Math.abs(t-time);if(d<minDiff){minDiff=d;closest=i;}});
+      return closest>=0?scales.x.getPixelForIndex(closest):null;
+    }
+    function drawZone(startEv,endEv,color){
+      if(!startEv)return;
+      const x1=getX(startEv.time);if(x1===null)return;
+      const x2=endEv?getX(endEv.time):chartArea.right;
+      ctx.save();ctx.fillStyle=color;
+      ctx.fillRect(x1,chartArea.top,(x2??chartArea.right)-x1,chartArea.height);
+      ctx.restore();
+    }
+    drawZone(S.events.find(e=>e.label==='1st Crack Start'),S.events.find(e=>e.label==='1st Crack End'),'rgba(254,240,138,0.35)');
+    drawZone(S.events.find(e=>e.label==='2nd Crack Start'),S.events.find(e=>e.label==='2nd Crack End'),'rgba(254,215,170,0.45)');
+  }
+};
 function initRoastChart(){
   const ctx=document.getElementById('roast-chart').getContext('2d');
   roastChart=new Chart(ctx,{type:'line',data:{labels:[],datasets:[
@@ -1845,7 +1889,7 @@ function initRoastChart(){
     x:{ticks:{color:'#a07850',font:{size:8},maxTicksLimit:8},grid:{color:'rgba(196,122,58,0.08)'}},
     y:{ticks:{color:'#a07850',font:{size:8}},grid:{color:'rgba(196,122,58,0.08)'},position:'left'},
     y1:{ticks:{color:'#5a8a3a',font:{size:8}},grid:{display:false},position:'right'},
-  }}});
+  }},plugins:[crZonePlugin]});
 }
 // ===== ROR計算 ① 60秒ウィンドウ ② 移動平均スムージング ③ 外れ値除外 =====
 function calcROR(data, times, endIdx){
