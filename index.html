@@ -1854,7 +1854,9 @@ const crZonePlugin={
     function getX(time){
       let closest=-1,minDiff=Infinity;
       S.timeData.forEach((t,i)=>{const d=Math.abs(t-time);if(d<minDiff){minDiff=d;closest=i;}});
-      return closest>=0?scales.x.getPixelForIndex(closest):null;
+      if(closest<0)return null;
+      const lbl=chart.data.labels[closest];
+      return lbl!=null?scales.x.getPixelForValue(lbl):null;
     }
     function drawZone(startEv,endEv,color){
       if(!startEv)return;
