@@ -256,7 +256,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.9</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v2.0</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -803,6 +803,7 @@ select.inp{cursor:pointer;}
 
 <div class="toast" id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 <script>
 // ===== CONSTANTS =====
 const ROAST_LEVELS=[
@@ -1799,6 +1800,7 @@ function markEventWithTemp(label,rlVal){
   if(label==='1st Crack Start'&&S.firstCrackTime===null)S.firstCrackTime=S.elapsed;
   const rlStr=rlVal!==null?'['+rlLabel(rlVal)+']':'';
   addEventLog(ft(S.elapsed),label+(rlStr?' '+rlStr:''));
+  updateRoastChart();
   toast(label+' をマーク');
 }
 function addEventLog(time,text){
@@ -1828,7 +1830,7 @@ function initRoastChart(){
   roastChart=new Chart(ctx,{type:'line',data:{labels:[],datasets:[
     {label:'温度(°C)',data:[],borderColor:'#c47a3a',backgroundColor:'rgba(196,122,58,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:true,yAxisID:'y'},
     {label:'ROR',data:[],borderColor:'#5a8a3a',borderWidth:1.5,pointRadius:1,tension:0.4,fill:false,yAxisID:'y1'},
-  ]},options:{animation:false,responsive:true,plugins:{legend:{labels:{color:'#a07850',font:{size:10}}}},scales:{
+  ]},options:{animation:false,responsive:true,plugins:{legend:{labels:{color:'#a07850',font:{size:10}}},annotation:{annotations:{}}},scales:{
     x:{ticks:{color:'#a07850',font:{size:8},maxTicksLimit:8},grid:{color:'rgba(196,122,58,0.08)'}},
     y:{ticks:{color:'#a07850',font:{size:8}},grid:{color:'rgba(196,122,58,0.08)'},position:'left'},
     y1:{ticks:{color:'#5a8a3a',font:{size:8}},grid:{display:false},position:'right'},
@@ -1875,11 +1877,39 @@ function calcROR(data, times, endIdx){
   return parseFloat(((curSmooth-pastSmooth)/timeDiff*60).toFixed(1));
 }
 
+const EVENT_STYLE={
+  'Charge':         {color:'#3b82f6',short:'CH'},
+  'Steam End':      {color:'#6b7280',short:'ST'},
+  'Turning Point':  {color:'#10b981',short:'TP'},
+  '1st Crack Start':{color:'#f59e0b',short:'1C↑'},
+  '1st Crack End':  {color:'#d97706',short:'1C↓'},
+  '2nd Crack Start':{color:'#ef4444',short:'2C↑'},
+  '2nd Crack End':  {color:'#b91c1c',short:'2C↓'},
+  'Note':           {color:'#8b5cf6',short:'📝'},
+};
+function buildEventAnnotations(){
+  const annotations={};
+  S.events.forEach((ev,i)=>{
+    const style=EVENT_STYLE[ev.label]||{color:'#9ca3af',short:ev.label.substring(0,3)};
+    const xLabel=ft(ev.time);
+    annotations['ev'+i]={
+      type:'line',scaleID:'x',value:xLabel,
+      borderColor:style.color,borderWidth:1.5,borderDash:[4,3],
+      label:{content:style.short,display:true,position:'start',
+        backgroundColor:style.color,color:'#fff',
+        font:{size:9,family:"'DM Mono',monospace",weight:'bold'},
+        padding:{x:4,y:2},borderRadius:3},
+    };
+  });
+  return annotations;
+}
 function updateRoastChart(){
   if(!roastChart)return;
   roastChart.data.labels=S.timeData.map(t=>ft(t));
   roastChart.data.datasets[0].data=S.tempData;
   roastChart.data.datasets[1].data=S.tempData.map((_,i)=>calcROR(S.tempData,S.timeData,i));
+  if(roastChart.options.plugins.annotation)
+    roastChart.options.plugins.annotation.annotations=buildEventAnnotations();
   roastChart.update('none');
   // グラフセクションが開いていれば高さを再計算
   const cs=document.getElementById('chart-section');
