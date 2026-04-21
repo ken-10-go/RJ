@@ -256,7 +256,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.6</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.7</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -714,21 +714,23 @@ select.inp{cursor:pointer;}
         <canvas id="camera-canvas" style="display:none;"></canvas>
         <canvas id="guide-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px 8px 0 0;touch-action:none;cursor:move;"></canvas>
       </div>
-      <!-- OCR情報バー（カメラ下・独立） -->
-      <div id="ocr-info-bar" style="display:none;background:rgba(243,244,246,0.97);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:5px 12px;flex-direction:row;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <div>
+      <!-- OCR情報バー（カメラ下・独立）＋カメラ操作ボタン -->
+      <div id="ocr-info-bar" style="background:var(--c-surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px;margin-top:4px;">
+        <!-- カメラOFF時はボタンのみ表示 -->
+        <div id="ocr-info-left" style="display:none;flex:1;min-width:0;">
           <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);text-transform:uppercase;">読み取り温度</div>
-          <div id="ocr-temp" style="font-family:'DM Mono',monospace;font-size:20px;color:var(--c-accent);">—</div>
+          <div id="ocr-temp" style="font-family:'DM Mono',monospace;font-size:22px;color:var(--c-accent);line-height:1.1;">—</div>
         </div>
-        <div style="text-align:right;">
+        <div id="ocr-info-cd" style="display:none;text-align:center;min-width:36px;">
           <div id="ocr-countdown" style="font-family:'DM Mono',monospace;font-size:20px;color:var(--c-text);">10</div>
           <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);">次の読み取り</div>
         </div>
+        <button id="cam-toggle-btn" onclick="toggleCameraOCR()"
+          style="flex-shrink:0;padding:8px 14px;background:#fef3c7;border:1px dashed var(--c-accent);border-radius:8px;color:var(--c-accent);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;">
+          <span id="cam-btn-icon" style="font-size:16px;">📷</span>
+          <span id="cam-btn-text">読み取り開始</span>
+        </button>
       </div>
-      <button class="camera-btn" id="cam-toggle-btn" onclick="toggleCameraOCR()" style="padding:10px;width:100%;">
-        <span id="cam-btn-icon" style="font-size:18px;">📷</span>
-        <span id="cam-btn-text" style="font-size:var(--fs-sm);font-weight:500;">自動読み取り開始</span>
-      </button>
       <!-- 画像ファイルOCRテスト（非表示/ソース保持） -->
       <div style="display:none;"><input type="file" id="ocr-test-file" accept="image/*" onchange="testOcrFromFile(this)"></div>
       <!-- OCRデバッグパネル（非表示/ソース保持） -->
@@ -1520,8 +1522,9 @@ function updateSliderFromLast(){
   if(S.tempData.length>0){
     const last=S.tempData[S.tempData.length-1];
     const slider=document.getElementById('temp-slider');
+    if(!slider)return;
     slider.value=Math.min(250,Math.max(20,last));
-    document.getElementById('slider-val').textContent=slider.value;
+    const sv=document.getElementById('slider-val');if(sv)sv.textContent=slider.value;
   }
 }
 
@@ -1652,8 +1655,9 @@ function recordTemp(temp){
   if(!S.roastRunning){toast('▶ スタートを押してから記録されます');return;}
   if(S.currentRoast&&S.currentRoast.startTemp===null)S.currentRoast.startTemp=temp;
   S.tempData.push(temp);S.timeData.push(S.elapsed);
-  const ct=document.getElementById('cur-temp');if(ct)ct.textContent=temp;
-  const rt=document.getElementById('ro-temp');if(rt)rt.textContent=temp;
+  const tf=parseFloat(temp).toFixed(1);
+  const ct=document.getElementById('cur-temp');if(ct)ct.textContent=tf;
+  const rt=document.getElementById('ro-temp');if(rt)rt.textContent=tf;
   const n=S.tempData.length;
   const ror=calcROR(S.tempData,S.timeData,n-1);
   const rorStr=ror===null?'—':(ror>0?'+':'')+ror;
@@ -1679,7 +1683,7 @@ function renderLiveTempList(){
   const rows=[...S.tempData.keys()].reverse().map(i=>`
     <div class="live-temp-row">
       <span class="live-temp-time">${ft(S.timeData[i])}</span>
-      <input class="live-temp-input" type="number" value="${S.tempData[i]}" step="0.1"
+      <input class="live-temp-input" type="number" value="${parseFloat(S.tempData[i]).toFixed(1)}" step="0.1"
         onchange="editLiveTemp(${i},this.value)" onblur="editLiveTemp(${i},this.value)">
       <span class="live-temp-unit">°C</span>
       <button class="live-temp-del" onclick="deleteLiveTemp(${i})">✕</button>
@@ -2141,12 +2145,13 @@ async function startCameraOCR(){
     await video.play();
     ocrLog(`解像度: ${video.videoWidth}×${video.videoHeight}`,'ok');
     document.getElementById('camera-preview-wrap').style.display='block';
-    const oib=document.getElementById('ocr-info-bar');if(oib)oib.style.display='flex';
+    const oil=document.getElementById('ocr-info-left');if(oil)oil.style.display='block';
+    const oicd=document.getElementById('ocr-info-cd');if(oicd)oicd.style.display='block';
     // トグルボタンを「停止」状態に更新
     const tBtn=document.getElementById('cam-toggle-btn');
-    if(tBtn){tBtn.style.borderColor='var(--c-danger)';tBtn.style.color='var(--c-danger)';}
+    if(tBtn){tBtn.style.background='#fee2e2';tBtn.style.borderColor='#fca5a5';tBtn.style.color='#dc2626';}
     const tIcon=document.getElementById('cam-btn-icon');const tText=document.getElementById('cam-btn-text');
-    if(tIcon)tIcon.textContent='⏹';if(tText)tText.textContent='自動読み取り停止';
+    if(tIcon)tIcon.textContent='⏹';if(tText)tText.textContent='読み取り停止';
     
     initGuideInteraction();
     drawGuide();
@@ -2167,12 +2172,13 @@ function stopCameraOCR(){
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
   clearInterval(ocrCDInterval);ocrCDInterval=null;
   const pw=document.getElementById('camera-preview-wrap');if(pw)pw.style.display='none';
-  const oib=document.getElementById('ocr-info-bar');if(oib)oib.style.display='none';
+  const oil=document.getElementById('ocr-info-left');if(oil)oil.style.display='none';
+  const oicd=document.getElementById('ocr-info-cd');if(oicd)oicd.style.display='none';
   // トグルボタンを「開始」状態に戻す
   const tBtn=document.getElementById('cam-toggle-btn');
-  if(tBtn){tBtn.style.borderColor='';tBtn.style.color='';}
+  if(tBtn){tBtn.style.background='#fef3c7';tBtn.style.borderColor='';tBtn.style.color='';}
   const tIcon=document.getElementById('cam-btn-icon');const tText=document.getElementById('cam-btn-text');
-  if(tIcon)tIcon.textContent='📷';if(tText)tText.textContent='自動読み取り開始';
+  if(tIcon)tIcon.textContent='📷';if(tText)tText.textContent='読み取り開始';
   hideOcrBox();
   ocrLog('カメラ停止');
 }
@@ -2414,11 +2420,11 @@ async function runOCRCapture(){
       const plausible=lastTemp===null||Math.abs(num-lastTemp)<=40;
       if(inRange&&plausible){
         ocrLog('OK: '+num+'°C','ok');
-        document.getElementById('ocr-temp').textContent=num+'°C';
+        document.getElementById('ocr-temp').textContent=num.toFixed(1)+'°C';
         if(S.roastRunning)recordTemp(num);
       }else{
         ocrLog('範囲外: '+num+'°C (前回:'+lastTemp+')','err');
-        document.getElementById('ocr-temp').textContent=num+'°C?';
+        document.getElementById('ocr-temp').textContent=num.toFixed(1)+'°C?';
       }
     }
   }catch(e){
