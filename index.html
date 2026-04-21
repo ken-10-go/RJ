@@ -256,7 +256,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.8</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.9</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -680,6 +680,7 @@ select.inp{cursor:pointer;}
     </div>
     <button id="ro-pause-btn" onclick="toggleRoastPause()" style="background:#dcfce7;border:1px solid #bbf7d0;color:var(--c-green);border-radius:7px;padding:7px 11px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">⏸ 停止</button>
     <button onclick="openFinishModal()" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;border-radius:7px;padding:7px 11px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">■ 排出</button>
+    <button onclick="minimizeRoastOverlay()" style="background:none;border:none;color:var(--c-text-muted);font-size:18px;padding:4px 6px;cursor:pointer;line-height:1;" title="最小化">▼</button>
   </div>
   <!-- 温度・ROR・DT メトリクス -->
   <div class="ro-metrics">
@@ -783,6 +784,15 @@ select.inp{cursor:pointer;}
       <div id="ro-event-log-content" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);"></div>
     </div>
   </div>
+</div>
+
+<div id="roast-mini-bar" style="display:none;position:fixed;bottom:68px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:398px;z-index:95;background:var(--c-accent);color:#fff;border-radius:12px;padding:10px 16px;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2);">
+  <div style="flex:1;">
+    <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;" id="mini-timer">00:00</div>
+    <div style="font-size:11px;opacity:0.85;">焙煎中 — タップして戻る</div>
+  </div>
+  <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;" id="mini-temp">—</div>
+  <button onclick="restoreRoastOverlay()" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap;">戻る ▲</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1640,6 +1650,7 @@ function finishRoast(){
   const roEvLog=document.getElementById('ro-event-log-content');if(roEvLog)roEvLog.innerHTML='';
   if(roastChart){roastChart.destroy();roastChart=null;}
   if(!S.roastSetupOpen)toggleRoastSetup();
+  const mbEl=document.getElementById('roast-mini-bar');if(mbEl)mbEl.style.display='none';
   hideRoastOverlay();
   closeFinishModal();updateTasteSelect();
   const rb2=document.getElementById('roast-btn');if(rb2)rb2.textContent='▶ 焙煎開始';
@@ -1652,6 +1663,25 @@ function updateTimer(){
   const td=document.getElementById('timer-display');if(td)td.textContent=ts;
   const rt=document.getElementById('ro-timer');if(rt)rt.textContent=ts;
   if(S.elapsed>0&&S.elapsed%60===0)playBell();
+  updateMiniBar();
+}
+function updateMiniBar(){
+  const mb=document.getElementById('roast-mini-bar');
+  if(!mb||mb.style.display==='none')return;
+  const mt=document.getElementById('mini-timer');
+  if(mt)mt.textContent=(Math.floor(S.elapsed/60).toString().padStart(2,'0'))+':'+(S.elapsed%60).toString().padStart(2,'0');
+  const mp=document.getElementById('mini-temp');
+  if(mp)mp.textContent=S.tempData.length?parseFloat(S.tempData[S.tempData.length-1]).toFixed(1)+'°C':'—';
+}
+function minimizeRoastOverlay(){
+  document.getElementById('roast-overlay').classList.remove('active');
+  const mb=document.getElementById('roast-mini-bar');
+  if(mb){mb.style.display='flex';updateMiniBar();}
+}
+function restoreRoastOverlay(){
+  const mb=document.getElementById('roast-mini-bar');
+  if(mb)mb.style.display='none';
+  showRoastOverlay();
 }
 // logManualTemp removed
 function recordTemp(temp){
