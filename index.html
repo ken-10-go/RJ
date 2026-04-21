@@ -256,7 +256,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.5</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.6</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -710,18 +710,19 @@ select.inp{cursor:pointer;}
     <!-- カメラタブ -->
     <div class="ro-tab-panel active" id="ro-tab-cam">
       <div id="camera-preview-wrap" style="display:none;position:relative;touch-action:none;width:100%;">
-        <video id="camera-video" autoplay playsinline muted style="width:100%;border-radius:8px;border:1px solid var(--border);background:#000;max-height:150px;object-fit:cover;display:block;"></video>
+        <video id="camera-video" autoplay playsinline muted style="width:100%;border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:#000;max-height:160px;object-fit:cover;display:block;"></video>
         <canvas id="camera-canvas" style="display:none;"></canvas>
-        <canvas id="guide-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;touch-action:none;cursor:move;"></canvas>
-        <div style="position:absolute;bottom:6px;left:6px;right:6px;background:rgba(243,244,246,0.92);border-radius:6px;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;">
-          <div>
-            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);text-transform:uppercase;">読み取り温度</div>
-            <div id="ocr-temp" style="font-family:'DM Mono',monospace;font-size:22px;color:var(--c-accent);">—</div>
-          </div>
-          <div style="text-align:right;">
-            <div id="ocr-countdown" style="font-family:'DM Mono',monospace;font-size:20px;color:var(--c-text);">10</div>
-            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);">次の読み取り</div>
-          </div>
+        <canvas id="guide-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px 8px 0 0;touch-action:none;cursor:move;"></canvas>
+      </div>
+      <!-- OCR情報バー（カメラ下・独立） -->
+      <div id="ocr-info-bar" style="display:none;background:rgba(243,244,246,0.97);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:5px 12px;flex-direction:row;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);text-transform:uppercase;">読み取り温度</div>
+          <div id="ocr-temp" style="font-family:'DM Mono',monospace;font-size:20px;color:var(--c-accent);">—</div>
+        </div>
+        <div style="text-align:right;">
+          <div id="ocr-countdown" style="font-family:'DM Mono',monospace;font-size:20px;color:var(--c-text);">10</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--c-text-muted);">次の読み取り</div>
         </div>
       </div>
       <button class="camera-btn" id="cam-toggle-btn" onclick="toggleCameraOCR()" style="padding:10px;width:100%;">
@@ -2140,6 +2141,7 @@ async function startCameraOCR(){
     await video.play();
     ocrLog(`解像度: ${video.videoWidth}×${video.videoHeight}`,'ok');
     document.getElementById('camera-preview-wrap').style.display='block';
+    const oib=document.getElementById('ocr-info-bar');if(oib)oib.style.display='flex';
     // トグルボタンを「停止」状態に更新
     const tBtn=document.getElementById('cam-toggle-btn');
     if(tBtn){tBtn.style.borderColor='var(--c-danger)';tBtn.style.color='var(--c-danger)';}
@@ -2165,6 +2167,7 @@ function stopCameraOCR(){
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
   clearInterval(ocrCDInterval);ocrCDInterval=null;
   const pw=document.getElementById('camera-preview-wrap');if(pw)pw.style.display='none';
+  const oib=document.getElementById('ocr-info-bar');if(oib)oib.style.display='none';
   // トグルボタンを「開始」状態に戻す
   const tBtn=document.getElementById('cam-toggle-btn');
   if(tBtn){tBtn.style.borderColor='';tBtn.style.color='';}
