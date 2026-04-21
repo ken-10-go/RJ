@@ -256,7 +256,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.7</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v1.8</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -748,11 +748,15 @@ select.inp{cursor:pointer;}
     </div>
     <!-- 温度履歴タブ -->
     <div class="ro-tab-panel" id="ro-tab-temp">
-      <!-- 手動追加 -->
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-shrink:0;">
-        <input id="manual-temp-input" type="number" placeholder="温度を入力 °C" step="0.1"
-          style="flex:1;font-family:'DM Mono',monospace;font-size:16px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--c-bg);color:var(--c-text);">
-        <button onclick="addManualTemp()" style="height:40px;padding:0 16px;background:var(--c-accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">追加</button>
+      <!-- 温度バー（手動記録） -->
+      <div class="temp-slider-wrap" style="flex-shrink:0;padding:8px;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <button class="qty-btn" onclick="adjustSlider(-1)">−</button>
+          <input type="range" class="temp-slider" id="temp-slider" min="20" max="250" value="150" step="1" oninput="onTempSlider()">
+          <button class="qty-btn" onclick="adjustSlider(1)">＋</button>
+          <div class="temp-slider-val"><span id="slider-val">150</span>°C</div>
+        </div>
+        <button class="btn btn-outline" style="width:100%;padding:8px;font-size:var(--fs-sm);" onclick="logSliderTemp()">この温度を記録</button>
       </div>
       <!-- 温度リスト（新しい順、直接編集可） -->
       <div id="live-temp-list" style="flex:1;overflow-y:auto;">
