@@ -262,7 +262,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;cursor:pointer;border-bottom:1px dashed var(--c-text-muted);">v2.8</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;cursor:pointer;border-bottom:1px dashed var(--c-text-muted);">v2.9</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -628,6 +628,7 @@ select.inp{cursor:pointer;}
     </div>
     <div id="weight-loss-display" style="font-family:'DM Mono',monospace;font-size:var(--fs-sm);color:var(--c-accent);margin-bottom:10px;"></div>
     <button class="btn btn-primary" onclick="finishRoast()">記録して完了</button>
+    <button class="btn btn-outline" onclick="discardRoast()" style="margin-top:8px;width:100%;color:var(--c-text-muted);border-color:var(--border);">🗑 保存せずに終了（テスト・やり直し）</button>
   </div>
 </div>
 
@@ -1681,6 +1682,27 @@ function finishRoast(){
   closeFinishModal();updateTasteSelect();
   const rb2=document.getElementById('roast-btn');if(rb2)rb2.textContent='▶ 焙煎開始';
   toast('焙煎完了！');autoSync();
+}
+function discardRoast(){
+  if(!confirm('この焙煎データを破棄して終了しますか？\n記録は保存されません。'))return;
+  clearInterval(S.timerInterval);S.roastRunning=false;
+  if(ocrCDInterval){clearInterval(ocrCDInterval);ocrCDInterval=null;}
+  const ivlRow=document.getElementById('ocr-interval-row');if(ivlRow)ivlRow.style.display='none';
+  stopCameraOCR();
+  S.currentRoast=null;S.elapsed=0;S.tempData=[];S.timeData=[];S.events=[];S.firstCrackTime=null;
+  ocrIntervalSec=OCR_PHASE_INTERVALS.preheat;
+  const rtd=document.getElementById('ro-timer');if(rtd)rtd.textContent='00:00';
+  const rsl=document.getElementById('ro-status-lbl');if(rsl)rsl.textContent='—';
+  ['ro-temp','ro-ror','ro-dev'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='—';});
+  const evLog=document.getElementById('event-log');if(evLog)evLog.innerHTML='';
+  const roEvLog=document.getElementById('ro-event-log-content');if(roEvLog)roEvLog.innerHTML='';
+  if(roastChart){roastChart.destroy();roastChart=null;}
+  if(!S.roastSetupOpen)toggleRoastSetup();
+  const mbEl=document.getElementById('roast-mini-bar');if(mbEl)mbEl.style.display='none';
+  hideRoastOverlay();
+  closeFinishModal();
+  const rb2=document.getElementById('roast-btn');if(rb2)rb2.textContent='▶ 焙煎開始';
+  toast('焙煎データを破棄しました');
 }
 function playBell(){try{const c=new(window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator();const g=c.createGain();o.connect(g);g.connect(c.destination);o.type='sine';o.frequency.setValueAtTime(880,c.currentTime);g.gain.setValueAtTime(0.4,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+1.2);o.start(c.currentTime);o.stop(c.currentTime+1.2);}catch(e){}}
 function updateTimer(){
@@ -3406,7 +3428,7 @@ initModalSwipe('edit-roast-modal',closeEditRoastModal);
 
 
 // ===== UPDATE CHECK =====
-const APP_VERSION='2.8';
+const APP_VERSION='2.9';
 async function checkForUpdate(manual){
   try{
     const r=await fetch('./version.json?t='+Date.now());
