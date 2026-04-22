@@ -254,13 +254,15 @@ select.inp{cursor:pointer;}
 .live-temp-input{flex:1;font-family:'DM Mono',monospace;font-size:16px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--c-bg);color:var(--c-text);text-align:right;}
 .live-temp-unit{font-size:13px;color:var(--c-text-muted);flex-shrink:0;}
 .live-temp-del{width:40px;height:40px;background:none;border:1px solid #fecaca;border-radius:8px;color:#dc2626;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ivl-btn{display:inline-block;padding:3px 11px;margin:0 2px;border-radius:12px;border:1px solid var(--border);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);}
+.ivl-btn.active{background:#7c5c3e;color:#fff;border-color:#7c5c3e;}
 </style>
 </head>
 <body>
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;cursor:pointer;border-bottom:1px dashed var(--c-text-muted);">v2.5</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;cursor:pointer;border-bottom:1px dashed var(--c-text-muted);">v2.6</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -777,6 +779,9 @@ select.inp{cursor:pointer;}
       <button class="ctrl-footer c0" onclick="markEventWithTemp('Charge',null)">CHARGE<br><span style="font-size:10px;opacity:.8;">投入</span></button>
       <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack Start',1.0)">1stCR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
       <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack End',1.5)">1stCR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
+    </div>
+    <div id="ocr-interval-row" style="display:none;text-align:center;padding:4px 0 2px;font-size:11px;color:var(--c-text-muted);">
+      測定間隔：<span class="ivl-btn active" data-sec="30" onclick="setOcrInterval(30)">30s</span><span class="ivl-btn" data-sec="20" onclick="setOcrInterval(20)">20s</span><span class="ivl-btn" data-sec="15" onclick="setOcrInterval(15)">15s</span><span class="ivl-btn" data-sec="10" onclick="setOcrInterval(10)">10s</span>
     </div>
     <div class="footer-grid-4">
       <button class="ctrl-footer" onclick="openFinishModal()" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;">■ 終了<br><span style="font-size:10px;opacity:.8;">排出</span></button>
@@ -1554,6 +1559,7 @@ function startRoastAndOverlay(){
   if(!S.beans.length){toast('先に豆を登録してください');return;}
   if(!S.currentRoast){
     S.elapsed=0;S.tempData=[];S.timeData=[];S.events=[];S.firstCrackTime=null;
+    ocrIntervalSec=OCR_PHASE_INTERVALS.preheat;
     const evLog=document.getElementById('event-log');if(evLog)evLog.innerHTML='';
     const beanId=parseInt(document.getElementById('r-bean').value);
     S.currentRoast={id:Date.now(),beanId,amount:document.getElementById('r-amount').value,washing:document.getElementById('r-washing').checked,startTime:new Date().toISOString(),startTemp:null};
@@ -1569,6 +1575,8 @@ function showRoastOverlay(){
   const bean=S.beans.find(b=>b.id===S.currentRoast.beanId);
   const bl=document.getElementById('ro-bean-lbl');if(bl)bl.textContent=bean?bean.name:'—';
   document.getElementById('roast-overlay').classList.add('active');
+  const ivlRow=document.getElementById('ocr-interval-row');if(ivlRow)ivlRow.style.display='block';
+  updateIntervalSelector();
   if(!S.roastRunning){
     // 準備中状態：「▶ スタート」ボタン表示（カメラは手動起動）
     const pb=document.getElementById('ro-pause-btn');
@@ -1599,7 +1607,7 @@ function doStartRoast(){
     ocrCDInterval=setInterval(()=>{
       ocrCD--;
       const oc=document.getElementById('ocr-countdown');if(oc)oc.textContent=ocrCD;
-      if(ocrCD<=0){ocrCD=10;runOCRCapture();}
+      if(ocrCD<=0){ocrCD=ocrIntervalSec;runOCRCapture();}
     },1000);
   }
   toast('焙煎を開始しました');
@@ -1650,6 +1658,7 @@ function calcWeightLoss(){
 function finishRoast(){
   clearInterval(S.timerInterval);S.roastRunning=false;
   if(ocrCDInterval){clearInterval(ocrCDInterval);ocrCDInterval=null;}
+  const ivlRow=document.getElementById('ocr-interval-row');if(ivlRow)ivlRow.style.display='none';
   stopCameraOCR();
   const rl=parseFloat(document.getElementById('finish-rl').value);
   const wb=parseFloat(document.getElementById('finish-weight-before').value)||null;
@@ -1833,6 +1842,8 @@ function checkAutoTurningPoint(){
   S.events.push({time:minTime,label:'Turning Point',temp:minTemp,rlVal:null});
   addEventLog(ft(minTime),'Turning Point @ '+minTemp+'°C [自動検出]');
   toast('🔄 T.Point 自動検出: '+minTemp+'°C @ '+ft(minTime));
+  ocrIntervalSec=OCR_PHASE_INTERVALS.turningPoint;
+  updateIntervalSelector();
 }
 function ft(s){return Math.floor(s/60).toString().padStart(2,'0')+':'+(s%60).toString().padStart(2,'0');}
 function markEventWithTemp(label,rlVal){
@@ -1840,9 +1851,25 @@ function markEventWithTemp(label,rlVal){
   const evTemp=S.tempData.length?S.tempData[S.tempData.length-1]:null;
   S.events.push({time:S.elapsed,label,temp:evTemp,rlVal});
   if(label==='1st Crack Start'&&S.firstCrackTime===null)S.firstCrackTime=S.elapsed;
+  applyPhaseInterval(label);
   updateRoastChart();
   renderLiveTempList();
   toast(label+' をマーク');
+}
+function applyPhaseInterval(label){
+  if(label==='Charge'){ocrIntervalSec=OCR_PHASE_INTERVALS.charge;}
+  else if(label==='1st Crack Start'){ocrIntervalSec=OCR_PHASE_INTERVALS.firstCrack;}
+  updateIntervalSelector();
+}
+function setOcrInterval(sec){
+  ocrIntervalSec=sec;
+  updateIntervalSelector();
+  toast('測定間隔を '+sec+'秒 に変更');
+}
+function updateIntervalSelector(){
+  document.querySelectorAll('.ivl-btn').forEach(b=>{
+    b.classList.toggle('active',Number(b.dataset.sec)===ocrIntervalSec);
+  });
 }
 function addEventLog(time,text){
   const el=document.getElementById('event-log');
@@ -2009,7 +2036,9 @@ function updateRoastChart(){
 }
 
 // ===== CAMERA OCR (with debug) =====
-let cameraStream=null,ocrCDInterval=null,ocrCD=10,ocrBusy=false;
+const OCR_PHASE_INTERVALS={preheat:30,charge:20,turningPoint:15,firstCrack:10};
+let ocrIntervalSec=OCR_PHASE_INTERVALS.preheat;
+let cameraStream=null,ocrCDInterval=null,ocrCD=OCR_PHASE_INTERVALS.preheat,ocrBusy=false;
 let tesseractWorker=null;
 
 function ocrLog(msg,type=''){
@@ -2321,7 +2350,7 @@ async function startCameraOCR(){
     ocrCDInterval=setInterval(()=>{
       ocrCD--;
       document.getElementById('ocr-countdown').textContent=ocrCD;
-      if(ocrCD<=0){ocrCD=10;runOCRCapture();}
+      if(ocrCD<=0){ocrCD=ocrIntervalSec;runOCRCapture();}
     },1000);
     toast('カメラ読み取り開始');
   }catch(e){
@@ -3439,7 +3468,7 @@ initModalSwipe('edit-roast-modal',closeEditRoastModal);
 
 
 // ===== UPDATE CHECK =====
-const APP_VERSION='2.5';
+const APP_VERSION='2.6';
 async function checkForUpdate(manual){
   try{
     const r=await fetch('./version.json?t='+Date.now());
