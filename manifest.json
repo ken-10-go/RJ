@@ -2,7 +2,7 @@
   "name": "コーヒー焙煎管理",
   "short_name": "焙煎管理",
   "description": "コーヒー豆の焙煎記録・温度管理アプリ",
-  "start_url": "./index.html",
+  "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#fafaf8",
