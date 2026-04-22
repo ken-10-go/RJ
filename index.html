@@ -262,7 +262,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;cursor:pointer;border-bottom:1px dashed var(--c-text-muted);">v2.6</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;cursor:pointer;border-bottom:1px dashed var(--c-text-muted);">v2.7</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -2496,32 +2496,21 @@ function recognizeOneDigit(digitCanvas) {
   return {digit: bestD<=2?best:'?', dist:bestD, det, thresh, darkDigits};
 }
 
-function recognizeFromGuide(srcCanvas) {
-  const rects = getDigitRectsInVideo();
-  const digits = [];
-  for(let i=0;i<4;i++){
-    const r = rects[i];
-    if(r.w<4||r.h<4){digits.push('?');continue;}
-    const dc = cropDigit(srcCanvas, r);
-    const {digit,dist,det,thresh,darkDigits} = recognizeOneDigit(dc);
-    digits.push(digit);
-    ocrLog(`  D${i+1}: seg=[${det.join('')}]→'${digit}'(err=${dist}) th=${Math.round(thresh)} ${darkDigits?'暗':'明'}`);
-  }
-  // D1〜D3が整数部、D4が小数部
-  // D1が'0'・' '・'?'なら2桁と判断
-  let intPart, decPart;
-  const d1empty = digits[0]==='0'||digits[0]===' '||digits[0]==='?';
-  if(d1empty){
-    intPart = (digits[1]===' '||digits[1]==='?'?'0':digits[1])
-            + (digits[2]===' '||digits[2]==='?'?'0':digits[2]);
-  }else{
-    intPart = digits.slice(0,3).map(d=>(d===' '||d==='?')?'0':d).join('');
-  }
-  decPart = (digits[3]===' '||digits[3]==='?')?'0':digits[3];
-  const result = intPart+'.'+decPart;
-  ocrLog('組み立て: D=['+digits.join(',')+'] → '+result);
-  // ?が含まれる場合はnull
-  return digits.some(d=>d==='?')?null:result;
+// ガイド枠内をクロップして返す（Gemini送信用）
+function cropGuide(srcCanvas) {
+  const sw = srcCanvas.width, sh = srcCanvas.height;
+  const cx = Math.floor(guide.x * sw);
+  const cy = Math.floor(guide.y * sh);
+  const cw = Math.max(4, Math.floor(guide.w * sw));
+  const ch = Math.max(4, Math.floor(guide.h * sh));
+  // 送信サイズ: 横400px固定でアスペクト維持（最低高さ40px）
+  const outW = 400;
+  const outH = Math.max(40, Math.round(outW * ch / cw));
+  const out = document.createElement('canvas');
+  out.width = outW; out.height = outH;
+  out.getContext('2d').drawImage(srcCanvas, cx, cy, cw, ch, 0, 0, outW, outH);
+  ocrLog(`クロップ: ${cw}x${ch} → ${outW}x${outH}`,'ok');
+  return out;
 }
 
 // ファイルテスト用（Gemini対応）
@@ -2538,6 +2527,7 @@ function testOcrFromFile(input){
     URL.revokeObjectURL(url);
     ocrLog(`画像サイズ: ${img.naturalWidth}x${img.naturalHeight}`,'ok');
     drawGuide();
+    const cropCanvas=cropGuide(canvas);
 
     let result=null;
     // Gemini API固定
@@ -2547,7 +2537,7 @@ function testOcrFromFile(input){
       input.value='';return;
     }
     try{
-      result=await readTempWithGemini(canvas);
+      result=await readTempWithGemini(cropCanvas);
     }catch(e){
       ocrLog('Geminiエラー: '+e.message,'err');
     }
@@ -2586,6 +2576,7 @@ async function runOCRCapture(){
     canvas.width=video.videoWidth; canvas.height=video.videoHeight;
     canvas.getContext('2d').drawImage(video,0,0);
     ocrLog(`キャプチャ ${video.videoWidth}x${video.videoHeight}`,'ok');
+    const cropCanvas=cropGuide(canvas);
 
     // Gemini API固定（7セグフォールバックなし）
     let result=null;
@@ -2595,7 +2586,7 @@ async function runOCRCapture(){
       ocrBusy=false;return;
     }
     try{
-      result=await readTempWithGemini(canvas);
+      result=await readTempWithGemini(cropCanvas);
     }catch(e){
       ocrLog('Geminiエラー: '+e.message,'err');
     }
@@ -2865,44 +2856,20 @@ function updateCompareChart(){
 }
 function runAI(){toast('分析機能は現在準備中です');}
 
-// ===== 桁ガイド OCR =====
-// ガイド状態: 4桁ボックスの位置・サイズ（video座標の相対値 0.0〜1.0）
+// ===== LCD クロップガイド =====
+// ガイド状態: 液晶パネルを囲む1本の横長枠（video座標の相対値 0.0〜1.0）
 const guide = {
-  x: 0.08,  // ガイド全体の左端
-  y: 0.20,  // ガイド全体の上端
-  w: 0.65,  // ガイド全体の幅
-  h: 0.50,  // ガイド全体の高さ
+  x: 0.05,  // 枠の左端
+  y: 0.25,  // 枠の上端
+  w: 0.70,  // 枠の幅
+  h: 0.45,  // 枠の高さ
 };
-// 桁間隔: D1 D2 D3 [dot] D4
-// 4桁等幅 + 小数点スペース
-const DIGIT_COUNT = 4;
-const DOT_RATIO = 0.02; // 小数点スペースの幅比（実機表示に合わせ極小に）
 
 let guideDragging = false;
 let guideResizing = false;
 let guideDragOX = 0, guideDragOY = 0;
 let guideResizeStartX = 0, guideResizeStartY = 0;
 let guideStartState = null;
-
-function getDigitRects() {
-  // レイアウト: [D1][D2][D3][dot][D4]
-  // D4は°Cマークを除外するため少し狭くする（D1-D3の80%）
-  const dotW = guide.w * DOT_RATIO;
-  const digitW = (guide.w - dotW) / 4.2; // D4を少し狭く
-  const d4W = digitW * 0.75; // D4は75%幅
-  const rects = [];
-  for (let i = 0; i < 4; i++) {
-    const offset = i < 3 ? i * digitW : (3 * digitW + dotW);
-    const w = i === 3 ? d4W : digitW;
-    rects.push({
-      x: guide.x + offset,
-      y: guide.y,
-      w: w,
-      h: guide.h,
-    });
-  }
-  return rects;
-}
 
 function drawGuide() {
   const canvas = document.getElementById('guide-canvas');
@@ -2919,52 +2886,42 @@ function drawGuide() {
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, vw, vh);
 
-  const rects = getDigitRects();
-  const dotW = guide.w * DOT_RATIO * vw;
-  const d3right = (guide.x + 3 * (guide.w - guide.w * DOT_RATIO) / 4) * vw;
-  const dotCX = d3right + dotW / 2;
-  const dotCY = (guide.y + guide.h * 0.85) * vh;
+  const rx = guide.x * vw, ry = guide.y * vh;
+  const rw = guide.w * vw, rh = guide.h * vh;
 
-  // 半透明マスク
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  // 枠外を半透明マスク
+  ctx.fillStyle = 'rgba(0,0,0,0.40)';
   ctx.fillRect(0, 0, vw, vh);
+  ctx.clearRect(rx, ry, rw, rh);
 
-  // 各桁ボックスをクリア＆枠描画
-  rects.forEach((r, i) => {
-    const rx = r.x * vw, ry = r.y * vh, rw = r.w * vw, rh = r.h * vh;
-    ctx.clearRect(rx, ry, rw, rh);
-    ctx.strokeStyle = i === 3 ? 'rgba(90,200,90,0.9)' : 'rgba(232,132,30,0.9)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
-    // 桁ラベル
-    ctx.fillStyle = i === 3 ? 'rgba(90,200,90,0.95)' : 'rgba(232,132,30,0.95)';
-    ctx.font = `bold ${Math.max(10,Math.floor(rh * 0.14))}px monospace`;
-    ctx.textAlign = 'center';
-    const lbl = i === 3 ? '.X' : (i === 0 ? '?' : 'D' + (i + 1));
-    ctx.fillText(lbl, rx + rw / 2, ry + rh * 0.16);
+  // 枠線
+  ctx.strokeStyle = 'rgba(232,132,30,0.95)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
+
+  // 四隅のコーナーマーク
+  const cs = Math.min(rw, rh) * 0.18;
+  ctx.strokeStyle = 'rgba(232,132,30,1)';
+  ctx.lineWidth = 3;
+  [[rx,ry],[rx+rw,ry],[rx,ry+rh],[rx+rw,ry+rh]].forEach(([cx,cy],i)=>{
+    const sx = i%2===0?1:-1, sy = i<2?1:-1;
+    ctx.beginPath();ctx.moveTo(cx+sx*cs,cy);ctx.lineTo(cx,cy);ctx.lineTo(cx,cy+sy*cs);ctx.stroke();
   });
 
-  // 小数点
-  ctx.fillStyle = 'rgba(255,255,255,0.9)';
-  ctx.beginPath();
-  ctx.arc(dotCX, dotCY, Math.max(3, guide.h * vh * 0.05), 0, Math.PI * 2);
-  ctx.fill();
-
-  // 操作ヒント
-  ctx.fillStyle = 'rgba(232,132,30,0.85)';
-  ctx.font = `${Math.floor(vh * 0.04)}px monospace`;
+  // 操作ヒント（枠上部）
+  ctx.fillStyle = 'rgba(232,132,30,0.9)';
+  ctx.font = `${Math.max(9,Math.floor(vh*0.045))}px monospace`;
   ctx.textAlign = 'left';
-  ctx.fillText('↕ドラッグ移動  ◢リサイズ', guide.x * vw, guide.y * vh - 6);
+  ctx.fillText('ドラッグ:移動  ◢:リサイズ', rx + 4, ry - 5);
 
   // リサイズハンドル（右下）
-  const hx = (guide.x + guide.w) * vw;
-  const hy = (guide.y + guide.h) * vh;
+  const hx = rx + rw, hy = ry + rh;
   ctx.fillStyle = 'rgba(232,132,30,0.9)';
-  ctx.fillRect(hx - 14, hy - 14, 14, 14);
-  ctx.fillStyle = '#1a0f07';
-  ctx.font = `bold 11px monospace`;
+  ctx.fillRect(hx - 16, hy - 16, 16, 16);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 11px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('◢', hx - 7, hy - 3);
+  ctx.fillText('◢', hx - 8, hy - 3);
 }
 
 function initGuideInteraction() {
@@ -3031,29 +2988,10 @@ function initGuideInteraction() {
   window.addEventListener('touchend', onEnd);
 }
 
-// ガイドから各桁のcanvasピクセル座標を返す（カメラ解像度基準）
-function getDigitRectsInVideo() {
-  const video = document.getElementById('camera-video');
-  const vw = video.videoWidth || 640;
-  const vh = video.videoHeight || 480;
-  return getDigitRects().map(r => ({
-    x: Math.floor(r.x * vw),
-    y: Math.floor(r.y * vh),
-    w: Math.floor(r.w * vw),
-    h: Math.floor(r.h * vh),
-  }));
-}
-
-// 後方互換
-function getCropRect() { return { x: guide.x, y: guide.y, w: guide.w, h: guide.h }; }
-function showOcrBox() { drawGuide(); }
 function hideOcrBox() {
   const c = document.getElementById('guide-canvas');
   if (c) { const ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height); }
 }
-function initOcrBox() { initGuideInteraction(); }
-function refreshOcrPreview() { drawGuide(); }
-function updateCropPreview() {}
 
 // ===== GEMINI API KEY & OCR MODE =====
 let ocrMode = localStorage.getItem('rj_ocr_mode') || 'gemini'; // 'gemini' | 'seg'
@@ -3103,11 +3041,8 @@ function setOcrMode(mode){
 async function readTempWithGemini(canvas){
   const key=getGeminiKey();
   if(!key)return null;
-  // 送信前に400×400にリサイズしてトークン削減
-  const small=document.createElement('canvas');
-  small.width=400;small.height=400;
-  small.getContext('2d').drawImage(canvas,0,0,400,400);
-  const b64=small.toDataURL('image/jpeg',0.85).split(',')[1];
+  // cropGuide()で既にリサイズ済みなのでそのまま使用
+  const b64=canvas.toDataURL('image/jpeg',0.90).split(',')[1];
   ocrLog('Gemini API 送信中...');
   const resp=await fetch(
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key='+key,
@@ -3469,7 +3404,7 @@ initModalSwipe('edit-roast-modal',closeEditRoastModal);
 
 
 // ===== UPDATE CHECK =====
-const APP_VERSION='2.6';
+const APP_VERSION='2.7';
 async function checkForUpdate(manual){
   try{
     const r=await fetch('./version.json?t='+Date.now());
