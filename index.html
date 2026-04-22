@@ -736,6 +736,10 @@ select.inp{cursor:pointer;}
           <span id="cam-btn-text">読み取り開始</span>
         </button>
       </div>
+      <!-- 測定間隔セレクター -->
+      <div id="ocr-interval-row" style="display:none;text-align:center;padding:5px 0 2px;font-size:11px;color:var(--c-text-muted);">
+        測定間隔：<span class="ivl-btn active" data-sec="30" onclick="setOcrInterval(30)">30s</span><span class="ivl-btn" data-sec="20" onclick="setOcrInterval(20)">20s</span><span class="ivl-btn" data-sec="15" onclick="setOcrInterval(15)">15s</span><span class="ivl-btn" data-sec="10" onclick="setOcrInterval(10)">10s</span>
+      </div>
       <!-- 画像ファイルOCRテスト（非表示/ソース保持） -->
       <div style="display:none;"><input type="file" id="ocr-test-file" accept="image/*" onchange="testOcrFromFile(this)"></div>
       <!-- OCRデバッグパネル（非表示/ソース保持） -->
@@ -779,9 +783,6 @@ select.inp{cursor:pointer;}
       <button class="ctrl-footer c0" onclick="markEventWithTemp('Charge',null)">CHARGE<br><span style="font-size:10px;opacity:.8;">投入</span></button>
       <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack Start',1.0)">1stCR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
       <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack End',1.5)">1stCR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
-    </div>
-    <div id="ocr-interval-row" style="display:none;text-align:center;padding:4px 0 2px;font-size:11px;color:var(--c-text-muted);">
-      測定間隔：<span class="ivl-btn active" data-sec="30" onclick="setOcrInterval(30)">30s</span><span class="ivl-btn" data-sec="20" onclick="setOcrInterval(20)">20s</span><span class="ivl-btn" data-sec="15" onclick="setOcrInterval(15)">15s</span><span class="ivl-btn" data-sec="10" onclick="setOcrInterval(10)">10s</span>
     </div>
     <div class="footer-grid-4">
       <button class="ctrl-footer" onclick="openFinishModal()" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;">■ 終了<br><span style="font-size:10px;opacity:.8;">排出</span></button>
