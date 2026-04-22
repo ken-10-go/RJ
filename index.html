@@ -6,6 +6,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="焙煎管理">
+<meta name="theme-color" content="#7c5c3e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 <title>Goto Coffee Shaka²</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -256,7 +260,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v2.3</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v2.4</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
