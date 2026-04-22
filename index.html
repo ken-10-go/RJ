@@ -262,7 +262,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;cursor:pointer;border-bottom:1px dashed var(--c-text-muted);">v2.7</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;cursor:pointer;border-bottom:1px dashed var(--c-text-muted);">v2.8</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -3269,7 +3269,9 @@ function loadDriveStorage(){
 function connectDrive(){
   const cid=document.getElementById('client-id-inp').value.trim();if(!cid){toast('Client ID を入力してください');return;}
   S.clientId=cid;localStorage.setItem('rj_clientId',cid);
-  const params=new URLSearchParams({client_id:cid,redirect_uri:window.location.origin+window.location.pathname,response_type:'token',scope:'https://www.googleapis.com/auth/drive.file',prompt:'select_account'});
+  // ⚠️ redirect_uri は固定値。動的計算（window.location）にすると PWA/ブラウザ起動の違いで不一致になるため変更禁止
+  const REDIRECT_URI='https://ken-10-go.github.io/RJ/';
+  const params=new URLSearchParams({client_id:cid,redirect_uri:REDIRECT_URI,response_type:'token',scope:'https://www.googleapis.com/auth/drive.file',prompt:'select_account'});
   const w=window.open('https://accounts.google.com/o/oauth2/v2/auth?'+params,'google-auth','width=500,height=600,scrollbars=yes');
   const poll=setInterval(()=>{try{if(!w||w.closed){clearInterval(poll);return;}const hash=w.location.hash;if(hash&&hash.includes('access_token')){clearInterval(poll);w.close();const p=new URLSearchParams(hash.substring(1));S.driveToken=p.get('access_token');S.tokenExpiry=Date.now()+(parseInt(p.get('expires_in')||'3600'))*1000;fetchDriveUser();}}catch(e){}},500);
 }
@@ -3404,7 +3406,7 @@ initModalSwipe('edit-roast-modal',closeEditRoastModal);
 
 
 // ===== UPDATE CHECK =====
-const APP_VERSION='2.7';
+const APP_VERSION='2.8';
 async function checkForUpdate(manual){
   try{
     const r=await fetch('./version.json?t='+Date.now());
