@@ -260,7 +260,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v2.5</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;cursor:pointer;border-bottom:1px dashed var(--c-text-muted);">v2.5</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -3440,10 +3440,10 @@ initModalSwipe('edit-roast-modal',closeEditRoastModal);
 
 // ===== UPDATE CHECK =====
 const APP_VERSION='2.5';
-async function checkForUpdate(){
+async function checkForUpdate(manual){
   try{
     const r=await fetch('./version.json?t='+Date.now());
-    if(!r.ok)return;
+    if(!r.ok){if(manual)toast('バージョン確認に失敗しました');return;}
     const d=await r.json();
     const latest=String(d.version||'');
     if(latest&&latest!==APP_VERSION){
@@ -3452,8 +3452,10 @@ async function checkForUpdate(){
         document.getElementById('update-banner-ver').textContent='v'+latest;
         el.style.display='flex';
       }
+    }else if(manual){
+      toast('✅ 最新バージョンです（v'+APP_VERSION+'）');
     }
-  }catch(e){}
+  }catch(e){if(manual)toast('バージョン確認に失敗しました');}
 }
 
 // ===== INIT =====
@@ -3470,8 +3472,7 @@ if(S.driveToken)loadFromDrive();
 // OCRモードとGeminiキー状態を復元
 setOcrMode(ocrMode);
 loadGeminiKeyStatus();
-checkForUpdate();
-setInterval(checkForUpdate, 10*60*1000);
+// 自動チェックなし — バージョン表示タップで手動確認
 </script>
 </body>
 </html>
