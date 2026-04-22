@@ -260,7 +260,7 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v2.4</span></div>
+      <div class="topbar-title">Goto Coffee Shaka<sup style="font-size:13px;">2</sup><span id="app-version" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;">v2.5</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
@@ -796,6 +796,11 @@ select.inp{cursor:pointer;}
   <button onclick="restoreRoastOverlay()" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap;">戻る ▲</button>
 </div>
 
+<div id="update-banner" style="display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:10000;background:#7c5c3e;color:#fff;padding:10px 16px;box-sizing:border-box;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.3);">
+  <span style="flex:1;font-size:13px;font-family:'Poppins',sans-serif;">🆕 新しいバージョン（<span id="update-banner-ver"></span>）があります</span>
+  <button onclick="location.reload(true)" style="background:#fff;color:#7c5c3e;border:none;border-radius:8px;padding:5px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">更新</button>
+  <button onclick="document.getElementById('update-banner').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:20px;cursor:pointer;padding:0 2px;line-height:1;">✕</button>
+</div>
 <div class="toast" id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
@@ -3433,6 +3438,24 @@ initModalSwipe('edit-roast-modal',closeEditRoastModal);
 
 
 
+// ===== UPDATE CHECK =====
+const APP_VERSION='2.5';
+async function checkForUpdate(){
+  try{
+    const r=await fetch('./version.json?t='+Date.now());
+    if(!r.ok)return;
+    const d=await r.json();
+    const latest=String(d.version||'');
+    if(latest&&latest!==APP_VERSION){
+      const el=document.getElementById('update-banner');
+      if(el){
+        document.getElementById('update-banner-ver').textContent='v'+latest;
+        el.style.display='flex';
+      }
+    }
+  }catch(e){}
+}
+
 // ===== INIT =====
 loadDriveStorage();
 loadMasterFileIds();
@@ -3447,6 +3470,8 @@ if(S.driveToken)loadFromDrive();
 // OCRモードとGeminiキー状態を復元
 setOcrMode(ocrMode);
 loadGeminiKeyStatus();
+checkForUpdate();
+setInterval(checkForUpdate, 10*60*1000);
 </script>
 </body>
 </html>
