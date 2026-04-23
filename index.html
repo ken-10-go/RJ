@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="焙煎管理">
 <meta name="theme-color" content="#7c5c3e">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="assets/goto_coffee_icon.svg">
+<link rel="apple-touch-icon" href="assets/goto_coffee_icon_1024.png">
 <link rel="icon" type="image/svg+xml" href="assets/goto_coffee_icon.svg">
 <title>Goto Coffee Shaka²</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -263,13 +263,12 @@ select.inp{cursor:pointer;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:36px;vertical-align:middle;"><span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;cursor:pointer;border-bottom:1px dashed var(--c-text-muted);">v2.10</span></div>
+      <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:48px;vertical-align:middle;"><span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-left:8px;vertical-align:middle;cursor:pointer;border-bottom:1px dashed var(--c-text-muted);">v2.10</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;">↩ UNDO</button>
         <div class="drive-status"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
       </div>
     </div>
-    <div class="topbar-sub">Coffee Roasting Tracker</div>
   </div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('beans')">
