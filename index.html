@@ -1568,7 +1568,7 @@ function showRoastOverlay(){
   if(cameraStream)stopCameraOCR();
   // 使用豆名をオーバーレイに表示
   const bean=S.beans.find(b=>b.id===S.currentRoast.beanId);
-  const bl=document.getElementById('ro-bean-lbl');if(bl)bl.textContent=bean?bean.name:'—';
+  const bl=document.getElementById('ro-bean-lbl');if(bl)bl.textContent=bean?bean.name+beanSeqNum(bean):'—';
   document.getElementById('roast-overlay').classList.add('active');
   const ivlRow=document.getElementById('ocr-interval-row');if(ivlRow)ivlRow.style.display='block';
   updateIntervalSelector();
