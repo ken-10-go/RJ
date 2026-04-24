@@ -266,7 +266,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.11</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.12</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -1322,6 +1322,12 @@ function previewBeanPhoto(input){
   r.readAsDataURL(file);
 }
 
+function beanSeqNum(bean){
+  const same=S.beans.filter(b=>b.name===bean.name)
+    .sort((a,b)=>(a.purchaseDate||'').localeCompare(b.purchaseDate||'')||a.id-b.id);
+  const idx=same.findIndex(b=>b.id===bean.id);
+  return same.length>1?` #${idx+1}`:'';
+}
 function renderBeans(){
   const el=document.getElementById('bean-list');
   initFilterButtons();
@@ -1342,7 +1348,7 @@ function renderBeans(){
     const proc=procs.join(' / ');
     const pd=b.purchaseDate?b.purchaseDate.slice(0,7).replace('-','年')+'月購入':'';
     return`<div class="bean-item">
-      <div class="bean-name">${cname?cname+' / ':''}${b.name}</div>
+      <div class="bean-name">${cname?cname+' / ':''}${b.name}${beanSeqNum(b)}</div>
       <div class="bean-sub">${[proc,pd].filter(Boolean).join(' | ')}</div>
       <div class="bean-actions">
         <button class="btn btn-sm btn-outline" onclick="editBean(${b.id})">編集</button>
@@ -1359,7 +1365,7 @@ function updateBeanSelect(){
     const cname=countryName(b.countryId)||(b.country||'');
     const procs=b.processIds&&b.processIds.length?processNamesFromIds(b.processIds):(b.processes||[]);
     const proc=procs.length?' / '+procs.join('·'):'';
-    return`<option value="${b.id}">${cname?cname+' / ':''}${b.name}${proc}</option>`;
+    return`<option value="${b.id}">${cname?cname+' / ':''}${b.name}${beanSeqNum(b)}${proc}</option>`;
   }).join(''):'<option>先に豆を登録してください</option>';
   updateRoastLevelHint();
 }
