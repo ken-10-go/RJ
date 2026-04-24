@@ -266,7 +266,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.12</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.13</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -356,6 +356,7 @@ select.inp{cursor:pointer;}
               <div id="process-items"></div>
               <div class="ms-add-row">
                 <input id="b-process-free" placeholder="精製方法を追加..." onkeydown="if(event.key==='Enter')addProcess()">
+                <input id="b-process-shortn" placeholder="略称" style="width:52px;font-size:13px;">
                 <button class="btn btn-sm btn-outline" onclick="addProcess()" style="padding:5px 10px;white-space:nowrap;">追加</button>
               </div>
             </div>
@@ -843,6 +844,7 @@ function masterNames(type){return(S.master[type]||[]).filter(r=>r.enabled!==fals
 function masterById(type,id){return(S.master[type]||[]).find(r=>r.id===id);}
 function countryName(id){return id!=null?masterById('countries',id)?.name||'':('')}
 function processNamesFromIds(ids){return(ids||[]).map(id=>masterById('processes',id)?.name).filter(Boolean);}
+function processShortNFromIds(ids){return(ids||[]).map(id=>{const r=masterById('processes',id);return r?(r.shortN||r.name):null;}).filter(Boolean);}
 function varietyNamesFromIds(ids){return(ids||[]).map(id=>masterById('varieties',id)?.name).filter(Boolean);}
 function rlLabelsFromVals(vals){return(vals||[]).map(v=>{const r=ROAST_LEVELS.find(r=>r.val===v);return r?rlLabel(v):null;}).filter(Boolean);}
 
@@ -1140,10 +1142,13 @@ function toggleBeanProcessMs(id){
 }
 function addProcess(){
   const v=document.getElementById('b-process-free').value.trim();if(!v)return;
+  const sn=document.getElementById('b-process-shortn').value.trim();
   let row=S.master.processes.find(r=>r.name===v&&r.enabled!==false);
-  if(!row){row={id:Date.now(),name:v,enabled:true};S.master.processes.push(row);masterDirtyTypes.add('processes');}
+  if(!row){row={id:Date.now(),name:v,shortN:sn||undefined,enabled:true};S.master.processes.push(row);masterDirtyTypes.add('processes');}
+  else if(sn&&!row.shortN){row.shortN=sn;masterDirtyTypes.add('processes');}
   if(!S.beanSelectedProcessIds.includes(row.id))S.beanSelectedProcessIds.push(row.id);
   document.getElementById('b-process-free').value='';
+  document.getElementById('b-process-shortn').value='';
   renderProcessDropdown();
 }
 // --- 推奨焙煎度（複数選択・val管理）---
@@ -1363,7 +1368,7 @@ function updateBeanSelect(){
   const s=document.getElementById('r-bean');
   s.innerHTML=S.beans.length?S.beans.map(b=>{
     const cname=countryName(b.countryId)||(b.country||'');
-    const procs=b.processIds&&b.processIds.length?processNamesFromIds(b.processIds):(b.processes||[]);
+    const procs=b.processIds&&b.processIds.length?processShortNFromIds(b.processIds):(b.processes||[]);
     const proc=procs.length?' / '+procs.join('·'):'';
     return`<option value="${b.id}">${cname?cname+' / ':''}${b.name}${beanSeqNum(b)}${proc}</option>`;
   }).join(''):'<option>先に豆を登録してください</option>';
@@ -3208,8 +3213,8 @@ function parseCSV(text){
   });
 }
 function toCSV(rows){
-  if(!rows||!rows.length)return'id,name,enabled\n';
-  return'id,name,enabled\n'+rows.map(r=>`${r.id},${(r.name||'').replace(/,/g,'；')},${r.enabled!==false}`).join('\n');
+  if(!rows||!rows.length)return'id,name,shortN,enabled\n';
+  return'id,name,shortN,enabled\n'+rows.map(r=>`${r.id},${(r.name||'').replace(/,/g,'；')},${(r.shortN||'').replace(/,/g,'；')},${r.enabled!==false}`).join('\n');
 }
 let masterFileIds={countries:null,varieties:null,processes:null};
 const MASTER_FILE_NAMES={countries:'master_countries.csv',varieties:'master_varieties.csv',processes:'master_processes.csv'};
