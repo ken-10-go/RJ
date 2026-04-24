@@ -1,6 +1,6 @@
 {
-  "name": "コーヒー焙煎管理",
-  "short_name": "焙煎管理",
+  "name": "珈琲豆焼",
+  "short_name": "珈琲豆焼",
   "description": "コーヒー豆の焙煎記録・温度管理アプリ",
   "start_url": "./",
   "display": "standalone",
@@ -8,7 +8,8 @@
   "background_color": "#fafaf8",
   "theme_color": "#7c5c3e",
   "icons": [
-    { "src": "assets/goto_coffee_icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "assets/goto_coffee_icon_notext.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "assets/goto_coffee_icon_notext_1024.png", "sizes": "1024x1024", "type": "image/png" },
     { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]

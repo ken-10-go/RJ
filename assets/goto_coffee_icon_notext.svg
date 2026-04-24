@@ -1,0 +1,64 @@
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="36" fill="#faf8f5"/>
+  <defs>
+    <clipPath id="ic-bean" clipPathUnits="userSpaceOnUse">
+      <circle cx="80" cy="80" r="38" transform="rotate(10 80 80)"/>
+    </clipPath>
+  </defs>
+
+  <!-- bright warm background -->
+  <rect width="160" height="160" rx="0" fill="#fdf4e0"/>
+
+  <!-- whole roaster: +10deg, centred, scaled down to fit fully -->
+  <g transform="rotate(10 80 80)">
+
+    <!-- FRAME bars — darker and more opaque -->
+    <rect x="18" y="22"  width="124" height="8" rx="2" fill="#6a4c08" opacity="0.85"/>
+    <rect x="18" y="130" width="124" height="8" rx="2" fill="#6a4c08" opacity="0.85"/>
+    <rect x="18" y="22"  width="8" height="116" rx="2" fill="#6a4c08" opacity="0.85"/>
+    <rect x="134" y="22" width="8" height="116" rx="2" fill="#6a4c08" opacity="0.85"/>
+    <!-- corner brackets — solid dark -->
+    <rect x="14"  y="18"  width="16" height="16" rx="2.5" fill="#4a3406" opacity="0.9"/>
+    <rect x="130" y="18"  width="16" height="16" rx="2.5" fill="#4a3406" opacity="0.9"/>
+    <rect x="14"  y="126" width="16" height="16" rx="2.5" fill="#4a3406" opacity="0.9"/>
+    <rect x="130" y="126" width="16" height="16" rx="2.5" fill="#4a3406" opacity="0.9"/>
+
+    <!-- DRUM ring — darker stroke -->
+    <circle cx="80" cy="80" r="40" fill="none" stroke="#6a4c08" stroke-width="4" opacity="0.8"/>
+
+    <!-- cage slats — darker -->
+    <rect x="38" y="64" width="84" height="5" rx="2.5" fill="#6a4c08" opacity="0.55"/>
+    <rect x="34" y="78" width="92" height="5" rx="2.5" fill="#6a4c08" opacity="0.55"/>
+    <rect x="38" y="92" width="84" height="5" rx="2.5" fill="#6a4c08" opacity="0.55"/>
+
+    <!-- axle -->
+    <rect x="6" y="78" width="148" height="5" rx="2.5" fill="#6a4c08" opacity="0.35"/>
+
+    <!-- right handle -->
+    <rect x="148" y="72" width="22" height="18" rx="9" fill="#b86028" opacity="0.85"/>
+
+  </g>
+
+  <!-- drum interior warm fill -->
+  <circle cx="80" cy="80" r="37" fill="#e8906a" opacity="0.20" transform="rotate(10 80 80)"/>
+
+  <!-- BEANS — larger, spread out across drum -->
+  <g clip-path="url(#ic-bean)">
+    <!-- bean left -->
+    <g transform="translate(56,85) rotate(-22)">
+      <ellipse cx="0" cy="0" rx="11" ry="16" fill="#7a3a08"/>
+      <path d="M0 -14 Q6 0 0 14" stroke="#fce8a8" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- bean centre -->
+    <g transform="translate(80,68) rotate(6)">
+      <ellipse cx="0" cy="0" rx="11" ry="16" fill="#a85010"/>
+      <path d="M0 -14 Q6 0 0 14" stroke="#fce8a8" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- bean right -->
+    <g transform="translate(104,88) rotate(26)">
+      <ellipse cx="0" cy="0" rx="11" ry="16" fill="#6e3208"/>
+      <path d="M0 -14 Q6 0 0 14" stroke="#fce8a8" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </g>
+  </g>
+
+</svg>
