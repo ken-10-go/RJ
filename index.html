@@ -266,7 +266,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.10</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.11</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -447,22 +447,12 @@ select.inp{cursor:pointer;}
             <div id="r-rl-hint" style="font-family:'DM Mono',monospace;font-size:var(--fs-mono);color:var(--c-accent);margin-bottom:8px;"></div>
             <div class="inp-row">
               <div class="inp-w"><div class="label">投入量 (g)</div><input class="inp" id="r-amount" type="number" placeholder="200" value="200"></div>
-              <div class="inp-w"><div class="check-row" style="margin-top:22px;"><input type="checkbox" id="r-washing"><label for="r-washing">水洗</label></div></div>
+              <div class="inp-w"><div class="check-row" style="margin-top:22px;"><input type="checkbox" id="r-washing" checked><label for="r-washing">水洗</label></div></div>
             </div>
           </div>
         </div>
       </div>
       <button class="btn btn-primary" onclick="startRoastAndOverlay()" id="roast-btn" style="margin-bottom:12px;font-size:18px;padding:14px;">▶ 焙煎開始</button>
-      <!-- イベントログ（折りたたみ・デフォルト非表示） -->
-      <div class="card" style="margin-bottom:6px;">
-        <div class="roast-collapse-hdr" onclick="toggleRoastSection('event-log-section','eventlog-arrow')">
-          <span class="roast-collapse-hdr-lbl">📋 イベントログ</span>
-          <span class="roast-collapse-arrow" id="eventlog-arrow">▼</span>
-        </div>
-        <div class="roast-collapse-body" id="event-log-section" style="max-height:0;">
-          <div class="event-log" id="event-log" style="max-height:150px;margin-top:6px;"><div class="ev"><span class="ev-x" style="font-style:italic;">焙煎を開始するとイベントが記録されます</span></div></div>
-        </div>
-      </div>
     </div>
 
     <!-- ===== 記録 ===== -->
@@ -573,24 +563,19 @@ select.inp{cursor:pointer;}
             <div class="sync-row"><span class="sync-label">焙煎記録</span><span class="sync-val" id="sync-roast-count">0 件</span></div>
             <div class="sync-row"><span class="sync-label">味わい記録</span><span class="sync-val" id="sync-taste-count">0 件</span></div>
           </div>
-          <button class="btn btn-sync" onclick="syncToDrive()" id="sync-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Drive に保存する
-          </button>
-          <button class="btn btn-outline" style="width:100%;margin-top:6px;font-size:var(--fs-sm);" onclick="loadFromDrive()">Drive から読み込む</button>
-          <button class="btn btn-danger" style="width:100%;margin-top:6px;font-size:var(--fs-sm);" onclick="disconnectDrive()">接続を解除する</button>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">自動同期設定</div>
-        <div class="sync-info">
-          <div class="sync-row">
+          <div class="sync-row" style="margin-bottom:8px;">
             <span class="sync-label">登録・更新時に自動保存</span>
             <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
               <input type="checkbox" id="auto-sync" style="accent-color:var(--c-accent);width:16px;height:16px;" checked>
               <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-accent);" id="auto-sync-lbl">ON</span>
             </label>
           </div>
+          <button class="btn btn-sync" onclick="syncToDrive()" id="sync-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Drive に保存する
+          </button>
+          <button class="btn btn-outline" style="width:100%;margin-top:6px;font-size:var(--fs-sm);" onclick="loadFromDrive()">Drive から読み込む</button>
+          <button class="btn btn-danger" style="width:100%;margin-top:6px;font-size:var(--fs-sm);" onclick="disconnectDrive()">接続を解除する</button>
         </div>
       </div>
 
@@ -600,8 +585,7 @@ select.inp{cursor:pointer;}
           <div class="label">Gemini API キー（温度計の自動読み取り）</div>
           <input class="inp" id="gemini-api-key" type="password" placeholder="AIzaSy..." style="font-size:var(--fs-xs);">
           <div class="client-id-hint">
-            取得先: <a href="https://aistudio.google.com/" target="_blank" style="color:var(--c-accent);">Google AI Studio</a>（無料・1日1,500リクエスト）<br>
-            未設定の場合は7セグメント認識で動作します
+            取得先: <a href="https://aistudio.google.com/" target="_blank" style="color:var(--c-accent);">Google AI Studio</a>（無料・1日1,500リクエスト）
           </div>
         </div>
         <button class="btn btn-outline" style="width:100%;margin-top:8px;font-size:var(--fs-sm);" onclick="saveGeminiKey()">保存</button>
@@ -1714,6 +1698,7 @@ function updateTimer(){
   const td=document.getElementById('timer-display');if(td)td.textContent=ts;
   const rt=document.getElementById('ro-timer');if(rt)rt.textContent=ts;
   if(S.elapsed>0&&S.elapsed%60===0)playBell();
+  if(S.elapsed>=1500){finishRoast();toast('25分経過のため自動停止しました');return;}
   updateMiniBar();
 }
 function updateMiniBar(){
