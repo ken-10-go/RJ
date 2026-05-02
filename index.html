@@ -36,11 +36,11 @@ body{font-family:'Poppins',sans-serif;background:var(--c-bg);color:var(--c-text)
 .tab-lbl{font-family:'Poppins',sans-serif;font-size:10px;font-weight:600;letter-spacing:.03em;transition:color .2s;}
 .tab.active .tab-lbl{color:var(--c-accent);}
 .tab.active .tab-icon{color:var(--c-accent);}
-.content{flex:1;min-height:0;overflow-y:scroll;padding:16px;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 36px);-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+.content{flex:1;min-height:0;overflow-y:scroll;padding:10px;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 80px);-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 .section{display:none;opacity:0;transform:translateY(8px);transition:opacity .2s ease-out,transform .2s ease-out;}
 .section.active{display:block;opacity:1;transform:translateY(0);}
 .card{background:var(--c-surface);border:1px solid #e5e7eb;border-radius:var(--radius-card);padding:12px;margin-bottom:8px;box-shadow:var(--shadow-sm);}
-.card-title{font-family:'Poppins',sans-serif;font-size:16px;font-weight:600;color:var(--c-text);margin-bottom:12px;}
+.card-title{font-family:'Poppins',sans-serif;font-size:15px;font-weight:600;color:var(--c-text);margin-bottom:8px;}
 details.card>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;margin-bottom:0;font-family:'Poppins',sans-serif;font-size:16px;font-weight:600;color:var(--c-text);}
 details.card>summary::-webkit-details-marker{display:none;}
 details.card[open]>summary{margin-bottom:12px;border-bottom:1px solid #e5e7eb;padding-bottom:10px;}
@@ -52,7 +52,7 @@ details.card[open]>summary::after{transform:rotate(180deg);}
 textarea.inp{resize:vertical;}
 select.inp{cursor:pointer;}
 .inp-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
-.inp-w{margin-bottom:8px;}
+.inp-w{margin-bottom:6px;}
 .btn{padding:10px 16px;border-radius:10px;border:none;cursor:pointer;font-family:'Poppins',sans-serif;font-size:var(--fs-base);font-weight:600;transition:all .18s cubic-bezier(0.4,0,0.2,1);-webkit-appearance:none;-webkit-tap-highlight-color:transparent;}
 .btn:active{transform:scale(0.96);}
 .btn-primary{background:var(--c-accent);color:#ffffff;width:100%;margin-top:6px;box-shadow:var(--shadow-md);letter-spacing:.01em;}
@@ -153,13 +153,13 @@ select.inp{cursor:pointer;}
 .collapsible-arrow.open{transform:rotate(180deg);}
 .collapsible-body{overflow:hidden;transition:max-height .3s ease;}
 /* radar */
-.radar-wrap{display:flex;justify-content:center;margin:8px 0;touch-action:none;}
+.radar-wrap{display:flex;justify-content:center;margin:4px 0;touch-action:none;}
 .radar-hint{font-size:var(--fs-xs);color:var(--c-text);text-align:center;margin-top:4px;}
 /* flavor wheel */
 .flavor-cat-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
 .flavor-cat-btn{padding:8px 16px;border-radius:20px;border:1.5px solid var(--border);background:var(--c-bg);color:var(--c-text);font-size:13px;cursor:pointer;font-family:'Poppins',sans-serif;transition:all .15s;min-height:36px;}
 .flavor-cat-btn.active{background:#fef3c7;color:#92400e;border-color:var(--c-accent);font-weight:600;}
-.flavor-sub-area{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:10px;min-height:56px;}
+.flavor-sub-area{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:8px;min-height:52px;}
 .flavor-sub-label{font-family:'Poppins',sans-serif;font-size:12px;color:var(--c-text);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-weight:600;}
 .flavor-sub-row{display:flex;flex-wrap:wrap;gap:8px;}
 .flavor-sub-btn{padding:10px 16px;border-radius:10px;border:1.5px solid #d1d5db;background:#f9fafb;color:var(--c-text);font-size:14px;cursor:pointer;transition:all .15s;min-height:44px;font-family:'Poppins',sans-serif;}
@@ -268,7 +268,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.24</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.25</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -484,7 +484,7 @@ select.inp{cursor:pointer;}
       </div>
       <div class="card">
         <div class="card-title">フレーバー属性</div>
-        <div class="radar-wrap"><canvas id="radar-chart" width="320" height="280" style="touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;"></canvas></div>
+        <div class="radar-wrap"><canvas id="radar-chart" width="300" height="240" style="touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;"></canvas></div>
         <!-- スライダー補助 -->
       </div>
       <div class="card">
