@@ -37,11 +37,12 @@ function renderRadarChart(){
     }]},
     options:{
       responsive:false,animation:{duration:150},
+      layout:{padding:{left:28,right:28,top:4,bottom:4}},
       scales:{r:{
         min:0,max:5,
         ticks:{stepSize:1,color:'#92400e',font:{size:12,weight:'bold'},backdropColor:'transparent'},
         grid:{color:'rgba(146,64,14,0.3)'},
-        pointLabels:{color:'#92400e',font:{size:15,weight:'bold'},
+        pointLabels:{color:'#92400e',font:{size:14,weight:'bold'},
           callback:(label,i)=>label+' ('+S.radarVals[i]+')'},
       }},
       plugins:{legend:{display:false},tooltip:{display:false}}
@@ -51,12 +52,12 @@ function renderRadarChart(){
 }
 
 function attachRadarDrag(canvas){
-  const CW=canvas.width,CH=canvas.height,CX=CW/2,CY=CH/2;
-  const MAX_R=Math.min(CW,CH)*0.38;
+  const CW=canvas.width,CH=canvas.height;
   const N=RADAR_LABELS.length;
+  function sc(){return radarChart&&radarChart.scales&&radarChart.scales.r;}
   function angleOf(i){return(2*Math.PI/N)*i-Math.PI/2;}
-  function pointXY(i){const r=MAX_R*(S.radarVals[i]/5);return{x:CX+Math.cos(angleOf(i))*r,y:CY+Math.sin(angleOf(i))*r};}
-  function valueFromXY(i,x,y){const a=angleOf(i);const proj=(x-CX)*Math.cos(a)+(y-CY)*Math.sin(a);return Math.min(5,Math.max(1,Math.round(proj/MAX_R*5)));}
+  function pointXY(i){const s=sc();if(!s)return{x:CW/2,y:CH/2};const r=s.drawingArea*(S.radarVals[i]/5);return{x:s.xCenter+Math.cos(angleOf(i))*r,y:s.yCenter+Math.sin(angleOf(i))*r};}
+  function valueFromXY(i,x,y){const s=sc();if(!s)return 3;const a=angleOf(i);const proj=(x-s.xCenter)*Math.cos(a)+(y-s.yCenter)*Math.sin(a);return Math.min(5,Math.max(1,Math.round(proj/s.drawingArea*5)));}
   function getXY(e){const rect=canvas.getBoundingClientRect();const src=e.touches?e.touches[0]:e;return{x:(src.clientX-rect.left)*(CW/rect.width),y:(src.clientY-rect.top)*(CH/rect.height)};}
   function onStart(e){e.preventDefault();e.stopPropagation();const{x,y}=getXY(e);radarDragIdx=-1;for(let i=0;i<N;i++){const p=pointXY(i);if(Math.hypot(p.x-x,p.y-y)<40){radarDragIdx=i;break;}}if(radarDragIdx>=0)radarDragActive=true;}
   function onMove(e){if(!radarDragActive||radarDragIdx<0)return;e.preventDefault();e.stopPropagation();const{x,y}=getXY(e);const v=valueFromXY(radarDragIdx,x,y);if(v!==S.radarVals[radarDragIdx]){S.radarVals[radarDragIdx]=v;if(radarChart){radarChart.data.datasets[0].data=[...S.radarVals];radarChart.update('none');}}}
