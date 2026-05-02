@@ -46,7 +46,7 @@ details.card>summary::-webkit-details-marker{display:none;}
 details.card[open]>summary{margin-bottom:12px;border-bottom:1px solid #e5e7eb;padding-bottom:10px;}
 details.card>summary::after{content:'▼';font-size:11px;color:var(--c-text-muted);transition:transform .2s;flex-shrink:0;margin-left:8px;}
 details.card[open]>summary::after{transform:rotate(180deg);}
-.label{font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.label{font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
 .inp{width:100%;background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:10px;padding:10px 12px;color:var(--c-text);font-family:'Poppins',sans-serif;font-size:15px;outline:none;transition:border-color .2s,box-shadow .2s,background .2s;-webkit-appearance:none;}
 .inp:focus{background:#ffffff;border-color:var(--c-accent);box-shadow:0 0 0 3px rgba(217,119,6,0.1);}
 textarea.inp{resize:vertical;}
@@ -154,20 +154,20 @@ select.inp{cursor:pointer;}
 .collapsible-body{overflow:hidden;transition:max-height .3s ease;}
 /* radar */
 .radar-wrap{display:flex;justify-content:center;margin:8px 0;touch-action:none;}
-.radar-hint{font-size:var(--fs-xs);color:var(--c-text-muted);text-align:center;margin-top:4px;}
+.radar-hint{font-size:var(--fs-xs);color:var(--c-text);text-align:center;margin-top:4px;}
 /* flavor wheel */
-.flavor-cat-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
-.flavor-cat-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--c-text-muted);font-size:var(--fs-xs);cursor:pointer;font-family:'DM Mono',monospace;transition:all .15s;}
-.flavor-cat-btn.active{background:#fef3c7;color:var(--c-accent);border-color:var(--c-accent);}
-.flavor-sub-area{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:10px;min-height:48px;}
-.flavor-sub-label{font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
-.flavor-sub-row{display:flex;flex-wrap:wrap;gap:5px;}
-.flavor-sub-btn{padding:4px 10px;border-radius:20px;border:1px solid #d1d5db;background:transparent;color:var(--c-text-muted);font-size:var(--fs-xs);cursor:pointer;transition:all .15s;}
-.flavor-sub-btn.selected{background:#dcfce7;color:var(--c-green);border-color:#bbf7d0;font-weight:600;}
-.flavor-selected-label{font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
-.flavor-selected-row{display:flex;flex-wrap:wrap;gap:4px;min-height:28px;}
-.flavor-tag{background:#dcfce7;color:var(--c-green);border:1px solid #bbf7d0;border-radius:20px;font-size:var(--fs-xs);padding:3px 9px;display:flex;align-items:center;gap:4px;font-family:'Poppins',sans-serif;font-weight:500;}
-.flavor-tag button{background:none;border:none;color:var(--c-green);cursor:pointer;font-size:12px;padding:0;line-height:1;}
+.flavor-cat-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+.flavor-cat-btn{padding:8px 16px;border-radius:20px;border:1.5px solid var(--border);background:var(--c-bg);color:var(--c-text);font-size:13px;cursor:pointer;font-family:'Poppins',sans-serif;transition:all .15s;min-height:36px;}
+.flavor-cat-btn.active{background:#fef3c7;color:#92400e;border-color:var(--c-accent);font-weight:600;}
+.flavor-sub-area{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:10px;min-height:56px;}
+.flavor-sub-label{font-family:'Poppins',sans-serif;font-size:12px;color:var(--c-text);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-weight:600;}
+.flavor-sub-row{display:flex;flex-wrap:wrap;gap:8px;}
+.flavor-sub-btn{padding:10px 16px;border-radius:10px;border:1.5px solid #d1d5db;background:#f9fafb;color:var(--c-text);font-size:14px;cursor:pointer;transition:all .15s;min-height:44px;font-family:'Poppins',sans-serif;}
+.flavor-sub-btn.selected{background:#d1fae5;color:#065f46;border-color:#6ee7b7;font-weight:600;}
+.flavor-selected-label{font-family:'Poppins',sans-serif;font-size:12px;color:var(--c-text);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-weight:600;}
+.flavor-selected-row{display:flex;flex-wrap:wrap;gap:6px;min-height:32px;}
+.flavor-tag{background:#d1fae5;color:#065f46;border:1.5px solid #6ee7b7;border-radius:20px;font-size:13px;padding:6px 12px;display:flex;align-items:center;gap:5px;font-family:'Poppins',sans-serif;font-weight:500;}
+.flavor-tag button{background:none;border:none;color:#065f46;cursor:pointer;font-size:14px;padding:0;line-height:1;}
 /* records */
 .records-list{display:flex;flex-direction:column;gap:8px;}
 .rec{background:var(--c-surface);border:1px solid #e5e7eb;border-radius:14px;padding:13px 14px;cursor:pointer;transition:border-color .2s,transform .15s,box-shadow .2s;-webkit-tap-highlight-color:transparent;box-shadow:var(--shadow-sm);}
@@ -268,7 +268,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.22</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.23</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
