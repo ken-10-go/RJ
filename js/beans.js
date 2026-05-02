@@ -1,4 +1,17 @@
-// ===== beans.js =====
+// ================================================================
+// beans.js — Bean CRUD・在庫管理・詳細モーダル
+// ================================================================
+// CRUD    : saveBean, clearBeanForm, editBean, copyBean,
+//           cancelEditBean, deleteBean, previewBeanPhoto
+// Helpers : roastSeqNum, beanSeqNum, beanRemainingGrams
+// Detail  : openBeanDetail, closeBeanDetail
+// Render  : renderBeans, updateBeanSelect, updateRoastLevelHint
+//
+// ⚠ 新フィールドを Bean に追加したら以下も更新すること:
+//    saveBean / clearBeanForm / editBean / openBeanDetail
+//    constants.js の @typedef {Bean}
+// ================================================================
+
 // ===== BEANS CRUD =====
 function saveBean(){
   const name=document.getElementById('b-name').value.trim();

@@ -1,4 +1,16 @@
-// ===== constants.js =====
+// ================================================================
+// constants.js — 定数・グローバル State・マスタ管理・マイグレーション
+// ================================================================
+// Constants : ROAST_LEVELS, FLAVOR_WHEEL, DEFAULT_*, RADAR_LABELS
+// Master helpers: toMasterRows, migrateMasterArr, masterNames,
+//                 masterById, countryName, processNamesFromIds,
+//                 processShortNFromIds, varietyNamesFromIds,
+//                 rlLabelsFromVals
+// Migration    : migrateExistingData, migrateToPhase2
+// State        : S（グローバル state オブジェクト）
+// Chart vars   : roastChart, analysisChart, radarChart, compareChart
+// ================================================================
+
 // ===== CONSTANTS =====
 const ROAST_LEVELS=[
   {val:1.0,ja:'ライト',sub:'1ハゼ開始'},
@@ -118,6 +130,80 @@ function migrateToPhase2(){
   if(changed){saveLocal();console.log('migrateToPhase2: ID管理に移行しました');}
   return changed;
 }
+
+// ===== TYPE DEFINITIONS =====
+/**
+ * @typedef {Object} MasterRow
+ * @property {number}  id
+ * @property {string}  name
+ * @property {boolean} [enabled]   - false で非表示（削除の代わり）
+ * @property {string}  [shortN]    - 精製方法の略称（processes のみ）
+ */
+
+/**
+ * @typedef {Object} Bean
+ * @property {number}   id               - Date.now() で生成
+ * @property {string}   name             - 豆名（必須）
+ * @property {number}   [countryId]      - master.countries の id（Phase2以降）
+ * @property {string}   [country]        - 後方互換用文字列
+ * @property {string}   [farm]           - 農場名
+ * @property {number[]} [varietyIds]     - master.varieties の id 配列
+ * @property {string[]} [varieties]      - 後方互換用文字列配列
+ * @property {number[]} [processIds]     - master.processes の id 配列
+ * @property {string[]} [processes]      - 後方互換用文字列配列
+ * @property {number[]} [roastLevelVals] - ROAST_LEVELS.val 配列
+ * @property {string[]} [roastLevels]    - 後方互換用文字列配列
+ * @property {string}   [shop]           - 購入店
+ * @property {number}   [amount]         - 購入グラム数
+ * @property {number}   [stockGrams]     - 在庫手動上書き（未設定 = 自動計算）
+ * @property {string}   [purchaseDate]   - YYYY-MM-DD
+ * @property {number}   [price]          - 円/100g
+ * @property {number}   [score]          - SCAスコア
+ * @property {string}   [taste]          - テイストノート（自由記述）
+ * @property {string}   [memo]           - メモ
+ * @property {string}   [photo]          - base64 data URL
+ */
+
+/**
+ * @typedef {Object} RoastEvent
+ * @property {number}  time    - 経過秒
+ * @property {string}  label   - イベント名（例: '1st Crack Start'）
+ * @property {number}  [temp]  - 記録時の温度
+ * @property {number}  [rlVal] - 焙煎度 val（ROAST_LEVELS.val）
+ */
+
+/**
+ * @typedef {Object} RoastRecord
+ * @property {number}      id
+ * @property {number}      beanId
+ * @property {number}      [amount]      - 投入グラム数（文字列の場合あり）
+ * @property {boolean}     [washing]     - 水洗い有無
+ * @property {string}      [startTime]   - ISO 8601
+ * @property {string}      [endTime]     - ISO 8601
+ * @property {number}      [duration]    - 焙煎時間（秒）
+ * @property {number[]}    tempData      - 温度履歴
+ * @property {number[]}    timeData      - 対応する経過秒
+ * @property {RoastEvent[]} events       - イベント履歴
+ * @property {number}      [roastLevel]  - ROAST_LEVELS.val
+ * @property {number}      [weightBefore]- 焙煎前グラム
+ * @property {number}      [weightAfter] - 焙煎後グラム
+ * @property {number}      [yieldPct]    - 歩留まり%
+ * @property {number}      [dtr]         - Development Time Ratio %
+ * @property {string}      [memo]
+ */
+
+/**
+ * @typedef {Object} TasteRecord
+ * @property {number}   id
+ * @property {number}   roastId         - RoastRecord.id
+ * @property {number}   beanId
+ * @property {string}   [brewMethod]
+ * @property {number}   [stars]         - 総合評価 1〜5
+ * @property {number[]} [radarVals]     - RADAR_LABELS 対応の 0〜5 値配列
+ * @property {string[]} [flavors]       - FLAVOR_WHEEL キー
+ * @property {string}   [memo]
+ * @property {string}   [createdAt]     - ISO 8601
+ */
 
 // ===== STATE =====
 const S={

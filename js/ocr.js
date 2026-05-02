@@ -1,4 +1,18 @@
-// ===== ocr.js =====
+// ================================================================
+// ocr.js — カメラ OCR・7セグメント認識エンジン
+// ================================================================
+// Variables    : OCR_PHASE_INTERVALS, ocrIntervalSec, cameraStream,
+//                ocrCDInterval, ocrCD, ocrBusy, tesseractWorker
+// Debug log    : ocrLog, copyOcrLog
+// 7-seg engine : SEG_PATTERNS, getBright, sampleRegion,
+//                recognizeDigit, recognizeDisplay
+// Image util   : toGrayscaleCanvas
+// Camera       : stopCameraOCR, toggleCameraOCR
+// UI           : toggleRoastSection
+// Guide OCR    : cropDigit, recognizeOneDigit, cropGuide
+// Test         : testOcrFromFile
+// ================================================================
+
 // ===== CAMERA OCR (with debug) =====
 const OCR_PHASE_INTERVALS={preheat:30,charge:20,turningPoint:15,firstCrack:10};
 let ocrIntervalSec=OCR_PHASE_INTERVALS.preheat;

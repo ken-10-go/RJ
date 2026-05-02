@@ -1,4 +1,30 @@
-// ===== roast.js =====
+// ================================================================
+// roast.js — 焙煎タイマー・チャート・ROR 計算・URL インポート
+// ================================================================
+// URL Import   : importFromText
+// Setup        : toggleRoastSetup
+// Temp slider  : onTempSlider, adjustSlider, logSliderTemp,
+//                updateSliderFromLast
+// Roast control: startRoastAndOverlay, showRoastOverlay,
+//                hideRoastOverlay, doStartRoast, toggleRoastPause,
+//                toggleRoast, resumeRoast, startRoast, pauseRoast,
+//                openFinishModal, closeFinishModal, calcWeightLoss,
+//                finishRoast, discardRoast
+// Timer        : playBell, updateTimer, updateMiniBar,
+//                minimizeRoastOverlay, restoreRoastOverlay
+// Temp record  : recordTemp, renderLiveTempList, editLiveTemp,
+//                deleteLiveTemp, deleteEventEntry, addMemoEntry,
+//                addManualTemp
+// Events       : markEventWithTemp, applyPhaseInterval,
+//                checkAutoTurningPoint, addEventLog, toggleRoEvLog
+// OCR interval : setOcrInterval, updateIntervalSelector
+// Tab          : switchRoTab
+// Chart        : crZonePlugin, initRoastChart, updateRoastChart,
+//                EVENT_STYLE
+// ROR          : calcROR
+// Misc         : ft
+// ================================================================
+
 // ===== URL IMPORT =====
 function importFromText(){
   const raw=document.getElementById('import-text').value.trim();

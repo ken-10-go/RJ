@@ -1,4 +1,18 @@
-// ===== records.js =====
+// ================================================================
+// records.js — 焙煎記録一覧・記録編集モーダル・分析
+// ================================================================
+// Records list : renderRecords, openRecordModal, closeRecordModal,
+//                deleteRoastRecord, editTasteFromRecord
+// Edit modal   : openEditRoastModal, closeEditRoastModal,
+//                calcEditWeightLoss, saveEditRoast
+// Edit events  : renderErEvents, erUpdateEventTime, erUpdateEventLabel,
+//                erUpdateEventTemp, erDeleteEvent, erAddEvent
+// Edit temps   : renderErTemps, erUpdateTemp, erDeleteTemp
+// Analysis     : renderAnalysis, renderAnalysisChart,
+//                renderCompareSection, updateCompareChart, runAI
+// Misc         : erFmt
+// ================================================================
+
 // ===== RECORDS =====
 function renderRecords(){
   const el=document.getElementById('records-list');if(!el)return;

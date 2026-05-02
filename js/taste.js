@@ -1,4 +1,14 @@
-// ===== taste.js =====
+// ================================================================
+// taste.js — テイスト記録・フレーバーホイール・レーダーチャート
+// ================================================================
+// Stars        : setStar
+// Radar chart  : getRadarPointXY, getRadarValueFromXY,
+//                renderRadarChart, attachRadarDrag,
+//                renderRadarSliders, setRadarVal
+// Flavor wheel : initFlavorWheel, selectFlavorCat, toggleFlavor
+// Taste form   : updateTasteSelect, updateElapsedDays, saveTaste
+// ================================================================
+
 // ===== TASTE =====
 function setStar(n){
   S.stars=n;

@@ -1,4 +1,24 @@
-// ===== storage.js =====
+// ================================================================
+// storage.js — localStorage・Google Drive API・OCR 設定
+// ================================================================
+// LCD guide    : drawGuide, initGuideInteraction, hideOcrBox
+// OCR mode     : ocrMode, setOcrMode, getGeminiKey, saveGeminiKey,
+//                loadGeminiKeyStatus, getApiKey, saveApiKey, loadApiKey
+// Local storage: LS_KEY, LS_PENDING, saveLocal, loadLocal,
+//                hasPendingSync, clearPending
+// Drive consts : DRIVE_FOLDER_PATH, DRIVE_FILE_NAME, DRIVE_*_FILE,
+//                BOUNDARY, buildMultipart
+// Drive helpers: (Phase 2 JSON file helpers)
+// Master CSV   : parseCSV, toCSV, masterFileIds, MASTER_FILE_NAMES,
+//                saveMasterFileIds, loadMasterFileIds,
+//                saveMasterToDrive, loadFromDrive
+// Drive auth   : saveDriveStorage, loadDriveStorage, connectDrive,
+//                updateDriveUI, disconnectDrive
+// Sync         : autoSync
+// Update check : APP_VERSION, checkForUpdate
+// Modal init   : initModalSwipe 呼び出し（各モーダル）
+// ================================================================
+
 // ===== LCD クロップガイド =====
 // ガイド状態: 液晶パネルを囲む1本の横長枠（video座標の相対値 0.0〜1.0）
 const guide = {

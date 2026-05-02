@@ -1,4 +1,24 @@
-// ===== ui.js =====
+// ================================================================
+// ui.js — ナビ・トースト・モーダル・マルチセレクト・フィルタ UI
+// ================================================================
+// Undo       : pushUndo, undo, updateUndoBtn
+// Nav        : switchTab, closeAllDropdowns
+// Modal      : initModalSwipe, toast
+// Helpers    : rlLabel, rlFromEvents
+// MultiSelect: toggleMsDropdown, renderMultiSelectList,
+//              renderMultiSelectTags, toggleMultiSelectItem
+// Bean form  : renderBeanForm, renderCountryDropdown, selectCountry,
+//              addCountry, getSelectedCountry, renderProcessDropdown,
+//              toggleBeanProcessMs, addProcess, renderRLDropdown,
+//              toggleBeanRLMs, renderVarietyDropdown, toggleVariety,
+//              addVarietyOption
+// Filter     : toggleFilterPanel, updateFilterBadges, initFilterButtons,
+//              setYearFilter, setMonthFilter, toggleCountryFilter,
+//              toggleRLFilter, setCountryFilter, setRLFilter
+// Brew       : initBrewSelect, onBrewSel, addBrew, getSelectedBrew
+// Misc       : changeQty
+// ================================================================
+
 // ===== UNDO STACK (5回分) =====
 const UNDO_STACK=[];
 const UNDO_MAX=5;
