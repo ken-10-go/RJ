@@ -1425,13 +1425,14 @@ function renderBeans(){
     const pd=b.purchaseDate?b.purchaseDate.slice(0,7).replace('-','年')+'月購入':'';
     const rem=beanRemainingGrams(b);
     const stockBadge=rem===null?'':`<span class="stock-badge${rem===0?' out':''}">${rem===0?'在庫切れ':'残 '+rem+'g'}</span>`;
-    return`<div class="bean-item" onclick="openBeanDetail(${b.id})" style="cursor:pointer;">
+    return`<div class="bean-item">
       <div class="bean-name">${cname?cname+' / ':''}${b.name}${beanSeqNum(b)}${stockBadge}</div>
       <div class="bean-sub">${[proc,pd].filter(Boolean).join(' | ')}</div>
       <div class="bean-actions">
-        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();editBean(${b.id})">編集</button>
-        <button class="btn btn-sm btn-copy" onclick="event.stopPropagation();copyBean(${b.id})">コピー</button>
-        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteBean(${b.id})">削除</button>
+        <button class="btn btn-sm" onclick="openBeanDetail(${b.id})" style="background:#f5ede6;color:#7c5c3a;border:1px solid #e5d5c8;">詳細</button>
+        <button class="btn btn-sm btn-outline" onclick="editBean(${b.id})">編集</button>
+        <button class="btn btn-sm btn-copy" onclick="copyBean(${b.id})">コピー</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteBean(${b.id})">削除</button>
       </div>
     </div>`;
   }).join('');
