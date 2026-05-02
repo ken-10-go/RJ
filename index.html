@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="珈琲豆焼">
+<meta name="apple-mobile-web-app-title" content="後藤珈琲">
 <meta name="theme-color" content="#7c5c3e">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/goto_coffee_icon_notext_1024.png">
@@ -1397,7 +1397,9 @@ function openBeanDetail(id){
   let html=rows.map(([k,v])=>`<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #f0e8e0;"><span style="width:80px;flex-shrink:0;color:#999;font-size:12px;">${k}</span><span style="flex:1;">${v}</span></div>`).join('');
   if(b.photo)html+=`<img src="${b.photo}" style="width:100%;border-radius:8px;margin-top:10px;">`;
   document.getElementById('bdm-body').innerHTML=html;
-  document.getElementById('bean-detail-modal').style.display='flex';
+  const modal=document.getElementById('bean-detail-modal');
+  modal.style.display='flex';
+  modal.querySelector('.modal').scrollTop=0;
 }
 function closeBeanDetail(){document.getElementById('bean-detail-modal').style.display='none';}
 function renderBeans(){
