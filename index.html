@@ -111,6 +111,8 @@ select.inp{cursor:pointer;}
 .bean-badges{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}
 .bean-actions{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;}
 .filter-row{display:flex;gap:6px;flex-wrap:wrap;}
+.stock-badge{font-size:11px;color:#7c5c3a;background:#f5ede6;border-radius:4px;padding:1px 5px;margin-left:4px;display:inline-block;}
+.stock-badge.out{color:#999;background:#eee;}
 /* roast */
 .roast-timer{text-align:center;padding:6px 0;}
 .timer-display{font-family:'DM Mono',monospace;font-size:52px;color:var(--c-text);letter-spacing:.04em;line-height:1;}
@@ -266,7 +268,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.15</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.16</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -384,6 +386,7 @@ select.inp{cursor:pointer;}
           </div>
           <div class="inp-w"><div class="label">購入日（年月）</div><input class="inp" id="b-purchase-date" type="month"></div>
         </div>
+        <div class="inp-w"><div class="label">在庫グラム数（手動上書き）</div><input class="inp" id="b-stock-override" type="number" min="0" placeholder="空欄 = 焙煎記録から自動計算"></div>
         <div class="inp-row">
           <div class="inp-w"><div class="label">価格 (円/100g)</div><input class="inp" id="b-price" type="number" placeholder="1200"></div>
           <div class="inp-w"><div class="label">SCAスコア</div><input class="inp" id="b-score" type="number" placeholder="86.5" step="0.5"></div>
@@ -409,6 +412,10 @@ select.inp{cursor:pointer;}
           </div>
         </div>
         <div id="filter-panel" style="display:none;margin-top:10px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:8px;cursor:pointer;">
+            <input type="checkbox" id="f-stock-only" checked onchange="renderBeans()">
+            <span>在庫あり（購入量未設定の豆は常に表示）</span>
+          </label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;">
             <div class="multi-select-wrap" id="country-filter-wrap">
               <div class="multi-select-box" id="country-filter-box" onclick="toggleMsDropdown('country-filter')" style="min-height:34px;">
@@ -593,6 +600,22 @@ select.inp{cursor:pointer;}
         <div id="gemini-key-status" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text-muted);margin-top:6px;text-align:center;"></div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- 豆詳細モーダル -->
+<div class="modal-overlay" id="bean-detail-modal" style="display:none" onclick="if(event.target===this)closeBeanDetail()">
+  <div class="modal" style="max-height:85vh;overflow-y:auto;">
+    <div class="modal-drag"></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+      <div id="bdm-title" style="font-weight:700;font-size:16px;flex:1;padding-right:8px;"></div>
+      <button onclick="closeBeanDetail()" style="background:none;border:none;font-size:20px;color:var(--c-text-muted);cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+    </div>
+    <div id="bdm-body" style="font-size:14px;"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-primary" id="bdm-edit-btn" style="flex:1;">編集</button>
+      <button class="btn btn-outline" onclick="closeBeanDetail()" style="flex:1;">閉じる</button>
     </div>
   </div>
 </div>
@@ -1250,6 +1273,7 @@ function saveBean(){
     taste:document.getElementById('b-taste').value,
     memo:document.getElementById('b-memo').value,
     photo:S.beanPhotoData||null,
+    stockGrams:(()=>{const v=document.getElementById('b-stock-override').value.trim();return v!==''?parseFloat(v):undefined;})(),
   };
   pushUndo();
   if(editId){const i=S.beans.findIndex(b=>b.id===parseInt(editId));if(i>=0)S.beans[i]=bean;}
@@ -1261,7 +1285,7 @@ function saveBean(){
 }
 
 function clearBeanForm(){
-  ['b-name','b-farm','b-price','b-score','b-taste','b-memo','b-purchase-date'].forEach(id=>document.getElementById(id).value='');
+  ['b-name','b-farm','b-price','b-score','b-taste','b-memo','b-purchase-date','b-stock-override'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('b-amount').value='1000';
   document.getElementById('b-edit-id').value='';
   document.getElementById('b-photo-preview').style.display='none';
@@ -1285,6 +1309,7 @@ function editBean(id){
   document.getElementById('b-taste').value=b.taste||'';
   document.getElementById('b-memo').value=b.memo||'';
   document.getElementById('b-edit-id').value=b.id;
+  document.getElementById('b-stock-override').value=b.stockGrams!=null?b.stockGrams:'';
   // Phase2済みならID直接、未移行なら名前でルックアップ
   S.beanSelectedCountryId=b.countryId!==undefined?b.countryId:
     (b.country?(S.master.countries.find(r=>r.name===b.country&&r.enabled!==false)||{}).id||null:null);
@@ -1340,6 +1365,41 @@ function beanSeqNum(bean){
   const idx=same.findIndex(b=>b.id===bean.id);
   return same.length>1?` #${idx+1}`:'';
 }
+function beanRemainingGrams(bean){
+  if(bean.stockGrams!=null)return bean.stockGrams;
+  if(!bean.amount)return null;
+  const used=(S.roastRecords||[]).filter(r=>r.beanId===bean.id)
+    .reduce((s,r)=>s+(parseFloat(r.weightBefore)||0),0);
+  return Math.max(0,parseFloat(bean.amount)-used);
+}
+function openBeanDetail(id){
+  const b=S.beans.find(b=>b.id===id);if(!b)return;
+  const seq=beanSeqNum(b);
+  const cname=b.countryId?masterById('countries',b.countryId)?.name||b.country:(b.country||'');
+  const procs=b.processIds&&b.processIds.length?processNamesFromIds(b.processIds):(b.processes||[]);
+  const varieties=b.varietyIds&&b.varietyIds.length?b.varietyIds.map(vid=>{const r=masterById('varieties',vid);return r?r.name:null;}).filter(Boolean):(b.varieties||[]);
+  const rl=b.roastLevelVals&&b.roastLevelVals.length?rlLabelsFromVals(b.roastLevelVals):(b.roastLevels||[]);
+  const rem=beanRemainingGrams(b);
+  const roasts=(S.roastRecords||[]).filter(r=>r.beanId===b.id);
+  const totalUsed=roasts.reduce((s,r)=>s+(parseFloat(r.weightBefore)||0),0);
+  const remStr=rem===null?'不明（購入量未設定）':rem===0?'在庫切れ':rem+'g（残）';
+  document.getElementById('bdm-title').textContent=(cname?cname+' / ':'')+b.name+seq;
+  document.getElementById('bdm-edit-btn').onclick=()=>{closeBeanDetail();editBean(id);};
+  const rows=[
+    ['産地',cname||'—'],['農場',b.farm||'—'],['品種',varieties.join(', ')||'—'],
+    ['精製',procs.join(', ')||'—'],['焙煎度',rl.join(', ')||'—'],
+    ['購入日',b.purchaseDate||'—'],['購入量',b.amount?b.amount+'g':'—'],
+    ['在庫',remStr],['購入店',b.shop||'—'],
+    ['価格',b.price?b.price+'円/100g':'—'],['SCAスコア',b.score||'—'],
+    ['テイスト',b.taste||'—'],['メモ',b.memo||'—'],
+    ['焙煎回数',roasts.length+'回 / 合計使用 '+totalUsed+'g'],
+  ];
+  let html=rows.map(([k,v])=>`<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #f0e8e0;"><span style="width:80px;flex-shrink:0;color:#999;font-size:12px;">${k}</span><span style="flex:1;">${v}</span></div>`).join('');
+  if(b.photo)html+=`<img src="${b.photo}" style="width:100%;border-radius:8px;margin-top:10px;">`;
+  document.getElementById('bdm-body').innerHTML=html;
+  document.getElementById('bean-detail-modal').style.display='flex';
+}
+function closeBeanDetail(){document.getElementById('bean-detail-modal').style.display='none';}
 function renderBeans(){
   const el=document.getElementById('bean-list');
   initFilterButtons();
@@ -1352,6 +1412,8 @@ function renderBeans(){
     (b.roastLevels&&b.roastLevels.some(lbl=>S.filterRLVals.some(v=>lbl.startsWith('['+v.toFixed(1)+']')))));
   if(S.filterYear)beans=beans.filter(b=>b.purchaseDate&&b.purchaseDate.startsWith(S.filterYear));
   if(S.filterMonth)beans=beans.filter(b=>b.purchaseDate&&b.purchaseDate.slice(5,7)===S.filterMonth);
+  const stockOnly=document.getElementById('f-stock-only')?.checked;
+  if(stockOnly)beans=beans.filter(b=>{const rem=beanRemainingGrams(b);return rem===null||rem>0;});
   if(!beans.length){el.innerHTML='<div class="empty">該当する豆がありません</div>';return;}
   el.innerHTML=beans.map(b=>{
     // ID管理優先、なければ旧文字列フォールバック
@@ -1359,13 +1421,15 @@ function renderBeans(){
     const procs=b.processIds&&b.processIds.length?processNamesFromIds(b.processIds):(b.processes||[]);
     const proc=procs.join(' / ');
     const pd=b.purchaseDate?b.purchaseDate.slice(0,7).replace('-','年')+'月購入':'';
-    return`<div class="bean-item">
-      <div class="bean-name">${cname?cname+' / ':''}${b.name}${beanSeqNum(b)}</div>
+    const rem=beanRemainingGrams(b);
+    const stockBadge=rem===null?'':`<span class="stock-badge${rem===0?' out':''}">${rem===0?'在庫切れ':'残 '+rem+'g'}</span>`;
+    return`<div class="bean-item" onclick="openBeanDetail(${b.id})" style="cursor:pointer;">
+      <div class="bean-name">${cname?cname+' / ':''}${b.name}${beanSeqNum(b)}${stockBadge}</div>
       <div class="bean-sub">${[proc,pd].filter(Boolean).join(' | ')}</div>
       <div class="bean-actions">
-        <button class="btn btn-sm btn-outline" onclick="editBean(${b.id})">編集</button>
-        <button class="btn btn-sm btn-copy" onclick="copyBean(${b.id})">コピー</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteBean(${b.id})">削除</button>
+        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();editBean(${b.id})">編集</button>
+        <button class="btn btn-sm btn-copy" onclick="event.stopPropagation();copyBean(${b.id})">コピー</button>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteBean(${b.id})">削除</button>
       </div>
     </div>`;
   }).join('');
