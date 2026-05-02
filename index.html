@@ -3528,15 +3528,22 @@ async function checkForUpdate(manual){
 loadDriveStorage();
 loadMasterFileIds();
 if(loadLocal()){console.log('Loaded from localStorage');migrateExistingData();migrateToPhase2();}
+renderBeanForm();
 initOcrBox();
+initFilterButtons();
 initFlavorWheel();
-switchTab('beans');
+renderBeans();
 updateUndoBtn();
 if(S.driveToken)loadFromDrive();
 // OCRモードとGeminiキー状態を復元
 setOcrMode(ocrMode);
 loadGeminiKeyStatus();
 // 自動チェックなし — バージョン表示タップで手動確認
+// Android Chrome スクロール初期化：rAF2回でレイアウト確定後にスクロールコンテナを再認識させる
+requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  const c=document.querySelector('.content');
+  if(c){c.style.overflowY='hidden';c.style.overflowY='auto';}
+}));
 </script>
 </body>
 </html>
