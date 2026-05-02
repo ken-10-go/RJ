@@ -1,10 +1,8 @@
 // ================================================================
-// taste.js — テイスト記録・フレーバーホイール・レーダーチャート
+// taste.js — テイスト記録・フレーバーホイール・スライダー
 // ================================================================
 // Stars        : setStar
-// Radar chart  : getRadarPointXY, getRadarValueFromXY,
-//                renderRadarChart, attachRadarDrag,
-//                renderRadarSliders, setRadarVal
+// Sliders      : renderRadarSliders, setRadarVal
 // Flavor wheel : initFlavorWheel, selectFlavorCat, toggleFlavor
 // Taste form   : updateTasteSelect, updateElapsedDays, saveTaste
 // ================================================================
@@ -15,69 +13,31 @@ function setStar(n){
   document.querySelectorAll('#taste-stars span').forEach((s,i)=>s.style.opacity=i<n?'1':'.3');
 }
 
-// ===== RADAR =====
-let radarDragIdx=-1;
-let radarDragActive=false;
-
+// ===== SLIDERS =====
+// チャート廃止 — スタブのみ残す（saveTaste等が参照しないが念のため）
+function renderRadarChart(){}
 function getRadarPointXY(i){return{x:0,y:0};}
 function getRadarValueFromXY(i,cx,cy){return 3;}
 
-function renderRadarChart(){
-  if(radarChart){radarChart.destroy();radarChart=null;}
-  const canvas=document.getElementById('radar-chart');if(!canvas)return;
-  canvas.dataset.dragAttached='';
-  const ctx=canvas.getContext('2d');
-  radarChart=new Chart(ctx,{
-    type:'radar',
-    data:{labels:RADAR_LABELS,datasets:[{
-      label:'味わい',data:[...S.radarVals],
-      backgroundColor:'rgba(196,122,58,0.22)',borderColor:'#c47a3a',borderWidth:2,
-      pointBackgroundColor:'#e8841e',pointBorderColor:'#f5e6c8',
-      pointRadius:12,pointHoverRadius:14,pointBorderWidth:2,
-    }]},
-    options:{
-      responsive:true,maintainAspectRatio:false,animation:{duration:150},
-      layout:{padding:{left:32,right:32,top:8,bottom:8}},
-      scales:{r:{
-        min:0,max:5,
-        ticks:{stepSize:1,color:'#92400e',font:{size:12,weight:'bold'},backdropColor:'transparent'},
-        grid:{color:'rgba(146,64,14,0.3)'},
-        pointLabels:{color:'#92400e',font:{size:14,weight:'bold'},
-          callback:(label,i)=>label+' ('+S.radarVals[i]+')'},
-      }},
-      plugins:{legend:{display:false},tooltip:{display:false}}
-    }
-  });
-  attachRadarDrag(canvas);
+function renderRadarSliders(){
+  const wrap=document.getElementById('radar-sliders');if(!wrap)return;
+  wrap.innerHTML=RADAR_LABELS.map((label,i)=>`
+    <div class="rs-cell">
+      <div class="rs-label">${label}</div>
+      <div class="rs-row">
+        <input class="rs-input" type="range" min="1" max="5" step="1" value="${S.radarVals[i]}"
+          style="--val:${S.radarVals[i]}" oninput="setRadarVal(${i},this.value)">
+        <span class="rs-val" id="rv${i}">${S.radarVals[i]}</span>
+      </div>
+    </div>`).join('');
 }
 
-function attachRadarDrag(canvas){
-  // 座標はすべて CSS ピクセル空間（論理ピクセル）で統一
-  // scales.r.xCenter/yCenter/drawingArea も CSS ピクセル空間の値を返す
-  const N=RADAR_LABELS.length;
-  function sc(){return radarChart&&radarChart.scales&&radarChart.scales.r;}
-  function angleOf(i){return(2*Math.PI/N)*i-Math.PI/2;}
-  function pointXY(i){const s=sc();if(!s)return{x:0,y:0};const r=s.drawingArea*(S.radarVals[i]/5);return{x:s.xCenter+Math.cos(angleOf(i))*r,y:s.yCenter+Math.sin(angleOf(i))*r};}
-  function valueFromXY(i,x,y){const s=sc();if(!s)return 3;const a=angleOf(i);const proj=(x-s.xCenter)*Math.cos(a)+(y-s.yCenter)*Math.sin(a);return Math.min(5,Math.max(1,Math.round(proj/s.drawingArea*5)));}
-  // clientX/Y から rect.left/top を引くだけ — DPR 倍数の掛け算は不要
-  function getXY(e){const rect=canvas.getBoundingClientRect();const src=e.touches?e.touches[0]:e;return{x:src.clientX-rect.left,y:src.clientY-rect.top};}
-  function onStart(e){e.preventDefault();e.stopPropagation();const{x,y}=getXY(e);radarDragIdx=-1;for(let i=0;i<N;i++){const p=pointXY(i);if(Math.hypot(p.x-x,p.y-y)<40){radarDragIdx=i;break;}}if(radarDragIdx>=0)radarDragActive=true;}
-  function onMove(e){if(!radarDragActive||radarDragIdx<0)return;e.preventDefault();e.stopPropagation();const{x,y}=getXY(e);const v=valueFromXY(radarDragIdx,x,y);if(v!==S.radarVals[radarDragIdx]){S.radarVals[radarDragIdx]=v;if(radarChart){radarChart.data.datasets[0].data=[...S.radarVals];radarChart.update('none');}}}
-  function onEnd(){radarDragActive=false;radarDragIdx=-1;}
-  if(canvas.dataset.dragAttached==='1')return;
-  canvas.dataset.dragAttached='1';
-  canvas.addEventListener('mousedown',onStart);
-  window.addEventListener('mousemove',onMove);
-  window.addEventListener('mouseup',onEnd);
-  canvas.addEventListener('touchstart',onStart,{passive:false});
-  window.addEventListener('touchmove',onMove,{passive:false});
-  window.addEventListener('touchend',onEnd);
-}
-
-function renderRadarSliders(){}
 function setRadarVal(idx,val){
   S.radarVals[idx]=parseInt(val);
-  if(radarChart){radarChart.data.datasets[0].data=[...S.radarVals];radarChart.update();}
+  const el=document.getElementById('rv'+idx);if(el)el.textContent=val;
+  // スライダーの塗りつぶし色を更新
+  const sliders=document.querySelectorAll('.rs-input');
+  if(sliders[idx])sliders[idx].style.setProperty('--val',val);
 }
 
 function initFlavorWheel(){

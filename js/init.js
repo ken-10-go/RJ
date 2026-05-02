@@ -45,6 +45,7 @@ safeCall(renderBeanForm,    'renderBeanForm');
 safeCall(initOcrBox,        'initOcrBox');
 safeCall(initFilterButtons, 'initFilterButtons');
 safeCall(initFlavorWheel,   'initFlavorWheel');
+safeCall(renderRadarSliders,'renderRadarSliders');
 safeCall(renderBeans,       'renderBeans');
 safeCall(updateUndoBtn,     'updateUndoBtn');
 if(S.driveToken)loadFromDrive();

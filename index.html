@@ -152,9 +152,15 @@ select.inp{cursor:pointer;}
 .collapsible-arrow{color:var(--c-text-muted);font-size:12px;transition:transform .2s;}
 .collapsible-arrow.open{transform:rotate(180deg);}
 .collapsible-body{overflow:hidden;transition:max-height .3s ease;}
-/* radar */
-.radar-wrap{display:block;width:100%;margin:4px 0;touch-action:none;}
-.radar-hint{font-size:var(--fs-xs);color:var(--c-text);text-align:center;margin-top:4px;}
+/* radar sliders */
+.rs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;}
+.rs-cell{display:flex;flex-direction:column;gap:4px;}
+.rs-label{font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:#92400e;text-transform:uppercase;letter-spacing:.04em;}
+.rs-row{display:flex;align-items:center;gap:6px;}
+.rs-input{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:linear-gradient(to right,var(--c-accent) calc((var(--val,3)-1)/4*100%),#e5e7eb calc((var(--val,3)-1)/4*100%));outline:none;cursor:pointer;}
+.rs-input::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--c-accent);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.2);cursor:pointer;}
+.rs-input::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--c-accent);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.2);cursor:pointer;}
+.rs-val{font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:#92400e;min-width:18px;text-align:center;}
 /* flavor wheel */
 .flavor-cat-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
 .flavor-cat-btn{padding:8px 16px;border-radius:20px;border:1.5px solid var(--border);background:var(--c-bg);color:var(--c-text);font-size:13px;cursor:pointer;font-family:'Poppins',sans-serif;transition:all .15s;min-height:36px;}
@@ -268,7 +274,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.27</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.28</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -484,8 +490,7 @@ select.inp{cursor:pointer;}
       </div>
       <div class="card">
         <div class="card-title">フレーバー属性</div>
-        <div class="radar-wrap" style="height:230px;"><canvas id="radar-chart" style="touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;"></canvas></div>
-        <!-- スライダー補助 -->
+        <div class="rs-grid" id="radar-sliders"></div>
       </div>
       <div class="card">
         <div class="card-title">フレーバーノート</div>
