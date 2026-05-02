@@ -39,9 +39,9 @@ function renderRadarChart(){
       responsive:false,animation:{duration:150},
       scales:{r:{
         min:0,max:5,
-        ticks:{stepSize:1,color:'#a07850',font:{size:9},backdropColor:'transparent'},
-        grid:{color:'rgba(196,122,58,0.2)'},
-        pointLabels:{color:'#f5e6c8',font:{size:11},
+        ticks:{stepSize:1,color:'#92400e',font:{size:11},backdropColor:'transparent'},
+        grid:{color:'rgba(146,64,14,0.25)'},
+        pointLabels:{color:'#92400e',font:{size:13},
           callback:(label,i)=>label+' ('+S.radarVals[i]+')'},
       }},
       plugins:{legend:{display:false},tooltip:{display:false}}
