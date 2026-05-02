@@ -268,7 +268,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.18</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.19</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -1026,7 +1026,13 @@ function initModalSwipe(overlayId,closeFn){
   modal.addEventListener('touchmove',onMove,{passive:true});
   modal.addEventListener('touchend',onEnd);
 }
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.style.opacity='1';setTimeout(()=>el.style.opacity='0',2400);}
+function toast(msg,type){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.style.background=type==='error'?'#b91c1c':'';
+  el.style.opacity='1';
+  setTimeout(()=>{el.style.opacity='0';},type==='error'?5000:2400);
+}
 function rlLabel(val){const r=ROAST_LEVELS.find(r=>r.val===val);return r?'['+val.toFixed(1)+'] '+r.ja:val.toFixed(1);}
 function rlFromEvents(events){if(!events||!events.length)return null;const last=[...events].reverse().find(e=>e.rlVal!=null);return last?last.rlVal:null;}
 
@@ -3539,16 +3545,33 @@ async function checkForUpdate(manual){
 
 // initOcrBox は削除済み関数だがINITから呼ばれているため空スタブで継続
 function initOcrBox(){}
+
+// ① window.onerror — 予期しない JS エラーをトーストで通知
+window.onerror=function(msg,src,line,col,err){
+  const loc=src?src.split('/').pop()+'#'+line:'';
+  toast('⚠ エラー: '+(err&&err.message||msg)+(loc?' ('+loc+')':''),'error');
+  return false; // false = ブラウザのデフォルト処理も維持
+};
+window.onunhandledrejection=function(e){
+  toast('⚠ 非同期エラー: '+(e.reason&&e.reason.message||String(e.reason)),'error');
+};
+
+// ② safeCall — 1関数のエラーが init 全体を止めないようにする
+function safeCall(fn,name){
+  try{fn();}
+  catch(e){console.error('[init] '+name+' failed:',e);toast('⚠ 初期化エラー ('+name+'): '+e.message,'error');}
+}
+
 // ===== INIT =====
 loadDriveStorage();
 loadMasterFileIds();
 if(loadLocal()){console.log('Loaded from localStorage');migrateExistingData();migrateToPhase2();}
-renderBeanForm();
-initOcrBox();
-initFilterButtons();
-initFlavorWheel();
-renderBeans();
-updateUndoBtn();
+safeCall(renderBeanForm,    'renderBeanForm');
+safeCall(initOcrBox,        'initOcrBox');
+safeCall(initFilterButtons, 'initFilterButtons');
+safeCall(initFlavorWheel,   'initFlavorWheel');
+safeCall(renderBeans,       'renderBeans');
+safeCall(updateUndoBtn,     'updateUndoBtn');
 if(S.driveToken)loadFromDrive();
 // OCRモードとGeminiキー状態を復元
 setOcrMode(ocrMode);
