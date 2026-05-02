@@ -36,8 +36,8 @@ function renderRadarChart(){
       pointRadius:12,pointHoverRadius:14,pointBorderWidth:2,
     }]},
     options:{
-      responsive:false,animation:{duration:150},
-      layout:{padding:{left:28,right:28,top:4,bottom:4}},
+      responsive:true,maintainAspectRatio:false,animation:{duration:150},
+      layout:{padding:{left:32,right:32,top:8,bottom:8}},
       scales:{r:{
         min:0,max:5,
         ticks:{stepSize:1,color:'#92400e',font:{size:12,weight:'bold'},backdropColor:'transparent'},
@@ -52,13 +52,15 @@ function renderRadarChart(){
 }
 
 function attachRadarDrag(canvas){
-  const CW=canvas.width,CH=canvas.height;
+  // 座標はすべて CSS ピクセル空間（論理ピクセル）で統一
+  // scales.r.xCenter/yCenter/drawingArea も CSS ピクセル空間の値を返す
   const N=RADAR_LABELS.length;
   function sc(){return radarChart&&radarChart.scales&&radarChart.scales.r;}
   function angleOf(i){return(2*Math.PI/N)*i-Math.PI/2;}
-  function pointXY(i){const s=sc();if(!s)return{x:CW/2,y:CH/2};const r=s.drawingArea*(S.radarVals[i]/5);return{x:s.xCenter+Math.cos(angleOf(i))*r,y:s.yCenter+Math.sin(angleOf(i))*r};}
+  function pointXY(i){const s=sc();if(!s)return{x:0,y:0};const r=s.drawingArea*(S.radarVals[i]/5);return{x:s.xCenter+Math.cos(angleOf(i))*r,y:s.yCenter+Math.sin(angleOf(i))*r};}
   function valueFromXY(i,x,y){const s=sc();if(!s)return 3;const a=angleOf(i);const proj=(x-s.xCenter)*Math.cos(a)+(y-s.yCenter)*Math.sin(a);return Math.min(5,Math.max(1,Math.round(proj/s.drawingArea*5)));}
-  function getXY(e){const rect=canvas.getBoundingClientRect();const src=e.touches?e.touches[0]:e;return{x:(src.clientX-rect.left)*(CW/rect.width),y:(src.clientY-rect.top)*(CH/rect.height)};}
+  // clientX/Y から rect.left/top を引くだけ — DPR 倍数の掛け算は不要
+  function getXY(e){const rect=canvas.getBoundingClientRect();const src=e.touches?e.touches[0]:e;return{x:src.clientX-rect.left,y:src.clientY-rect.top};}
   function onStart(e){e.preventDefault();e.stopPropagation();const{x,y}=getXY(e);radarDragIdx=-1;for(let i=0;i<N;i++){const p=pointXY(i);if(Math.hypot(p.x-x,p.y-y)<40){radarDragIdx=i;break;}}if(radarDragIdx>=0)radarDragActive=true;}
   function onMove(e){if(!radarDragActive||radarDragIdx<0)return;e.preventDefault();e.stopPropagation();const{x,y}=getXY(e);const v=valueFromXY(radarDragIdx,x,y);if(v!==S.radarVals[radarDragIdx]){S.radarVals[radarDragIdx]=v;if(radarChart){radarChart.data.datasets[0].data=[...S.radarVals];radarChart.update('none');}}}
   function onEnd(){radarDragActive=false;radarDragIdx=-1;}
