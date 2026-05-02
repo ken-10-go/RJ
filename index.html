@@ -268,7 +268,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.16</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.17</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -1418,23 +1418,35 @@ function renderBeans(){
   if(stockOnly)beans=beans.filter(b=>{const rem=beanRemainingGrams(b);return rem===null||rem>0;});
   if(!beans.length){el.innerHTML='<div class="empty">該当する豆がありません</div>';return;}
   el.innerHTML=beans.map(b=>{
-    // ID管理優先、なければ旧文字列フォールバック
-    const cname=countryName(b.countryId)||(b.country||'');
-    const procs=b.processIds&&b.processIds.length?processNamesFromIds(b.processIds):(b.processes||[]);
-    const proc=procs.join(' / ');
-    const pd=b.purchaseDate?b.purchaseDate.slice(0,7).replace('-','年')+'月購入':'';
-    const rem=beanRemainingGrams(b);
-    const stockBadge=rem===null?'':`<span class="stock-badge${rem===0?' out':''}">${rem===0?'在庫切れ':'残 '+rem+'g'}</span>`;
-    return`<div class="bean-item">
-      <div class="bean-name">${cname?cname+' / ':''}${b.name}${beanSeqNum(b)}${stockBadge}</div>
-      <div class="bean-sub">${[proc,pd].filter(Boolean).join(' | ')}</div>
-      <div class="bean-actions">
-        <button class="btn btn-sm" onclick="openBeanDetail(${b.id})" style="background:#f5ede6;color:#7c5c3a;border:1px solid #e5d5c8;">詳細</button>
-        <button class="btn btn-sm btn-outline" onclick="editBean(${b.id})">編集</button>
-        <button class="btn btn-sm btn-copy" onclick="copyBean(${b.id})">コピー</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteBean(${b.id})">削除</button>
-      </div>
-    </div>`;
+    try{
+      // ID管理優先、なければ旧文字列フォールバック
+      const cname=countryName(b.countryId)||(b.country||'');
+      const rawProcs=b.processIds&&b.processIds.length?processNamesFromIds(b.processIds):(b.processes||[]);
+      const procs=Array.isArray(rawProcs)?rawProcs:[];
+      const proc=procs.join(' / ');
+      const pd=b.purchaseDate&&typeof b.purchaseDate==='string'?b.purchaseDate.slice(0,7).replace('-','年')+'月購入':'';
+      const rem=beanRemainingGrams(b);
+      const stockBadge=rem===null?'':`<span class="stock-badge${rem===0?' out':''}">${rem===0?'在庫切れ':'残 '+rem+'g'}</span>`;
+      return`<div class="bean-item">
+        <div class="bean-name">${cname?cname+' / ':''}${b.name||''}${beanSeqNum(b)}${stockBadge}</div>
+        <div class="bean-sub">${[proc,pd].filter(Boolean).join(' | ')}</div>
+        <div class="bean-actions">
+          <button class="btn btn-sm" onclick="openBeanDetail(${b.id})" style="background:#f5ede6;color:#7c5c3a;border:1px solid #e5d5c8;">詳細</button>
+          <button class="btn btn-sm btn-outline" onclick="editBean(${b.id})">編集</button>
+          <button class="btn btn-sm btn-copy" onclick="copyBean(${b.id})">コピー</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteBean(${b.id})">削除</button>
+        </div>
+      </div>`;
+    }catch(e){
+      console.error('renderBeans error bean id='+( b&&b.id)+':',e);
+      return`<div class="bean-item">
+        <div class="bean-name" style="color:#dc2626;">⚠ ${b&&b.name||'(不明)'}</div>
+        <div class="bean-actions">
+          <button class="btn btn-sm btn-outline" onclick="editBean(${b&&b.id})">編集</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteBean(${b&&b.id})">削除</button>
+        </div>
+      </div>`;
+    }
   }).join('');
 }
 
