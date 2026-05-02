@@ -1009,7 +1009,7 @@ function switchTab(t){
   if(t==='roast'){updateBeanSelect();updateRoastLevelHint();}
   if(t==='taste'){updateTasteSelect();renderRadarChart();renderRadarSliders();}
   if(t==='drive')updateDriveUI();
-  if(t==='beans'){renderBeanForm();renderBeans();}
+  if(t==='beans'){renderBeanForm();initFilterButtons();renderBeans();}
   closeAllDropdowns();
 }
 // ===== MODAL SWIPE TO CLOSE =====
@@ -3528,11 +3528,9 @@ async function checkForUpdate(manual){
 loadDriveStorage();
 loadMasterFileIds();
 if(loadLocal()){console.log('Loaded from localStorage');migrateExistingData();migrateToPhase2();}
-renderBeanForm();
 initOcrBox();
-initFilterButtons();
 initFlavorWheel();
-renderBeans();
+switchTab('beans');
 updateUndoBtn();
 if(S.driveToken)loadFromDrive();
 // OCRモードとGeminiキー状態を復元
