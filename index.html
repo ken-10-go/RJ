@@ -3539,6 +3539,16 @@ if(S.driveToken)loadFromDrive();
 // OCRモードとGeminiキー状態を復元
 setOcrMode(ocrMode);
 loadGeminiKeyStatus();
+// 起動時スクロール修正：tab-beans を display:none→block サイクルで Chrome に再計算させる
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    const s=document.getElementById('tab-beans');
+    s.classList.remove('active');
+    void s.offsetHeight;  // 強制reflow
+    s.classList.add('active');
+    renderBeans();
+  },100);
+});
 // 自動チェックなし — バージョン表示タップで手動確認
 </script>
 </body>
