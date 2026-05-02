@@ -18,6 +18,18 @@ function safeCall(fn,name){
   catch(e){console.error('[init] '+name+' failed:',e);toast('⚠ 初期化エラー ('+name+'): '+e.message,'error');}
 }
 
+// ⑤ 起動前チェック — 必須関数の定義確認（未定義は console.error で報告）
+const REQUIRED_FNS=[
+  'renderBeans','renderBeanForm','initFilterButtons','initFlavorWheel',
+  'saveBean','editBean','deleteBean','renderRecords','saveTaste',
+  'loadLocal','saveLocal','loadDriveStorage','updateDriveUI','autoSync',
+  'toast','switchTab','updateBeanSelect','updateTasteSelect',
+];
+REQUIRED_FNS.forEach(name=>{
+  if(typeof window[name]!=='function')
+    console.error('[startup] 必須関数が未定義です: '+name+' — 対応する js/ ファイルを確認してください');
+});
+
 // ===== INIT =====
 loadDriveStorage();
 loadMasterFileIds();
