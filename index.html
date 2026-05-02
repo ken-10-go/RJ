@@ -36,7 +36,7 @@ body{font-family:'Poppins',sans-serif;background:var(--c-bg);color:var(--c-text)
 .tab-lbl{font-family:'Poppins',sans-serif;font-size:10px;font-weight:600;letter-spacing:.03em;transition:color .2s;}
 .tab.active .tab-lbl{color:var(--c-accent);}
 .tab.active .tab-icon{color:var(--c-accent);}
-.content{flex:1;overflow-y:auto;padding:16px;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 16px);-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+.content{flex:1;min-height:0;overflow-y:auto;padding:16px;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 16px);-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 .section{display:none;opacity:0;transform:translateY(8px);transition:opacity .2s ease-out,transform .2s ease-out;}
 .section.active{display:block;opacity:1;transform:translateY(0);}
 .card{background:var(--c-surface);border:1px solid #e5e7eb;border-radius:var(--radius-card);padding:16px;margin-bottom:12px;box-shadow:var(--shadow-sm);}
@@ -3540,11 +3540,6 @@ if(S.driveToken)loadFromDrive();
 setOcrMode(ocrMode);
 loadGeminiKeyStatus();
 // 自動チェックなし — バージョン表示タップで手動確認
-// Android Chrome スクロール初期化：rAF2回でレイアウト確定後にスクロールコンテナを再認識させる
-requestAnimationFrame(()=>requestAnimationFrame(()=>{
-  const c=document.querySelector('.content');
-  if(c){c.style.overflowY='hidden';c.style.overflowY='auto';}
-}));
 </script>
 </body>
 </html>
