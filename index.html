@@ -413,7 +413,7 @@ select.inp{cursor:pointer;}
         </div>
         <div id="filter-panel" style="display:none;margin-top:10px;">
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:8px;cursor:pointer;">
-            <input type="checkbox" id="f-stock-only" checked onchange="renderBeans()">
+            <input type="checkbox" id="f-stock-only" onchange="renderBeans()">
             <span>在庫あり（購入量未設定の豆は常に表示）</span>
           </label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;">
@@ -3539,6 +3539,13 @@ if(S.driveToken)loadFromDrive();
 // OCRモードとGeminiキー状態を復元
 setOcrMode(ocrMode);
 loadGeminiKeyStatus();
+// Android Chrome 初回スクロール修正：load完了後にコンテナを再初期化
+window.addEventListener('load',()=>{
+  const c=document.querySelector('.content');
+  c.style.display='none';
+  void c.offsetHeight;
+  c.style.display='';
+});
 // 自動チェックなし — バージョン表示タップで手動確認
 </script>
 </body>
