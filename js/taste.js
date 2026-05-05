@@ -56,6 +56,48 @@ function toggleFlavor(f){
   if(S.activeFlavorCat)selectFlavorCat(S.activeFlavorCat);
   document.getElementById('flavor-selected').innerHTML=S.selectedFlavors.map(f=>`<span class="flavor-tag">${f}<button onclick="toggleFlavor('${f}')">×</button></span>`).join('');
 }
+function resetTasteForm(){
+  S.stars=0;
+  document.querySelectorAll('#taste-stars span').forEach(s=>s.style.opacity='.3');
+  S.radarVals=[3,3,3,3,3,3];
+  renderRadarSliders();
+  S.selectedFlavors=[];
+  S.activeFlavorCat=null;
+  const fs=document.getElementById('flavor-selected');if(fs)fs.innerHTML='';
+  const subs=document.getElementById('flavor-subs');if(subs)subs.innerHTML='';
+  const lbl=document.getElementById('flavor-sub-label');if(lbl)lbl.textContent='カテゴリを選択してください';
+  document.querySelectorAll('.flavor-cat-btn').forEach(b=>b.classList.remove('active'));
+  const notes=document.getElementById('t-notes');if(notes)notes.value='';
+  const memo=document.getElementById('t-memo');if(memo)memo.value='';
+  const bg=document.getElementById('t-bean-g');if(bg)bg.value='';
+  const wm=document.getElementById('t-water-ml');if(wm)wm.value='';
+  const wt=document.getElementById('t-water-temp');if(wt)wt.value='';
+  const bs=document.getElementById('t-brew-sec');if(bs)bs.value='';
+  const gr=document.getElementById('t-grind');if(gr)gr.value='';
+}
+function onTasteRecordChange(){
+  updateElapsedDays();
+  const roastId=parseInt(document.getElementById('t-record').value);
+  const t=S.tasteRecords.find(t=>t.roastId===roastId);
+  if(t){
+    setStar(t.stars);
+    S.radarVals=[parseInt(t.acidity),parseInt(t.sweetness),parseInt(t.body),parseInt(t.bitterness),parseInt(t.aroma),parseInt(t.aftertaste)];
+    renderRadarSliders();
+    S.selectedFlavors=[...(t.flavors||[])];
+    const fs=document.getElementById('flavor-selected');
+    if(fs)fs.innerHTML=S.selectedFlavors.map(f=>`<span class="flavor-tag">${f}<button onclick="toggleFlavor('${f}')">×</button></span>`).join('');
+    document.getElementById('t-notes').value=t.notes||'';
+    document.getElementById('t-memo').value=t.memo||'';
+    if(t.brew){initBrewSelect();document.getElementById('t-brew-sel').value=t.brew;}
+    document.getElementById('t-bean-g').value=t.beanG||'';
+    document.getElementById('t-water-ml').value=t.waterMl||'';
+    document.getElementById('t-water-temp').value=t.waterTemp||'';
+    document.getElementById('t-brew-sec').value=t.brewSec||'';
+    document.getElementById('t-grind').value=t.grind||'';
+  }else{
+    resetTasteForm();
+  }
+}
 function updateTasteSelect(){
   initBrewSelect();
   const s=document.getElementById('t-record');if(!s)return;
