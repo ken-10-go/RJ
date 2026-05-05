@@ -291,15 +291,29 @@ function buildMultipart(meta,jsonBody){return`--${BOUNDARY}\r\nContent-Type: app
 // ===== RECORD MERGE =====
 // updatedAt ベースのマージ（同IDは新しい方を採用、片方のみにある場合は保持）
 // updatedAt がないレコードは id（=Date.now()で作成）を作成時刻として代用
-function mergeRecords(localArr, driveArr){
+// driveWinsOnTie=true: 同値は Drive 優先（Drive直接編集を尊重する merge strategy 用）
+function mergeRecords(localArr, driveArr, driveWinsOnTie=false){
   function getUA(item){return item.updatedAt||new Date(item.id||0).toISOString();}
   const map=new Map();
   for(const item of (driveArr||[]))map.set(item.id,item);
   for(const item of (localArr||[])){
     const existing=map.get(item.id);
-    if(!existing||getUA(item)>=getUA(existing))map.set(item.id,item);
+    const localNewer=driveWinsOnTie?getUA(item)>getUA(existing):getUA(item)>=getUA(existing);
+    if(!existing||localNewer)map.set(item.id,item);
   }
   return Array.from(map.values()).sort((a,b)=>a.id-b.id);
+}
+// コレクションごとのマージ戦略を決定する
+// 'drive':Drive verbatim / 'local':ローカル維持 / 'merge':LWW / 'noop':変更なし
+function resolveStrategy(currentDriveMod, lastKnownDriveMod, localSavedAt, lastSyncAt){
+  if(!lastSyncAt)return'merge'; // 初回接続
+  // lastKnownDriveMod が null = v2.38以前からのアップグレード → Drive を信頼
+  const driveEdited=!lastKnownDriveMod||(currentDriveMod&&new Date(currentDriveMod)>new Date(lastKnownDriveMod));
+  const localEdited=localSavedAt&&new Date(localSavedAt)>new Date(lastSyncAt);
+  if(driveEdited&&!localEdited)return'drive';
+  if(!driveEdited&&localEdited)return'local';
+  if(driveEdited&&localEdited)return'merge';
+  return'noop';
 }
 
 async function saveOrUpdateFile(token,folderId,jsonBody){
@@ -319,23 +333,25 @@ async function saveOrUpdateFile(token,folderId,jsonBody){
 // ===== DRIVE JSON FILE HELPERS (Phase 2) =====
 async function fetchJsonFile(token,folderId,fileName){
   const q=`name='${fileName}' and '${folderId}' in parents and trashed=false`;
-  const sr=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)',{headers:{Authorization:'Bearer '+token}});
+  // ★ modifiedTime も取得（Drive直接編集検知用）
+  const sr=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,modifiedTime)',{headers:{Authorization:'Bearer '+token}});
   const sd=await sr.json();
   if(!sd.files||!sd.files.length)return null;
   const fid=sd.files[0].id;
+  const modifiedTime=sd.files[0].modifiedTime||null;
   const fr=await fetch('https://www.googleapis.com/drive/v3/files/'+fid+'?alt=media',{headers:{Authorization:'Bearer '+token}});
   if(!fr.ok)return null;
   const data=await fr.json();
-  return{fid,data};
+  return{fid,modifiedTime,data};
 }
+// ★ 戻り値を {fid, modifiedTime} に変更（syncToDrive で Drive modifiedTime を記録するため）
 async function saveJsonFile(token,folderId,fileName,jsonBody,existingFid){
   // 既存ファイルへの上書き試行（失敗してもフォールスルー）
   if(existingFid){
     try{
-      const r=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+existingFid+'?uploadType=media',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:jsonBody});
+      const r=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+existingFid+'?uploadType=media&fields=id,modifiedTime',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:jsonBody});
       const d=await r.json();
-      if(!d.error)return existingFid;
-      // エラーでも404以外もフォールスルーして検索/作成へ
+      if(!d.error)return{fid:existingFid,modifiedTime:d.modifiedTime||null};
       console.warn('saveJsonFile PATCH error (fallthrough):',fileName,d.error);
     }catch(e){console.warn('saveJsonFile PATCH exception (fallthrough):',fileName,e);}
   }
@@ -345,16 +361,16 @@ async function saveJsonFile(token,folderId,fileName,jsonBody,existingFid){
   const sd=await sr.json();
   if(sd.files&&sd.files.length>0){
     const fid=sd.files[0].id;
-    const pr=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fid+'?uploadType=media',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:jsonBody});
+    const pr=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fid+'?uploadType=media&fields=id,modifiedTime',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:jsonBody});
     const pd=await pr.json();
     if(pd.error)throw new Error(fileName+' PATCH: '+pd.error.message);
-    return fid;
+    return{fid,modifiedTime:pd.modifiedTime||null};
   }
   // 新規作成
   const body=buildMultipart({name:fileName,mimeType:'application/json',parents:[folderId]},jsonBody);
-  const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':`multipart/related; boundary=${BOUNDARY}`},body});
+  const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,modifiedTime',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':`multipart/related; boundary=${BOUNDARY}`},body});
   const d=await r.json();if(d.error)throw new Error(fileName+' CREATE: '+d.error.message);
-  return d.id;
+  return{fid:d.id,modifiedTime:d.modifiedTime||null};
 }
 // ===== MASTER CSV =====
 function parseCSV(text){
@@ -400,20 +416,25 @@ async function saveMasterToDrive(type){
     const folderId=await ensureMasterFolder(S.driveToken);
     const csvBody=toCSV(S.master[type]||[]);
     const fileName=MASTER_FILE_NAMES[type];
+    let modifiedTime=null;
     if(masterFileIds[type]){
-      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${masterFileIds[type]}?uploadType=media`,{method:'PATCH',headers:{Authorization:'Bearer '+S.driveToken,'Content-Type':'text/csv'},body:csvBody});
+      const r=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${masterFileIds[type]}?uploadType=media&fields=id,modifiedTime`,{method:'PATCH',headers:{Authorization:'Bearer '+S.driveToken,'Content-Type':'text/csv'},body:csvBody});
+      const d=await r.json();if(d.modifiedTime)modifiedTime=d.modifiedTime;
     }else{
       const q=`name='${fileName}' and '${folderId}' in parents and trashed=false`;
       const sr=await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`,{headers:{Authorization:'Bearer '+S.driveToken}});
       const sd=await sr.json();
       if(sd.files&&sd.files.length>0){
         masterFileIds[type]=sd.files[0].id;
-        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${masterFileIds[type]}?uploadType=media`,{method:'PATCH',headers:{Authorization:'Bearer '+S.driveToken,'Content-Type':'text/csv'},body:csvBody});
+        const r=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${masterFileIds[type]}?uploadType=media&fields=id,modifiedTime`,{method:'PATCH',headers:{Authorization:'Bearer '+S.driveToken,'Content-Type':'text/csv'},body:csvBody});
+        const d=await r.json();if(d.modifiedTime)modifiedTime=d.modifiedTime;
       }else{
-        const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+S.driveToken,'Content-Type':`multipart/related; boundary=${BOUNDARY}`},body:`--${BOUNDARY}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({name:fileName,mimeType:'text/csv',parents:[folderId]})}\r\n--${BOUNDARY}\r\nContent-Type: text/csv\r\n\r\n${csvBody}\r\n--${BOUNDARY}--`});
-        const d=await r.json();if(d.id)masterFileIds[type]=d.id;
+        const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,modifiedTime',{method:'POST',headers:{Authorization:'Bearer '+S.driveToken,'Content-Type':`multipart/related; boundary=${BOUNDARY}`},body:`--${BOUNDARY}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({name:fileName,mimeType:'text/csv',parents:[folderId]})}\r\n--${BOUNDARY}\r\nContent-Type: text/csv\r\n\r\n${csvBody}\r\n--${BOUNDARY}--`});
+        const d=await r.json();if(d.id){masterFileIds[type]=d.id;if(d.modifiedTime)modifiedTime=d.modifiedTime;}
       }
     }
+    // ★ Drive modifiedTime を記録（次回ロード時の変更検知に使う）
+    if(modifiedTime)S.driveMasterMod[type]=modifiedTime;
     saveMasterFileIds();
   }catch(e){console.warn('saveMasterToDrive',type,e);}
 }
@@ -421,28 +442,47 @@ async function loadAllMasterFromDrive(){
   if(!S.driveToken)return;
   try{
     const folderId=await ensureMasterFolder(S.driveToken);
+    const localMeta=JSON.parse(localStorage.getItem(LS_KEY)||'{}');
+    const localSavedAt=localMeta.savedAt||null;
     await Promise.all(['countries','varieties','processes'].map(async type=>{
       const fileName=MASTER_FILE_NAMES[type];
+      // ★ modifiedTime も取得
       const q=`name='${fileName}' and '${folderId}' in parents and trashed=false`;
-      const sr=await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`,{headers:{Authorization:'Bearer '+S.driveToken}});
+      const sr=await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,modifiedTime)`,{headers:{Authorization:'Bearer '+S.driveToken}});
       const sd=await sr.json();
       if(!sd.files||!sd.files.length)return;
       masterFileIds[type]=sd.files[0].id;
+      const driveMod=sd.files[0].modifiedTime||null;
       const fr=await fetch(`https://www.googleapis.com/drive/v3/files/${masterFileIds[type]}?alt=media`,{headers:{Authorization:'Bearer '+S.driveToken}});
       if(!fr.ok)return;
       const text=await fr.text();
       const rows=parseCSV(text);
-      if(rows.length)S.master[type]=mergeRecords(S.master[type]||[],rows); // ★ マージ（上書き禁止）
+      if(!rows.length)return;
+      // ★ 4-case strategy でマスタデータを処理
+      const strategy=resolveStrategy(driveMod,S.driveMasterMod[type],localSavedAt,S.lastSync);
+      if(strategy==='drive') S.master[type]=rows;
+      else if(strategy!=='noop') S.master[type]=mergeRecords(S.master[type]||[],rows,strategy==='merge');
+      S.driveMasterMod[type]=driveMod;
+      console.log(`[sync] master.${type}: strategy=${strategy}`);
     }));
     saveMasterFileIds();
+    saveDriveStorage(); // ★ driveMasterMod を永続化
     renderBeanForm();renderBeans();initFilterButtons();
     toast('マスタデータを読み込みました');
   }catch(e){console.warn('loadAllMasterFromDrive',e);}
 }
 
-function saveDriveStorage(){['clientId','driveToken','driveUser','driveFileId','tokenExpiry','driveBeansFid','driveRoastFid','driveTasteFid'].forEach(k=>localStorage.setItem('rj_'+k,S[k]||''));}
+function saveDriveStorage(){
+  ['clientId','driveToken','driveUser','driveFileId','tokenExpiry','driveBeansFid','driveRoastFid','driveTasteFid'].forEach(k=>localStorage.setItem('rj_'+k,S[k]||''));
+  // ★ Drive modifiedTime トラッキング
+  ['driveBeansMod','driveRoastMod','driveTasteMod'].forEach(k=>localStorage.setItem('rj_'+k,S[k]||''));
+  localStorage.setItem('rj_driveMasterMod',JSON.stringify(S.driveMasterMod));
+}
 function loadDriveStorage(){
   ['clientId','driveToken','driveUser','driveFileId','driveBeansFid','driveRoastFid','driveTasteFid'].forEach(k=>{S[k]=localStorage.getItem('rj_'+k)||null;});
+  // ★ Drive modifiedTime トラッキング復元
+  ['driveBeansMod','driveRoastMod','driveTasteMod'].forEach(k=>{S[k]=localStorage.getItem('rj_'+k)||null;});
+  try{S.driveMasterMod={...S.driveMasterMod,...JSON.parse(localStorage.getItem('rj_driveMasterMod')||'{}');};}catch(e){}
   S.tokenExpiry=parseInt(localStorage.getItem('rj_tokenExpiry'))||null;
   if(S.clientId)document.getElementById('client-id-inp').value=S.clientId;
   if(S.driveToken&&S.tokenExpiry&&Date.now()<S.tokenExpiry){document.getElementById('drive-dot').classList.add('connected');document.getElementById('drive-status-txt').textContent='接続中';document.getElementById('drive-status-txt').style.color='var(--c-green)';}
@@ -491,17 +531,17 @@ async function syncToDrive(){
     // beans.json
     await saveJsonFile(S.driveToken,fid,DRIVE_BEANS_FILE,
       JSON.stringify({version:1,exportedAt:ts,beans:S.beans}),S.driveBeansFid)
-      .then(id=>{S.driveBeansFid=id;})
+      .then(({fid:id,modifiedTime})=>{S.driveBeansFid=id;if(modifiedTime)S.driveBeansMod=modifiedTime;})
       .catch(e=>{errors.push('beans: '+e.message);console.error('syncToDrive beans',e);});
     // roast_records.json
     await saveJsonFile(S.driveToken,fid,DRIVE_ROAST_FILE,
       JSON.stringify({version:1,exportedAt:ts,roastRecords:S.roastRecords}),S.driveRoastFid)
-      .then(id=>{S.driveRoastFid=id;})
+      .then(({fid:id,modifiedTime})=>{S.driveRoastFid=id;if(modifiedTime)S.driveRoastMod=modifiedTime;})
       .catch(e=>{errors.push('roast: '+e.message);console.error('syncToDrive roast',e);});
     // taste_records.json
     await saveJsonFile(S.driveToken,fid,DRIVE_TASTE_FILE,
       JSON.stringify({version:1,exportedAt:ts,tasteRecords:S.tasteRecords}),S.driveTasteFid)
-      .then(id=>{S.driveTasteFid=id;})
+      .then(({fid:id,modifiedTime})=>{S.driveTasteFid=id;if(modifiedTime)S.driveTasteMod=modifiedTime;})
       .catch(e=>{errors.push('taste: '+e.message);console.error('syncToDrive taste',e);});
 
     S.lastSync=ts;saveDriveStorage();updateDriveUI();
@@ -527,15 +567,26 @@ async function loadFromDrive(){
       fetchJsonFile(S.driveToken,fid,DRIVE_TASTE_FILE),
     ]);
     const hasNew=beansRes||roastRes||tasteRes;
+    // ローカルの最終保存時刻（4-case strategy 判定に使う）
+    const localSavedAt=JSON.parse(localStorage.getItem(LS_KEY)||'{}').savedAt||null;
     if(hasNew){
-      // 新形式ファイル読み込み（まずDriveデータをSに取り込む）
-      if(beansRes){S.driveBeansFid=beansRes.fid;if(beansRes.data.beans)S.beans=beansRes.data.beans;}
-      if(roastRes){S.driveRoastFid=roastRes.fid;if(roastRes.data.roastRecords)S.roastRecords=roastRes.data.roastRecords;}
-      if(tasteRes){S.driveTasteFid=tasteRes.fid;if(tasteRes.data.tasteRecords)S.tasteRecords=tasteRes.data.tasteRecords;}
-      // ★ updatedAt ベースでマージ（ローカル＋Drive の union、同IDは新しい方を採用）
-      S.beans        =mergeRecords(localBeans, S.beans);
-      S.roastRecords =mergeRecords(localRoast, S.roastRecords);
-      S.tasteRecords =mergeRecords(localTaste, S.tasteRecords);
+      // ファイルID 更新
+      if(beansRes)S.driveBeansFid=beansRes.fid;
+      if(roastRes)S.driveRoastFid=roastRes.fid;
+      if(tasteRes)S.driveTasteFid=tasteRes.fid;
+      // ★ コレクションごとに 4-case strategy を適用
+      const applyStrategy=(res,localArr,driveKey,modKey,collKey)=>{
+        if(!res)return;
+        const strategy=resolveStrategy(res.modifiedTime,S[modKey],localSavedAt,S.lastSync);
+        console.log(`[sync] ${collKey}: strategy=${strategy} (driveMod=${res.modifiedTime}, known=${S[modKey]}, localSaved=${localSavedAt}, lastSync=${S.lastSync})`);
+        if(strategy==='drive') S[collKey]=res.data[driveKey]||localArr;
+        else if(strategy==='merge') S[collKey]=mergeRecords(localArr,res.data[driveKey]||[],true);
+        else if(strategy==='local'||strategy==='noop'){/* ローカル維持 */}
+        S[modKey]=res.modifiedTime||S[modKey]; // Drive modifiedTime を更新
+      };
+      applyStrategy(beansRes,localBeans,'beans',        'driveBeansMod','beans');
+      applyStrategy(roastRes,localRoast,'roastRecords', 'driveRoastMod','roastRecords');
+      applyStrategy(tasteRes,localTaste,'tasteRecords', 'driveTasteMod','tasteRecords');
     }else{
       // レガシー: roast_journal.json にフォールバック
       const q=`name='${DRIVE_FILE_NAME}' and '${fid}' in parents and trashed=false`;

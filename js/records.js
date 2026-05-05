@@ -46,8 +46,9 @@ function _recRow(r,showBean){
 }
 function renderRecords(){
   const el=document.getElementById('records-list');if(!el)return;
-  if(!S.roastRecords.length){el.innerHTML='<div class="empty">焙煎記録がありません</div>';return;}
-  const sorted=S.roastRecords.slice().sort((a,b)=>b.id-a.id);
+  const activeRecords=S.roastRecords.filter(r=>!r.deleted);
+  if(!activeRecords.length){el.innerHTML='<div class="empty">焙煎記録がありません</div>';return;}
+  const sorted=activeRecords.slice().sort((a,b)=>b.id-a.id);
   let html='';
   if(recordGroupMode==='date'){
     const groups={};
@@ -85,7 +86,7 @@ function openRecordModal(id){
   if(r.events&&r.events.length){html+=`<div class="label" style="margin-bottom:6px;">イベント</div><div class="event-log" style="max-height:120px;margin-bottom:12px;">`;r.events.forEach(ev=>{html+=`<div class="ev"><span class="ev-t">${ft(ev.time)}</span><span class="ev-x">${ev.label}${ev.temp?' @ '+ev.temp+'°C':''}</span></div>`;});html+=`</div>`;}
   if(r.tempData&&r.tempData.length)html+=`<div class="label" style="margin-bottom:6px;">温度カーブ</div><div class="chart-wrap"><canvas id="modal-chart" height="160"></canvas></div>`;
   // 味わい記録リスト（1:M対応）
-  const tastes=S.tasteRecords.filter(t=>t.roastId===r.id).sort((a,b)=>a.id-b.id);
+  const tastes=S.tasteRecords.filter(t=>t.roastId===r.id&&!t.deleted).sort((a,b)=>a.id-b.id);
   html+=`<div class="label" style="margin:12px 0 6px;">味わい記録（${tastes.length}件）</div>`;
   if(tastes.length){
     html+=`<div class="sync-info" style="margin-bottom:10px;">`;
@@ -105,8 +106,13 @@ function openRecordModal(id){
 function deleteRoastRecord(id){
   if(!confirm('この焙煎記録を削除しますか？\n関連する味わい記録も削除されます。'))return;
   pushUndo();
-  S.roastRecords=S.roastRecords.filter(r=>r.id!==id);
-  S.tasteRecords=S.tasteRecords.filter(t=>t.roastId!==id);
+  const ts=new Date().toISOString();
+  const ri=S.roastRecords.findIndex(r=>r.id===id);
+  if(ri>=0)S.roastRecords[ri]={...S.roastRecords[ri],deleted:true,updatedAt:ts};
+  S.tasteRecords.filter(t=>t.roastId===id).forEach(t=>{
+    const ti=S.tasteRecords.findIndex(x=>x.id===t.id);
+    if(ti>=0)S.tasteRecords[ti]={...S.tasteRecords[ti],deleted:true,updatedAt:ts};
+  });
   closeRecordModal();renderRecords();updateTasteSelect();
   toast('削除しました');autoSync();
 }
@@ -177,19 +183,24 @@ function closeRecordModal(){document.getElementById('record-modal').classList.re
 
 // ===== ANALYSIS =====
 function renderAnalysis(){
-  document.getElementById('analysis-stats').innerHTML=`<div class="a-stat"><span class="a-lbl">総焙煎回数</span><span class="a-val">${S.roastRecords.length} 回</span></div><div class="a-stat"><span class="a-lbl">登録豆数</span><span class="a-val">${S.beans.length} 種</span></div><div class="a-stat"><span class="a-lbl">味わい記録数</span><span class="a-val">${S.tasteRecords.length} 件</span></div><div class="a-stat"><span class="a-lbl">平均焙煎時間</span><span class="a-val">${S.roastRecords.length?Math.round(S.roastRecords.reduce((a,r)=>a+r.duration,0)/S.roastRecords.length)+'秒':'—'}</span></div>`;
+  const ar=S.roastRecords.filter(r=>!r.deleted);
+  const ab=S.beans.filter(b=>!b.deleted);
+  const at=S.tasteRecords.filter(t=>!t.deleted);
+  document.getElementById('analysis-stats').innerHTML=`<div class="a-stat"><span class="a-lbl">総焙煎回数</span><span class="a-val">${ar.length} 回</span></div><div class="a-stat"><span class="a-lbl">登録豆数</span><span class="a-val">${ab.length} 種</span></div><div class="a-stat"><span class="a-lbl">味わい記録数</span><span class="a-val">${at.length} 件</span></div><div class="a-stat"><span class="a-lbl">平均焙煎時間</span><span class="a-val">${ar.length?Math.round(ar.reduce((a,r)=>a+r.duration,0)/ar.length)+'秒':'—'}</span></div>`;
   renderAnalysisChart();renderCompareSection();
 }
 function renderAnalysisChart(){
   const ctx=document.getElementById('analysis-chart').getContext('2d');
   if(analysisChart)analysisChart.destroy();
-  const labels=S.beans.map(b=>b.name);const counts=S.beans.map(b=>S.roastRecords.filter(r=>r.beanId===b.id).length);
+  const activeBeans=S.beans.filter(b=>!b.deleted);
+  const labels=activeBeans.map(b=>b.name);const counts=activeBeans.map(b=>S.roastRecords.filter(r=>r.beanId===b.id&&!r.deleted).length);
   analysisChart=new Chart(ctx,{type:'bar',data:{labels:labels.length?labels:['データなし'],datasets:[{label:'焙煎回数',data:counts.length?counts:[0],backgroundColor:'rgba(196,122,58,0.5)',borderColor:'#c47a3a',borderWidth:1}]},options:{responsive:true,plugins:{legend:{labels:{color:'#a07850',font:{size:10}}}},scales:{x:{ticks:{color:'#a07850',font:{size:9}},grid:{color:'rgba(196,122,58,0.08)'}},y:{ticks:{color:'#a07850',font:{size:9}},grid:{color:'rgba(196,122,58,0.08)'}}}}});
 }
 function renderCompareSection(){
   const el=document.getElementById('compare-checks');
-  if(!S.roastRecords.length){el.innerHTML='<div style="color:var(--c-text-muted);font-size:var(--fs-sm);">焙煎記録がありません</div>';return;}
-  el.innerHTML=S.roastRecords.slice().reverse().map(r=>{const b=S.beans.find(b=>b.id===r.beanId);return`<div class="compare-check"><input type="checkbox" id="cmp-${r.id}" value="${r.id}" onchange="updateCompareChart()"><label for="cmp-${r.id}" style="font-size:var(--fs-sm);color:var(--c-text);cursor:pointer;">${b?b.name:'不明'} (${new Date(r.startTime).toLocaleDateString('ja-JP')})</label></div>`;}).join('');
+  const activeRecs=S.roastRecords.filter(r=>!r.deleted);
+  if(!activeRecs.length){el.innerHTML='<div style="color:var(--c-text-muted);font-size:var(--fs-sm);">焙煎記録がありません</div>';return;}
+  el.innerHTML=activeRecs.slice().reverse().map(r=>{const b=S.beans.find(b=>b.id===r.beanId&&!b.deleted);return`<div class="compare-check"><input type="checkbox" id="cmp-${r.id}" value="${r.id}" onchange="updateCompareChart()"><label for="cmp-${r.id}" style="font-size:var(--fs-sm);color:var(--c-text);cursor:pointer;">${b?b.name:'不明'} (${new Date(r.startTime).toLocaleDateString('ja-JP')})</label></div>`;}).join('');
 }
 function updateCompareChart(){
   const checked=[...document.querySelectorAll('#compare-checks input:checked')].map(el=>parseInt(el.value));

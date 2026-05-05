@@ -228,6 +228,9 @@ const S={
   filterCountryIds:[],filterRLVals:[],filterYear:null,filterMonth:null,beanPhotoData:null,
   driveToken:null,driveFileId:null,driveUser:null,clientId:null,lastSync:null,tokenExpiry:null,
   driveBeansFid:null,driveRoastFid:null,driveTasteFid:null,
+  // Drive ファイル modifiedTime トラッキング（v2.39）
+  driveBeansMod:null,driveRoastMod:null,driveTasteMod:null,
+  driveMasterMod:{countries:null,processes:null,varieties:null},
   roastSetupOpen:true,
 };
 let roastChart=null,analysisChart=null,radarChart=null,compareChart=null;

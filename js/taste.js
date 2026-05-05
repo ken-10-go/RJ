@@ -80,7 +80,7 @@ function renderTasteList(){
   const el=document.getElementById('taste-list');if(!el)return;
   const roastId=parseInt(document.getElementById('t-record').value);
   if(!roastId){el.innerHTML='';return;}
-  const tastes=S.tasteRecords.filter(t=>t.roastId===roastId).sort((a,b)=>a.id-b.id);
+  const tastes=S.tasteRecords.filter(t=>t.roastId===roastId&&!t.deleted).sort((a,b)=>a.id-b.id);
   if(!tastes.length){
     el.innerHTML='<div style="color:var(--c-text-muted);font-size:var(--fs-sm);padding:6px 0 10px;">まだ記録がありません</div>';
     return;
@@ -146,7 +146,8 @@ function closeTasteForm(){
 function deleteTaste(id){
   if(!confirm('この味わい記録を削除しますか？'))return;
   pushUndo();
-  S.tasteRecords=S.tasteRecords.filter(t=>t.id!==id);
+  const idx=S.tasteRecords.findIndex(t=>t.id===id);
+  if(idx>=0)S.tasteRecords[idx]={...S.tasteRecords[idx],deleted:true,updatedAt:new Date().toISOString()};
   if(editingTasteId===id)closeTasteForm();
   renderTasteList();
   toast('削除しました');autoSync();
@@ -156,7 +157,7 @@ function deleteTaste(id){
 function updateTasteSelect(){
   initBrewSelect();
   const s=document.getElementById('t-record');if(!s)return;
-  s.innerHTML=S.roastRecords.length?S.roastRecords.slice().reverse().map(r=>{
+  s.innerHTML=S.roastRecords.filter(r=>!r.deleted).length?S.roastRecords.filter(r=>!r.deleted).slice().reverse().map(r=>{
     const b=S.beans.find(b=>b.id===r.beanId);
     const tProcs=b&&b.processIds&&b.processIds.length?processShortNFromIds(b.processIds):(b&&b.processes||[]);
     const cname=b?(countryName(b.countryId)||(b.country||'')):'';

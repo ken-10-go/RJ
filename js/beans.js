@@ -110,7 +110,9 @@ function cancelEditBean(){clearBeanForm();}
 function deleteBean(id){
   if(!confirm('この豆を削除しますか？'))return;
   pushUndo();
-  S.beans=S.beans.filter(b=>b.id!==id);renderBeans();updateBeanSelect();toast('削除しました');autoSync();
+  const idx=S.beans.findIndex(b=>b.id===id);
+  if(idx>=0)S.beans[idx]={...S.beans[idx],deleted:true,updatedAt:new Date().toISOString()};
+  renderBeans();updateBeanSelect();toast('削除しました');autoSync();
 }
 
 function previewBeanPhoto(input){
@@ -131,7 +133,7 @@ function deleteBeanPhoto(){
 }
 
 function roastSeqNum(roast){
-  const same=S.roastRecords.filter(r=>r.beanId===roast.beanId)
+  const same=S.roastRecords.filter(r=>r.beanId===roast.beanId&&!r.deleted)
     .sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||'')||a.id-b.id);
   const idx=same.findIndex(r=>r.id===roast.id);
   const circled=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
@@ -146,7 +148,7 @@ function beanSeqNum(bean){
 function beanRemainingGrams(bean){
   if(bean.stockGrams!=null)return bean.stockGrams;
   if(!bean.amount)return null;
-  const used=(S.roastRecords||[]).filter(r=>r.beanId===bean.id)
+  const used=(S.roastRecords||[]).filter(r=>r.beanId===bean.id&&!r.deleted)
     .reduce((s,r)=>s+(parseFloat(r.weightBefore)||0),0);
   return Math.max(0,parseFloat(bean.amount)-used);
 }
@@ -158,7 +160,7 @@ function openBeanDetail(id){
   const varieties=b.varietyIds&&b.varietyIds.length?b.varietyIds.map(vid=>{const r=masterById('varieties',vid);return r?r.name:null;}).filter(Boolean):(b.varieties||[]);
   const rl=b.roastLevelVals&&b.roastLevelVals.length?rlLabelsFromVals(b.roastLevelVals):(b.roastLevels||[]);
   const rem=beanRemainingGrams(b);
-  const roasts=(S.roastRecords||[]).filter(r=>r.beanId===b.id);
+  const roasts=(S.roastRecords||[]).filter(r=>r.beanId===b.id&&!r.deleted);
   const totalUsed=roasts.reduce((s,r)=>s+(parseFloat(r.weightBefore)||0),0);
   const remStr=rem===null?'不明（購入量未設定）':rem===0?'在庫切れ':rem+'g（残）';
   document.getElementById('bdm-title').textContent=(cname?cname+' / ':'')+b.name+seq;
@@ -183,7 +185,7 @@ function closeBeanDetail(){document.getElementById('bean-detail-modal').style.di
 function renderBeans(){
   const el=document.getElementById('bean-list');
   initFilterButtons();
-  let beans=S.beans;
+  let beans=S.beans.filter(b=>!b.deleted); // ★ 論理削除を除外
   if(S.filterCountryIds.length)beans=beans.filter(b=>
     S.filterCountryIds.includes(b.countryId)||
     (b.countryId==null&&S.filterCountryIds.some(id=>countryName(id)===b.country)));
@@ -230,12 +232,14 @@ function renderBeans(){
 
 function updateBeanSelect(){
   const s=document.getElementById('r-bean');
-  s.innerHTML=S.beans.length?S.beans.map(b=>{
+  const activeBeans=S.beans.filter(b=>!b.deleted);
+  s.innerHTML=activeBeans.length?activeBeans.map(b=>{
     const cname=countryName(b.countryId)||(b.country||'');
     const procs=b.processIds&&b.processIds.length?processShortNFromIds(b.processIds):(b.processes||[]);
     const proc=procs.length?' / '+procs.join('·'):'';
     return`<option value="${b.id}">${cname?cname+' / ':''}${b.name}${beanSeqNum(b)}${proc}</option>`;
   }).join(''):'<option>先に豆を登録してください</option>';
+
   updateRoastLevelHint();
 }
 function updateRoastLevelHint(){
