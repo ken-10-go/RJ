@@ -466,6 +466,7 @@ async function loadAllMasterFromDrive(){
       console.log(`[sync] master.${type}: strategy=${strategy}`);
     }));
     saveMasterFileIds();
+    saveLocal();        // ★ 更新されたマスタをローカルに永続化
     saveDriveStorage(); // ★ driveMasterMod を永続化
     renderBeanForm();renderBeans();initFilterButtons();
     toast('マスタデータを読み込みました');
@@ -473,13 +474,13 @@ async function loadAllMasterFromDrive(){
 }
 
 function saveDriveStorage(){
-  ['clientId','driveToken','driveUser','driveFileId','tokenExpiry','driveBeansFid','driveRoastFid','driveTasteFid'].forEach(k=>localStorage.setItem('rj_'+k,S[k]||''));
+  ['clientId','driveToken','driveUser','driveFileId','tokenExpiry','driveBeansFid','driveRoastFid','driveTasteFid','lastSync'].forEach(k=>localStorage.setItem('rj_'+k,S[k]||''));
   // ★ Drive modifiedTime トラッキング
   ['driveBeansMod','driveRoastMod','driveTasteMod'].forEach(k=>localStorage.setItem('rj_'+k,S[k]||''));
   localStorage.setItem('rj_driveMasterMod',JSON.stringify(S.driveMasterMod));
 }
 function loadDriveStorage(){
-  ['clientId','driveToken','driveUser','driveFileId','driveBeansFid','driveRoastFid','driveTasteFid'].forEach(k=>{S[k]=localStorage.getItem('rj_'+k)||null;});
+  ['clientId','driveToken','driveUser','driveFileId','driveBeansFid','driveRoastFid','driveTasteFid','lastSync'].forEach(k=>{S[k]=localStorage.getItem('rj_'+k)||null;});
   // ★ Drive modifiedTime トラッキング復元
   ['driveBeansMod','driveRoastMod','driveTasteMod'].forEach(k=>{S[k]=localStorage.getItem('rj_'+k)||null;});
   try{S.driveMasterMod={...S.driveMasterMod,...JSON.parse(localStorage.getItem('rj_driveMasterMod')||'{}')};}catch(e){}
@@ -614,7 +615,7 @@ async function loadFromDrive(){
     renderBeanForm();renderBeans();updateBeanSelect();updateTasteSelect();updateDriveUI();initFilterButtons();
     const legacyMigrated=!hasNew;
     toast('読み込みました（豆:'+S.beans.length+' 焙煎:'+S.roastRecords.length+'）');
-    loadAllMasterFromDrive();
+    await loadAllMasterFromDrive(); // ★ マスタ更新完了を待つ（syncToDrive との競合を防ぐ）
     // 旧形式から読み込んだ場合は即座に3ファイル形式へ書き出す
     if(legacyMigrated){
       toast('Drive を新形式（3ファイル）に移行中...');
