@@ -31,6 +31,7 @@ const REQUIRED_FNS=[
   'saveBean','editBean','deleteBean','renderRecords','saveTaste',
   'loadLocal','saveLocal','loadDriveStorage','updateDriveUI','autoSync',
   'toast','switchTab','updateBeanSelect','updateTasteSelect',
+  'migrateUpdatedAt',
 ];
 REQUIRED_FNS.forEach(name=>{
   if(typeof window[name]!=='function')
@@ -40,7 +41,7 @@ REQUIRED_FNS.forEach(name=>{
 // ===== INIT =====
 loadDriveStorage();
 loadMasterFileIds();
-if(loadLocal()){console.log('Loaded from localStorage');migrateExistingData();migrateToPhase2();}
+if(loadLocal()){console.log('Loaded from localStorage');migrateExistingData();migrateToPhase2();migrateUpdatedAt();}
 safeCall(renderBeanForm,    'renderBeanForm');
 safeCall(initOcrBox,        'initOcrBox');
 safeCall(initFilterButtons, 'initFilterButtons');

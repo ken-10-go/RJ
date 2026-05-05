@@ -21,6 +21,7 @@ function saveBean(){
   const bean={
     id:editId?parseInt(editId):Date.now(),
     name,
+    updatedAt:new Date().toISOString(),
     countryId:S.beanSelectedCountryId,
     country:countryName(S.beanSelectedCountryId),
     farm:document.getElementById('b-farm').value,

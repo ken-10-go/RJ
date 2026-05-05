@@ -100,6 +100,12 @@ function migrateExistingData(){
   return changed;
 }
 
+// updatedAt マイグレーション: 既存レコードに updatedAt がなければ id を作成時刻として補完
+function migrateUpdatedAt(){
+  const fix=arr=>{if(Array.isArray(arr))arr.forEach(r=>{if(!r.updatedAt)r.updatedAt=new Date(r.id||Date.now()).toISOString();});};
+  fix(S.beans);fix(S.roastRecords);fix(S.tasteRecords);
+}
+
 // Phase 2 マイグレーション: テキスト管理 → ID管理
 function migrateToPhase2(){
   let changed=false;

@@ -159,7 +159,7 @@ function saveEditRoast(){
   const wb=parseFloat(document.getElementById('er-weight-before').value)||null;
   const wa=parseFloat(document.getElementById('er-weight-after').value)||null;
   const yieldPct=wb&&wa?parseFloat((wa/wb*100).toFixed(1)):null;
-  S.roastRecords[idx]={...S.roastRecords[idx],roastLevel:rl,weightBefore:wb,weightAfter:wa,yieldPct,memo:document.getElementById('er-memo').value,events:JSON.parse(JSON.stringify(erEventBuf)),tempData:erTempBuf.map(t=>t.temp),timeData:erTempBuf.map(t=>t.time)};
+  S.roastRecords[idx]={...S.roastRecords[idx],roastLevel:rl,weightBefore:wb,weightAfter:wa,yieldPct,memo:document.getElementById('er-memo').value,events:JSON.parse(JSON.stringify(erEventBuf)),tempData:erTempBuf.map(t=>t.temp),timeData:erTempBuf.map(t=>t.time),updatedAt:new Date().toISOString()};
   closeEditRoastModal();renderRecords();
   toast('焙煎記録を更新しました');autoSync();
 }

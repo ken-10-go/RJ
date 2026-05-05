@@ -288,6 +288,20 @@ async function ensureFolderPath(token){
   return pid;
 }
 function buildMultipart(meta,jsonBody){return`--${BOUNDARY}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${BOUNDARY}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${jsonBody}\r\n--${BOUNDARY}--`;}
+// ===== RECORD MERGE =====
+// updatedAt ベースのマージ（同IDは新しい方を採用、片方のみにある場合は保持）
+// updatedAt がないレコードは id（=Date.now()で作成）を作成時刻として代用
+function mergeRecords(localArr, driveArr){
+  function getUA(item){return item.updatedAt||new Date(item.id||0).toISOString();}
+  const map=new Map();
+  for(const item of (driveArr||[]))map.set(item.id,item);
+  for(const item of (localArr||[])){
+    const existing=map.get(item.id);
+    if(!existing||getUA(item)>=getUA(existing))map.set(item.id,item);
+  }
+  return Array.from(map.values()).sort((a,b)=>a.id-b.id);
+}
+
 async function saveOrUpdateFile(token,folderId,jsonBody){
   if(S.driveFileId){
     const r=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${S.driveFileId}?uploadType=media`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:jsonBody});
@@ -418,7 +432,7 @@ async function loadAllMasterFromDrive(){
       if(!fr.ok)return;
       const text=await fr.text();
       const rows=parseCSV(text);
-      if(rows.length)S.master[type]=rows;
+      if(rows.length)S.master[type]=mergeRecords(S.master[type]||[],rows); // ★ マージ（上書き禁止）
     }));
     saveMasterFileIds();
     renderBeanForm();renderBeans();initFilterButtons();
@@ -498,9 +512,14 @@ async function syncToDrive(){
 }
 async function loadFromDrive(){
   if(!S.driveToken){toast('まずGoogle Driveに接続してください');return;}
+  saveLocal(); // ★ Drive読み込み前に必ずローカルバックアップ
   toast('Drive から読み込み中...');
   try{
     const fid=await ensureFolderPath(S.driveToken);
+    // ★ ローカルデータを常に退避（hasPendingSync条件なし）
+    const localBeans=[...S.beans];
+    const localRoast=[...S.roastRecords];
+    const localTaste=[...S.tasteRecords];
     // Phase 2: 3ファイルを並行取得
     const [beansRes,roastRes,tasteRes]=await Promise.all([
       fetchJsonFile(S.driveToken,fid,DRIVE_BEANS_FILE),
@@ -509,18 +528,14 @@ async function loadFromDrive(){
     ]);
     const hasNew=beansRes||roastRes||tasteRes;
     if(hasNew){
-      // pendingSyncがある場合（オフライン中に変更あり）→上書き前にローカルデータを退避
-      const localRoast=hasPendingSync()?[...S.roastRecords]:null;
-      const localBeans=hasPendingSync()?[...S.beans]:null;
-      const localTaste=hasPendingSync()?[...S.tasteRecords]:null;
-      // 新形式ファイル読み込み
+      // 新形式ファイル読み込み（まずDriveデータをSに取り込む）
       if(beansRes){S.driveBeansFid=beansRes.fid;if(beansRes.data.beans)S.beans=beansRes.data.beans;}
       if(roastRes){S.driveRoastFid=roastRes.fid;if(roastRes.data.roastRecords)S.roastRecords=roastRes.data.roastRecords;}
       if(tasteRes){S.driveTasteFid=tasteRes.fid;if(tasteRes.data.tasteRecords)S.tasteRecords=tasteRes.data.tasteRecords;}
-      // オフライン中に追加されたレコードをDriveデータにマージ（IDで重複排除）
-      if(localRoast){const ids=new Set(S.roastRecords.map(r=>r.id));const miss=localRoast.filter(r=>!ids.has(r.id));if(miss.length){S.roastRecords.push(...miss);S.roastRecords.sort((a,b)=>a.id-b.id);}}
-      if(localBeans){const ids=new Set(S.beans.map(b=>b.id));const miss=localBeans.filter(b=>!ids.has(b.id));if(miss.length)S.beans.push(...miss);}
-      if(localTaste){const ids=new Set(S.tasteRecords.map(t=>t.id));const miss=localTaste.filter(t=>!ids.has(t.id));if(miss.length)S.tasteRecords.push(...miss);}
+      // ★ updatedAt ベースでマージ（ローカル＋Drive の union、同IDは新しい方を採用）
+      S.beans        =mergeRecords(localBeans, S.beans);
+      S.roastRecords =mergeRecords(localRoast, S.roastRecords);
+      S.tasteRecords =mergeRecords(localTaste, S.tasteRecords);
     }else{
       // レガシー: roast_journal.json にフォールバック
       const q=`name='${DRIVE_FILE_NAME}' and '${fid}' in parents and trashed=false`;
@@ -543,6 +558,8 @@ async function loadFromDrive(){
     S.lastSync=new Date().toISOString();saveDriveStorage();
     migrateExistingData();
     migrateToPhase2();
+    migrateUpdatedAt(); // ★ Drive読み込みデータの updatedAt 補完
+    saveLocal();        // ★ マージ結果を確定保存
     renderBeanForm();renderBeans();updateBeanSelect();updateTasteSelect();updateDriveUI();initFilterButtons();
     const legacyMigrated=!hasNew;
     toast('読み込みました（豆:'+S.beans.length+' 焙煎:'+S.roastRecords.length+'）');
@@ -565,9 +582,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(as)as.addEventListener('change',function(){document.getElementById('auto-sync-lbl').textContent=this.checked?'ON':'OFF';});
 });
 function autoSync(){
-  if(document.getElementById('auto-sync').checked){
-    saveLocal();
-    if(S.driveToken)syncToDrive().then(()=>clearPending());
+  saveLocal(); // ★ 常にローカル保存（auto-sync設定に関わらず）
+  if(document.getElementById('auto-sync')?.checked&&S.driveToken){
+    syncToDrive().then(()=>clearPending());
   }
 }
 

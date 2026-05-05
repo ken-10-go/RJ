@@ -310,7 +310,7 @@ function finishRoast(){
   const yieldPct=wb&&wa?parseFloat((wa/wb*100).toFixed(1)):null;
   const dtr=S.firstCrackTime!==null&&S.elapsed>0?parseFloat(((S.elapsed-S.firstCrackTime)/S.elapsed*100).toFixed(1)):null;
   pushUndo();
-  S.roastRecords.push({...S.currentRoast,endTime:new Date().toISOString(),duration:S.elapsed,tempData:[...S.tempData],timeData:[...S.timeData],events:[...S.events],finalTemp:S.tempData.length?S.tempData[S.tempData.length-1]:null,roastLevel:rl,weightBefore:wb,weightAfter:wa,yieldPct,dtr,memo:''});
+  S.roastRecords.push({...S.currentRoast,endTime:new Date().toISOString(),duration:S.elapsed,tempData:[...S.tempData],timeData:[...S.timeData],events:[...S.events],finalTemp:S.tempData.length?S.tempData[S.tempData.length-1]:null,roastLevel:rl,weightBefore:wb,weightAfter:wa,yieldPct,dtr,memo:'',updatedAt:new Date().toISOString()});
   S.currentRoast=null;S.elapsed=0;S.tempData=[];S.timeData=[];S.events=[];S.firstCrackTime=null;
   renderEventChips();
   const rtd=document.getElementById('ro-timer');if(rtd)rtd.textContent='00:00';

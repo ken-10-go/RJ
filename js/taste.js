@@ -188,6 +188,7 @@ function saveTaste(){
   const record={
     id:editingTasteId||Date.now(),
     roastId,
+    updatedAt:new Date().toISOString(),
     stars:S.stars,
     elapsedDays:days,
     acidity:S.radarVals[0],sweetness:S.radarVals[1],body:S.radarVals[2],
