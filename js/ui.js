@@ -74,8 +74,16 @@ function initModalSwipe(overlayId,closeFn){
   if(!overlay)return;
   const modal=overlay.querySelector('.modal');
   if(!modal)return;
-  let startY=0,currentY=0,dragging=false;
-  const onStart=e=>{const t=e.touches?e.touches[0]:e;startY=t.clientY;dragging=true;modal.style.transition='none';};
+  let startY=0,startModalY=0,currentY=0,dragging=false;
+  const onStart=e=>{
+    // input/textarea/select/button へのタッチはスワイプ対象外
+    if(e.target.closest('input,textarea,select,button,[role="button"]'))return;
+    const t=e.touches?e.touches[0]:e;
+    // タッチ開始位置がモーダル上部80px以内のみスワイプ有効
+    const rect=modal.getBoundingClientRect();
+    if(t.clientY-rect.top>80)return;
+    startY=t.clientY;startModalY=0;currentY=t.clientY;dragging=true;modal.style.transition='none';
+  };
   const onMove=e=>{if(!dragging)return;const t=e.touches?e.touches[0]:e;currentY=t.clientY;const dy=Math.max(0,currentY-startY);modal.style.transform=`translateY(${dy}px)`;};
   const onEnd=()=>{if(!dragging)return;dragging=false;modal.style.transition='';const dy=currentY-startY;if(dy>80){modal.style.transform='translateY(100%)';setTimeout(()=>{modal.style.transform='';closeFn();},200);}else{modal.style.transform='';}};
   modal.addEventListener('touchstart',onStart,{passive:true});
