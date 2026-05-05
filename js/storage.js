@@ -509,10 +509,18 @@ async function loadFromDrive(){
     ]);
     const hasNew=beansRes||roastRes||tasteRes;
     if(hasNew){
+      // pendingSyncがある場合（オフライン中に変更あり）→上書き前にローカルデータを退避
+      const localRoast=hasPendingSync()?[...S.roastRecords]:null;
+      const localBeans=hasPendingSync()?[...S.beans]:null;
+      const localTaste=hasPendingSync()?[...S.tasteRecords]:null;
       // 新形式ファイル読み込み
       if(beansRes){S.driveBeansFid=beansRes.fid;if(beansRes.data.beans)S.beans=beansRes.data.beans;}
       if(roastRes){S.driveRoastFid=roastRes.fid;if(roastRes.data.roastRecords)S.roastRecords=roastRes.data.roastRecords;}
       if(tasteRes){S.driveTasteFid=tasteRes.fid;if(tasteRes.data.tasteRecords)S.tasteRecords=tasteRes.data.tasteRecords;}
+      // オフライン中に追加されたレコードをDriveデータにマージ（IDで重複排除）
+      if(localRoast){const ids=new Set(S.roastRecords.map(r=>r.id));const miss=localRoast.filter(r=>!ids.has(r.id));if(miss.length){S.roastRecords.push(...miss);S.roastRecords.sort((a,b)=>a.id-b.id);}}
+      if(localBeans){const ids=new Set(S.beans.map(b=>b.id));const miss=localBeans.filter(b=>!ids.has(b.id));if(miss.length)S.beans.push(...miss);}
+      if(localTaste){const ids=new Set(S.tasteRecords.map(t=>t.id));const miss=localTaste.filter(t=>!ids.has(t.id));if(miss.length)S.tasteRecords.push(...miss);}
     }else{
       // レガシー: roast_journal.json にフォールバック
       const q=`name='${DRIVE_FILE_NAME}' and '${fid}' in parents and trashed=false`;
