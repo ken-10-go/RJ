@@ -27,15 +27,28 @@ function renderRecords(){
 }
 function openRecordModal(id){
   const r=S.roastRecords.find(r=>r.id===id);if(!r)return;
-  const b=S.beans.find(b=>b.id===r.beanId);const t=S.tasteRecords.find(t=>t.roastId===r.id);
+  const b=S.beans.find(b=>b.id===r.beanId);
   const mProcs=b&&b.processIds&&b.processIds.length?processShortNFromIds(b.processIds):(b&&b.processes||[]);
   const mProcStr=mProcs.length?' / '+mProcs.join('·'):'';
-  document.getElementById('modal-bean-name').textContent=b?b.name+roastSeqNum(r)+mProcStr:'不明の豆';
+  const mcname=b?(countryName(b.countryId)||(b.country||'')):'';
+  document.getElementById('modal-bean-name').textContent=b?(mcname?mcname+' / ':'')+b.name+roastSeqNum(r)+mProcStr:'不明の豆';
   let html=`<div class="sync-info" style="margin-bottom:12px;"><div class="sync-row"><span class="sync-label">焙煎日</span><span class="sync-val">${new Date(r.startTime).toLocaleString('ja-JP')}</span></div><div class="sync-row"><span class="sync-label">焙煎時間</span><span class="sync-val">${Math.floor(r.duration/60)}分${r.duration%60}秒</span></div>${r.startTemp?`<div class="sync-row"><span class="sync-label">スタート温度</span><span class="sync-val">${r.startTemp}°C</span></div>`:''}${r.finalTemp?`<div class="sync-row"><span class="sync-label">仕上がり温度</span><span class="sync-val">${r.finalTemp}°C</span></div>`:''}${r.roastLevel?`<div class="sync-row"><span class="sync-label">焙煎度</span><span class="sync-val">${rlLabel(r.roastLevel)}</span></div>`:''}${r.amount?`<div class="sync-row"><span class="sync-label">投入量</span><span class="sync-val">${r.amount}g</span></div>`:''}${r.weightBefore&&r.weightAfter?`<div class="sync-row"><span class="sync-label">重量</span><span class="sync-val">${r.weightBefore}g → ${r.weightAfter}g（歩留 ${r.yieldPct}%）</span></div>`:''}${r.dtr!==null&&r.dtr!==undefined?`<div class="sync-row"><span class="sync-label">DTR（発展時間率）</span><span class="sync-val">${r.dtr}%</span></div>`:''}<div class="sync-row"><span class="sync-label">水洗</span><span class="sync-val">${r.washing?'済み':'なし'}</span></div>${r.memo?`<div class="sync-row"><span class="sync-label">メモ</span><span class="sync-val">${r.memo}</span></div>`:''}</div>`;
   if(r.events&&r.events.length){html+=`<div class="label" style="margin-bottom:6px;">イベント</div><div class="event-log" style="max-height:120px;margin-bottom:12px;">`;r.events.forEach(ev=>{html+=`<div class="ev"><span class="ev-t">${ft(ev.time)}</span><span class="ev-x">${ev.label}${ev.temp?' @ '+ev.temp+'°C':''}</span></div>`;});html+=`</div>`;}
   if(r.tempData&&r.tempData.length)html+=`<div class="label" style="margin-bottom:6px;">温度カーブ</div><div class="chart-wrap"><canvas id="modal-chart" height="160"></canvas></div>`;
-  if(t){html+=`<div class="label" style="margin:12px 0 6px;">味わい評価</div><div class="sync-info" style="margin-bottom:10px;"><div class="sync-row"><span class="sync-label">総合評価</span><span class="sync-val">${'★'.repeat(t.stars)}</span></div><div class="sync-row"><span class="sync-label">焙煎後経過</span><span class="sync-val">${t.elapsedDays}日</span></div>${RADAR_LABELS.map((lb,i)=>`<div class="sync-row"><span class="sync-label">${lb}</span><span class="sync-val">${[t.acidity,t.sweetness,t.body,t.bitterness,t.aroma,t.aftertaste][i]}/5</span></div>`).join('')}${t.flavors&&t.flavors.length?`<div class="sync-row"><span class="sync-label">フレーバー</span><span class="sync-val" style="font-size:10px;">${t.flavors.join(', ')}</span></div>`:''}${t.notes?`<div class="sync-row"><span class="sync-label">ノート</span><span class="sync-val" style="font-size:10px;">${t.notes}</span></div>`:''}${t.brew?`<div class="sync-row"><span class="sync-label">抽出方法</span><span class="sync-val">${t.brew}</span></div>`:''}${t.beanG||t.waterMl||t.waterTemp||t.brewSec||t.grind?`<div class="sync-row"><span class="sync-label" style="font-size:9px;color:var(--c-text-muted);">抽出パラメータ</span><span class="sync-val" style="font-size:10px;">${[t.beanG?t.beanG+'g 豆':'',t.waterMl?t.waterMl+'ml':'',t.waterTemp?t.waterTemp+'°C':'',t.brewSec?Math.floor(t.brewSec/60)+'分'+(t.brewSec%60)+'秒':'',t.grind?t.grind:''].filter(Boolean).join(' / ')}</span></div>`:''}</div>`;}
-  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;"><button class="btn btn-outline" onclick="openEditRoastModal(${r.id})">焙煎記録を編集</button><button class="btn btn-outline" onclick="editTasteFromRecord(${r.id})">${t?'味わいを編集':'味わいを記録'}</button></div><button class="btn btn-danger" style="width:100%;margin-top:8px;" onclick="deleteRoastRecord(${r.id})">この焙煎記録を削除</button>`;
+  // 味わい記録リスト（1:M対応）
+  const tastes=S.tasteRecords.filter(t=>t.roastId===r.id).sort((a,b)=>a.id-b.id);
+  html+=`<div class="label" style="margin:12px 0 6px;">味わい記録（${tastes.length}件）</div>`;
+  if(tastes.length){
+    html+=`<div class="sync-info" style="margin-bottom:10px;">`;
+    tastes.forEach(t=>{
+      const dateStr=new Date(t.recordedAt||t.id).toLocaleDateString('ja-JP');
+      html+=`<div style="padding:8px 0;border-bottom:1px solid var(--border);"><div style="display:flex;justify-content:space-between;align-items:center;"><div><span style="color:#e8a040;">${'★'.repeat(t.stars||0)}</span><span style="font-size:var(--fs-xs);color:var(--c-text-muted);margin-left:6px;">${dateStr} · ${t.brew||'—'} · 焙煎後${t.elapsedDays!=null?t.elapsedDays:'—'}日</span></div><button class="btn btn-outline btn-sm" onclick="editTasteFromRecord(${r.id},${t.id})">編集</button></div>${t.flavors&&t.flavors.length?`<div style="font-size:var(--fs-xs);color:var(--c-text);margin-top:3px;">${t.flavors.join(' · ')}</div>`:''}${t.notes?`<div style="font-size:var(--fs-xs);color:var(--c-text-muted);margin-top:2px;">${t.notes}</div>`:''}</div>`;
+    });
+    html+=`</div>`;
+  }else{
+    html+=`<div style="color:var(--c-text-muted);font-size:var(--fs-sm);margin-bottom:10px;">まだ記録がありません</div>`;
+  }
+  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;"><button class="btn btn-outline" onclick="openEditRoastModal(${r.id})">焙煎記録を編集</button><button class="btn btn-outline" onclick="editTasteFromRecord(${r.id},null)">＋ 味わいを追加</button></div><button class="btn btn-danger" style="width:100%;margin-top:8px;" onclick="deleteRoastRecord(${r.id})">この焙煎記録を削除</button>`;
   document.getElementById('modal-content').innerHTML=html;
   document.getElementById('record-modal').classList.add('open');
   if(r.tempData&&r.tempData.length){setTimeout(()=>{const ctx2=document.getElementById('modal-chart').getContext('2d');new Chart(ctx2,{type:'line',data:{labels:r.timeData.map(t=>ft(t)),datasets:[{label:'温度',data:r.tempData,borderColor:'#c47a3a',backgroundColor:'rgba(196,122,58,0.1)',borderWidth:2,pointRadius:2,tension:0.4,fill:true,yAxisID:'y'},{label:'ROR',data:r.tempData.map((t,i)=>i===0?null:parseFloat((t-r.tempData[i-1]).toFixed(1))),borderColor:'#5a8a3a',borderWidth:1.5,pointRadius:1,tension:0.4,fill:false,yAxisID:'y1'}]},options:{responsive:true,plugins:{legend:{labels:{color:'#a07850',font:{size:10}}}},scales:{x:{ticks:{color:'#a07850',font:{size:8},maxTicksLimit:8},grid:{color:'rgba(196,122,58,0.08)'}},y:{ticks:{color:'#a07850',font:{size:8}},grid:{color:'rgba(196,122,58,0.08)'},position:'left'},y1:{ticks:{color:'#5a8a3a',font:{size:8}},grid:{display:false},position:'right'}}}});},100);}
@@ -101,12 +114,14 @@ function saveEditRoast(){
   closeEditRoastModal();renderRecords();
   toast('焙煎記録を更新しました');autoSync();
 }
-function editTasteFromRecord(id){
-  const t=S.tasteRecords.find(t=>t.roastId===id);
+function editTasteFromRecord(roastId,tasteId){
   closeRecordModal();switchTab('taste');
   setTimeout(()=>{
-    document.getElementById('t-record').value=id;onTasteRecordChange();
-    toast('修正して「味わいを記録する」を押してください');
+    const sel=document.getElementById('t-record');
+    if(sel)sel.value=roastId;
+    updateElapsedDays();
+    renderTasteList();
+    openTasteForm(tasteId||null);
   },200);
 }
 function closeRecordModal(){document.getElementById('record-modal').classList.remove('open');}

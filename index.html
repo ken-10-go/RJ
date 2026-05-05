@@ -274,7 +274,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.34</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.35</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -475,67 +475,77 @@ select.inp{cursor:pointer;}
 
     <!-- ===== 味わい ===== -->
     <div id="tab-taste" class="section">
+      <!-- 焙煎記録選択 + 味わいリスト -->
       <div class="card">
-        <div class="card-title">味わいを記録</div>
+        <div class="card-title">焙煎記録を選ぶ</div>
         <div class="label" style="margin-bottom:4px;">対象の焙煎記録</div>
-        <select class="inp" id="t-record" style="margin-bottom:8px;" onchange="onTasteRecordChange()"></select>
-        <div id="elapsed-days-display" style="font-family:'DM Mono',monospace;font-size:var(--fs-mono);color:var(--c-accent);margin-bottom:8px;"></div>
-        <div class="label" style="margin-bottom:4px;">総合評価</div>
-        <div id="taste-stars" style="display:flex;gap:4px;margin:4px 0 8px;">
-          <span style="font-size:22px;cursor:pointer;opacity:.3;color:#e8a040;" onclick="setStar(1)">★</span>
-          <span style="font-size:22px;cursor:pointer;opacity:.3;color:#e8a040;" onclick="setStar(2)">★</span>
-          <span style="font-size:22px;cursor:pointer;opacity:.3;color:#e8a040;" onclick="setStar(3)">★</span>
-          <span style="font-size:22px;cursor:pointer;opacity:.3;color:#e8a040;" onclick="setStar(4)">★</span>
-          <span style="font-size:22px;cursor:pointer;opacity:.3;color:#e8a040;" onclick="setStar(5)">★</span>
-        </div>
+        <select class="inp" id="t-record" style="margin-bottom:6px;" onchange="onTasteRecordChange()"></select>
+        <div id="elapsed-days-display" style="font-family:'DM Mono',monospace;font-size:var(--fs-mono);color:var(--c-accent);margin-bottom:10px;"></div>
+        <div class="label" style="margin-bottom:6px;">この焙煎の味わい記録</div>
+        <div id="taste-list"></div>
+        <button class="btn btn-outline" style="width:100%;margin-top:10px;" onclick="openTasteForm()">＋ 新しい味わいを追加</button>
       </div>
-      <div class="card">
-        <div class="card-title">フレーバー属性</div>
-        <div class="rs-grid" id="radar-sliders"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">フレーバーノート</div>
-        <div class="label" style="margin-bottom:6px;">カテゴリを選択</div>
-        <div class="flavor-cat-row" id="flavor-cats"></div>
-        <div class="flavor-sub-area">
-          <div class="flavor-sub-label" id="flavor-sub-label">カテゴリを選ぶとフレーバーが表示されます</div>
-          <div class="flavor-sub-row" id="flavor-subs"></div>
+      <!-- 入力フォーム（追加・編集時に表示） -->
+      <div id="taste-form-area" style="display:none;">
+        <div class="card">
+          <div class="card-title" id="taste-form-title">新しい味わいを追加</div>
+          <div class="label" style="margin-bottom:4px;">総合評価</div>
+          <div id="taste-stars" style="display:flex;gap:4px;margin:4px 0 12px;">
+            <span style="font-size:22px;cursor:pointer;opacity:.3;color:#e8a040;" onclick="setStar(1)">★</span>
+            <span style="font-size:22px;cursor:pointer;opacity:.3;color:#e8a040;" onclick="setStar(2)">★</span>
+            <span style="font-size:22px;cursor:pointer;opacity:.3;color:#e8a040;" onclick="setStar(3)">★</span>
+            <span style="font-size:22px;cursor:pointer;opacity:.3;color:#e8a040;" onclick="setStar(4)">★</span>
+            <span style="font-size:22px;cursor:pointer;opacity:.3;color:#e8a040;" onclick="setStar(5)">★</span>
+          </div>
+          <div class="label" style="margin-bottom:6px;">フレーバー属性</div>
+          <div class="rs-grid" id="radar-sliders"></div>
         </div>
-        <div class="flavor-selected-label">選択済みフレーバー</div>
-        <div class="flavor-selected-row" id="flavor-selected"></div>
-        <div class="inp-w" style="margin-top:6px;"><div class="label">自由入力</div><input class="inp" id="t-notes" placeholder="Jasmine, Mango..."></div>
-        <div class="inp-w">
-          <div class="label">抽出方法</div>
-          <select class="inp" id="t-brew-sel" onchange="onBrewSel()"></select>
+        <div class="card">
+          <div class="card-title">フレーバーノート</div>
+          <div class="label" style="margin-bottom:6px;">カテゴリを選択</div>
+          <div class="flavor-cat-row" id="flavor-cats"></div>
+          <div class="flavor-sub-area">
+            <div class="flavor-sub-label" id="flavor-sub-label">カテゴリを選ぶとフレーバーが表示されます</div>
+            <div class="flavor-sub-row" id="flavor-subs"></div>
+          </div>
+          <div class="flavor-selected-label">選択済みフレーバー</div>
+          <div class="flavor-selected-row" id="flavor-selected"></div>
+          <div class="inp-w" style="margin-top:6px;"><div class="label">自由入力</div><input class="inp" id="t-notes" placeholder="Jasmine, Mango..."></div>
+          <div class="inp-w">
+            <div class="label">抽出方法</div>
+            <select class="inp" id="t-brew-sel" onchange="onBrewSel()"></select>
+          </div>
+          <div class="inp-w" id="t-brew-free-wrap" style="display:none;">
+            <div class="label">抽出方法を入力</div>
+            <div class="free-inp-row"><input class="inp" id="t-brew-free" placeholder="例: Siphon"><button class="btn btn-outline btn-sm" onclick="addBrew()">追加</button></div>
+          </div>
+          <div style="margin-top:8px;margin-bottom:4px;font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.1em;border-top:1px solid var(--border);padding-top:8px;">抽出パラメータ</div>
+          <div class="inp-row">
+            <div class="inp-w"><div class="label">豆量 (g)</div><input class="inp" id="t-bean-g" type="number" placeholder="15" step="0.1"></div>
+            <div class="inp-w"><div class="label">湯量 (ml)</div><input class="inp" id="t-water-ml" type="number" placeholder="250"></div>
+          </div>
+          <div class="inp-row">
+            <div class="inp-w"><div class="label">湯温 (°C)</div><input class="inp" id="t-water-temp" type="number" placeholder="93" min="60" max="100"></div>
+            <div class="inp-w"><div class="label">抽出時間 (秒)</div><input class="inp" id="t-brew-sec" type="number" placeholder="180"></div>
+          </div>
+          <div class="inp-w">
+            <div class="label">グラインド粗さ</div>
+            <select class="inp" id="t-grind">
+              <option value="">選択...</option>
+              <option value="極粗め">極粗め（フレンチプレス）</option>
+              <option value="粗め">粗め（コース）</option>
+              <option value="やや粗め">やや粗め</option>
+              <option value="標準">標準（ミディアム）</option>
+              <option value="やや細め">やや細め</option>
+              <option value="細め">細め（ファイン）</option>
+              <option value="極細">極細（エスプレッソ）</option>
+            </select>
+          </div>
+          <div class="inp-w"><div class="label">メモ</div><textarea class="inp" id="t-memo" rows="2" placeholder="次回への改善点..."></textarea></div>
+          <button class="btn btn-primary" style="width:100%;" onclick="saveTaste()">保存する</button>
+          <button id="taste-delete-btn" class="btn btn-danger" style="width:100%;margin-top:8px;display:none;" onclick="deleteTaste(editingTasteId)">この味わい記録を削除</button>
+          <button class="btn btn-outline" style="width:100%;margin-top:8px;" onclick="closeTasteForm()">キャンセル</button>
         </div>
-        <div class="inp-w" id="t-brew-free-wrap" style="display:none;">
-          <div class="label">抽出方法を入力</div>
-          <div class="free-inp-row"><input class="inp" id="t-brew-free" placeholder="例: Siphon"><button class="btn btn-outline btn-sm" onclick="addBrew()">追加</button></div>
-        </div>
-        <div style="margin-top:8px;margin-bottom:4px;font-family:'DM Mono',monospace;font-size:var(--fs-xs);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.1em;border-top:1px solid var(--border);padding-top:8px;">抽出パラメータ</div>
-        <div class="inp-row">
-          <div class="inp-w"><div class="label">豆量 (g)</div><input class="inp" id="t-bean-g" type="number" placeholder="15" step="0.1"></div>
-          <div class="inp-w"><div class="label">湯量 (ml)</div><input class="inp" id="t-water-ml" type="number" placeholder="250"></div>
-        </div>
-        <div class="inp-row">
-          <div class="inp-w"><div class="label">湯温 (°C)</div><input class="inp" id="t-water-temp" type="number" placeholder="93" min="60" max="100"></div>
-          <div class="inp-w"><div class="label">抽出時間 (秒)</div><input class="inp" id="t-brew-sec" type="number" placeholder="180"></div>
-        </div>
-        <div class="inp-w">
-          <div class="label">グラインド粗さ</div>
-          <select class="inp" id="t-grind">
-            <option value="">選択...</option>
-            <option value="極粗め">極粗め（フレンチプレス）</option>
-            <option value="粗め">粗め（コース）</option>
-            <option value="やや粗め">やや粗め</option>
-            <option value="標準">標準（ミディアム）</option>
-            <option value="やや細め">やや細め</option>
-            <option value="細め">細め（ファイン）</option>
-            <option value="極細">極細（エスプレッソ）</option>
-          </select>
-        </div>
-        <div class="inp-w"><div class="label">メモ</div><textarea class="inp" id="t-memo" rows="2" placeholder="次回への改善点..."></textarea></div>
-        <button class="btn btn-primary" onclick="saveTaste()">味わいを記録する</button>
       </div>
     </div>
 
