@@ -214,7 +214,7 @@ select.inp{cursor:pointer;}
 }
 .footer-grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;margin-bottom:5px;}
 .footer-grid-4:last-child{margin-bottom:0;}
-.ctrl-footer{padding:13px 4px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.03em;font-weight:600;transition:all .2s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;}
+.ctrl-footer{padding:13px 4px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:14px;text-transform:none;letter-spacing:.01em;font-weight:600;transition:all .2s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;}
 /* ===== 焙煎タブ内折りたたみセクション ===== */
 .roast-collapse-hdr{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:8px 0;border-bottom:1px solid rgba(196,122,58,.12);margin-bottom:4px;}
 .roast-collapse-hdr-lbl{font-family:'DM Mono',monospace;font-size:var(--fs-sm);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.1em;}
@@ -274,7 +274,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.30</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.31</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -643,8 +643,10 @@ select.inp{cursor:pointer;}
       <div class="inp-w"><div class="label">焙煎後 (g)</div><input class="inp" id="finish-weight-after" type="number" placeholder="170" oninput="calcWeightLoss()"></div>
     </div>
     <div id="weight-loss-display" style="font-family:'DM Mono',monospace;font-size:var(--fs-sm);color:var(--c-accent);margin-bottom:10px;"></div>
-    <button class="btn btn-primary" onclick="finishRoast()">記録して完了</button>
-    <button class="btn btn-outline" onclick="discardRoast()" style="margin-top:8px;width:100%;color:var(--c-text-muted);border-color:var(--border);">🗑 保存せずに終了（テスト・やり直し）</button>
+    <button class="btn btn-primary" onclick="finishRoast()" style="margin-top:4px;">記録して完了</button>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);text-align:center;">
+      <button onclick="if(confirm('焙煎データを破棄して終了しますか？'))discardRoast()" style="background:none;border:none;color:#dc2626;font-size:12px;cursor:pointer;padding:6px 12px;text-decoration:underline;">🗑 保存せずに終了（テスト・やり直し）</button>
+    </div>
   </div>
 </div>
 
@@ -718,6 +720,8 @@ select.inp{cursor:pointer;}
       <div class="ro-metric-lbl">% DT</div>
     </div>
   </div>
+  <!-- イベントサマリー チップ行 -->
+  <div id="ro-event-chips" style="display:flex;gap:5px;overflow-x:auto;padding:4px 8px;flex-shrink:0;border-bottom:1px solid var(--border);-webkit-overflow-scrolling:touch;scrollbar-width:none;min-height:34px;align-items:center;"><span style="color:var(--c-text-muted);font-size:11px;padding:0 4px;">—</span></div>
   <!-- 温度カーブ -->
   <div class="ro-chart-wrap">
     <canvas id="roast-chart" height="150"></canvas>
@@ -797,15 +801,15 @@ select.inp{cursor:pointer;}
   <div class="ro-footer">
     <div class="footer-grid-4" style="margin-bottom:5px;">
       <button id="ro-pause-btn" class="ctrl-footer" onclick="toggleRoastPause()" style="background:#dcfce7;border:1px solid #bbf7d0;color:#16a34a;">▶ スタート<br><span style="font-size:10px;opacity:.8;">開始</span></button>
-      <button class="ctrl-footer c0" onclick="markEventWithTemp('Charge',null)">CHARGE<br><span style="font-size:10px;opacity:.8;">投入</span></button>
-      <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack Start',1.0)">1stCR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
-      <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack End',1.5)">1stCR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
+      <button class="ctrl-footer c0" onclick="markEventWithTemp('Charge',null)">Charge<br><span style="font-size:10px;opacity:.8;">投入</span></button>
+      <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack Start',1.0)">1st CR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
+      <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack End',1.5)">1st CR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
     </div>
     <div class="footer-grid-4">
       <button class="ctrl-footer" onclick="openFinishModal()" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;">■ 終了<br><span style="font-size:10px;opacity:.8;">排出</span></button>
-      <button class="ctrl-footer c0" onclick="markEventWithTemp('Steam End',null)">STEAM<br><span style="font-size:10px;opacity:.8;">END</span></button>
-      <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack Start',2.0)">2ndCR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
-      <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack End',2.5)">2ndCR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
+      <button class="ctrl-footer c0" onclick="markEventWithTemp('Steam End',null)">Steam<br><span style="font-size:10px;opacity:.8;">End</span></button>
+      <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack Start',2.0)">2nd CR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
+      <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack End',2.5)">2nd CR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
     </div>
   </div>
 </div>

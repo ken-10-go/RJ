@@ -204,6 +204,7 @@ function startRoastAndOverlay(){
     S.elapsed=0;S.tempData=[];S.timeData=[];S.events=[];S.firstCrackTime=null;
     ocrIntervalSec=OCR_PHASE_INTERVALS.preheat;
     const evLog=document.getElementById('event-log');if(evLog)evLog.innerHTML='';
+    renderEventChips();
     const beanId=parseInt(document.getElementById('r-bean').value);
     S.currentRoast={id:Date.now(),beanId,amount:document.getElementById('r-amount').value,washing:document.getElementById('r-washing').checked,startTime:new Date().toISOString(),startTemp:null};
     if(S.roastSetupOpen)toggleRoastSetup();
@@ -311,6 +312,7 @@ function finishRoast(){
   pushUndo();
   S.roastRecords.push({...S.currentRoast,endTime:new Date().toISOString(),duration:S.elapsed,tempData:[...S.tempData],timeData:[...S.timeData],events:[...S.events],finalTemp:S.tempData.length?S.tempData[S.tempData.length-1]:null,roastLevel:rl,weightBefore:wb,weightAfter:wa,yieldPct,dtr,memo:''});
   S.currentRoast=null;S.elapsed=0;S.tempData=[];S.timeData=[];S.events=[];S.firstCrackTime=null;
+  renderEventChips();
   const rtd=document.getElementById('ro-timer');if(rtd)rtd.textContent='00:00';
   const rsl=document.getElementById('ro-status-lbl');if(rsl)rsl.textContent='完了';
   ['ro-temp','ro-ror','ro-dev'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='—';});
@@ -325,12 +327,12 @@ function finishRoast(){
   toast('焙煎完了！');autoSync();
 }
 function discardRoast(){
-  if(!confirm('この焙煎データを破棄して終了しますか？\n記録は保存されません。'))return;
   clearInterval(S.timerInterval);S.roastRunning=false;
   if(ocrCDInterval){clearInterval(ocrCDInterval);ocrCDInterval=null;}
   const ivlRow=document.getElementById('ocr-interval-row');if(ivlRow)ivlRow.style.display='none';
   stopCameraOCR();
   S.currentRoast=null;S.elapsed=0;S.tempData=[];S.timeData=[];S.events=[];S.firstCrackTime=null;
+  renderEventChips();
   ocrIntervalSec=OCR_PHASE_INTERVALS.preheat;
   const rtd=document.getElementById('ro-timer');if(rtd)rtd.textContent='00:00';
   const rsl=document.getElementById('ro-status-lbl');if(rsl)rsl.textContent='—';
@@ -446,7 +448,7 @@ function deleteLiveTemp(i){
 }
 function deleteEventEntry(i){
   S.events.splice(i,1);
-  updateRoastChart();renderLiveTempList();
+  updateRoastChart();renderLiveTempList();renderEventChips();
   toast('イベントを削除しました');
 }
 function addMemoEntry(){
@@ -519,7 +521,24 @@ function markEventWithTemp(label,rlVal){
   applyPhaseInterval(label);
   updateRoastChart();
   renderLiveTempList();
+  renderEventChips();
   toast(label+' をマーク');
+}
+function renderEventChips(){
+  const el=document.getElementById('ro-event-chips');if(!el)return;
+  if(!S.events.length){el.innerHTML='<span style="color:var(--c-text-muted);font-size:11px;padding:0 4px;">—</span>';return;}
+  const SHORT={'Charge':'Charge','Steam End':'Steam','Turning Point':'TP',
+    '1st Crack Start':'1st CR↑','1st Crack End':'1st CR↓',
+    '2nd Crack Start':'2nd CR↑','2nd Crack End':'2nd CR↓'};
+  el.innerHTML=S.events.map(ev=>{
+    const c=(EVENT_STYLE[ev.label]||{color:'#9ca3af'}).color;
+    const label=SHORT[ev.label]||ev.label;
+    const tempStr=ev.temp!=null?parseFloat(ev.temp).toFixed(0)+'°':'—';
+    return `<div style="display:inline-flex;flex-direction:column;align-items:center;background:${c}18;border:1px solid ${c}55;border-radius:6px;padding:2px 7px;white-space:nowrap;flex-shrink:0;">
+      <span style="font-size:10px;font-weight:700;color:${c};font-family:'Poppins',sans-serif;">${label}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--c-text);line-height:1.3;">${ft(ev.time)} · ${tempStr}</span>
+    </div>`;
+  }).join('');
 }
 function applyPhaseInterval(label){
   if(label==='Charge'){ocrIntervalSec=OCR_PHASE_INTERVALS.charge;}
