@@ -105,8 +105,7 @@ function editTasteFromRecord(id){
   const t=S.tasteRecords.find(t=>t.roastId===id);
   closeRecordModal();switchTab('taste');
   setTimeout(()=>{
-    document.getElementById('t-record').value=id;updateElapsedDays();
-    if(t){setStar(t.stars);S.radarVals=[parseInt(t.acidity),parseInt(t.sweetness),parseInt(t.body),parseInt(t.bitterness),parseInt(t.aroma),parseInt(t.aftertaste)];renderRadarSliders();S.selectedFlavors=[...(t.flavors||[])];document.getElementById('flavor-selected').innerHTML=S.selectedFlavors.map(f=>`<span class="flavor-tag">${f}<button onclick="toggleFlavor('${f}')">×</button></span>`).join('');document.getElementById('t-notes').value=t.notes||'';document.getElementById('t-memo').value=t.memo||'';if(t.brew){initBrewSelect();document.getElementById('t-brew-sel').value=t.brew;}document.getElementById('t-bean-g').value=t.beanG||'';document.getElementById('t-water-ml').value=t.waterMl||'';document.getElementById('t-water-temp').value=t.waterTemp||'';document.getElementById('t-brew-sec').value=t.brewSec||'';document.getElementById('t-grind').value=t.grind||'';}
+    document.getElementById('t-record').value=id;onTasteRecordChange();
     toast('修正して「味わいを記録する」を押してください');
   },200);
 }

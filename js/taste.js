@@ -107,7 +107,7 @@ function updateTasteSelect(){
     const bInfo=b?`${b.country?b.country+' / ':''}${b.name}${roastSeqNum(r)}${tProcs.length?' / '+tProcs.join('·'):''}`:' 不明';
     return`<option value="${r.id}">${bInfo} (${new Date(r.startTime).toLocaleDateString('ja-JP')})</option>`;
   }).join(''):'<option>焙煎記録がありません</option>';
-  updateElapsedDays();
+  onTasteRecordChange();
 }
 function updateElapsedDays(){
   const sel=document.getElementById('t-record');if(!sel)return;
