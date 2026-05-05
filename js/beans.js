@@ -55,6 +55,7 @@ function clearBeanForm(){
   document.getElementById('b-edit-id').value='';
   document.getElementById('b-photo-preview').style.display='none';
   document.getElementById('b-photo').value='';
+  const del=document.getElementById('b-photo-delete-btn');if(del)del.style.display='none';
   document.getElementById('bean-form-title').textContent='豆を登録';
   document.getElementById('bean-save-btn').textContent='豆を登録する';
   document.getElementById('bean-cancel-btn').style.display='none';
@@ -84,7 +85,8 @@ function editBean(id){
     (b.roastLevels||[]).map(lbl=>{const m=lbl.match(/^\[(\d+\.\d+)\]/);return m?parseFloat(m[1]):null;}).filter(v=>v!==null);
   S.beanSelectedVarietyIds=b.varietyIds!==undefined?[...b.varietyIds]:
     (b.varieties||[]).map(nm=>(S.master.varieties.find(r=>r.name===nm&&r.enabled!==false)||{}).id).filter(Boolean);
-  if(b.photo){const img=document.getElementById('b-photo-preview');img.src=b.photo;img.style.display='block';S.beanPhotoData=b.photo;}
+  if(b.photo){const img=document.getElementById('b-photo-preview');img.src=b.photo;img.style.display='block';S.beanPhotoData=b.photo;const del=document.getElementById('b-photo-delete-btn');if(del)del.style.display='block';}
+  else{const del=document.getElementById('b-photo-delete-btn');if(del)del.style.display='none';}
   document.getElementById('bean-form-title').textContent='豆を編集';
   document.getElementById('bean-save-btn').textContent='更新する';
   document.getElementById('bean-cancel-btn').style.display='block';
@@ -113,8 +115,18 @@ function deleteBean(id){
 function previewBeanPhoto(input){
   const file=input.files[0];if(!file)return;
   const r=new FileReader();
-  r.onload=e=>{const img=document.getElementById('b-photo-preview');img.src=e.target.result;img.style.display='block';S.beanPhotoData=e.target.result;};
+  r.onload=e=>{
+    const img=document.getElementById('b-photo-preview');img.src=e.target.result;img.style.display='block';
+    S.beanPhotoData=e.target.result;
+    const del=document.getElementById('b-photo-delete-btn');if(del)del.style.display='block';
+  };
   r.readAsDataURL(file);
+}
+function deleteBeanPhoto(){
+  S.beanPhotoData=null;
+  const img=document.getElementById('b-photo-preview');img.src='';img.style.display='none';
+  document.getElementById('b-photo').value='';
+  const del=document.getElementById('b-photo-delete-btn');if(del)del.style.display='none';
 }
 
 function roastSeqNum(roast){

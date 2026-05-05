@@ -277,8 +277,13 @@ async function ensureFolderPath(token){
     const q=`name='${name}' and mimeType='application/vnd.google-apps.folder' and '${pid}' in parents and trashed=false`;
     const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`,{headers:{Authorization:'Bearer '+token}});
     const d=await r.json();
+    // フォルダ検索でAPIエラー（401=期限切れ等）が返った場合は早期throw
+    if(d.error){
+      const msg=d.error.code===401?'Drive認証が期限切れです。再接続してください':(d.error.message||'Drive APIエラー');
+      throw new Error(msg);
+    }
     if(d.files&&d.files.length>0){pid=d.files[0].id;}
-    else{const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[pid]})});const cd=await cr.json();if(!cd.id)throw new Error('フォルダ作成失敗');pid=cd.id;}
+    else{const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[pid]})});const cd=await cr.json();if(!cd.id)throw new Error('フォルダ作成失敗: '+(cd.error&&cd.error.message||JSON.stringify(cd)));pid=cd.id;}
   }
   return pid;
 }
