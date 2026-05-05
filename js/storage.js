@@ -482,7 +482,7 @@ function loadDriveStorage(){
   ['clientId','driveToken','driveUser','driveFileId','driveBeansFid','driveRoastFid','driveTasteFid'].forEach(k=>{S[k]=localStorage.getItem('rj_'+k)||null;});
   // ★ Drive modifiedTime トラッキング復元
   ['driveBeansMod','driveRoastMod','driveTasteMod'].forEach(k=>{S[k]=localStorage.getItem('rj_'+k)||null;});
-  try{S.driveMasterMod={...S.driveMasterMod,...JSON.parse(localStorage.getItem('rj_driveMasterMod')||'{}');};}catch(e){}
+  try{S.driveMasterMod={...S.driveMasterMod,...JSON.parse(localStorage.getItem('rj_driveMasterMod')||'{}')};}catch(e){}
   S.tokenExpiry=parseInt(localStorage.getItem('rj_tokenExpiry'))||null;
   if(S.clientId)document.getElementById('client-id-inp').value=S.clientId;
   if(S.driveToken&&S.tokenExpiry&&Date.now()<S.tokenExpiry){document.getElementById('drive-dot').classList.add('connected');document.getElementById('drive-status-txt').textContent='接続中';document.getElementById('drive-status-txt').style.color='var(--c-green)';}
