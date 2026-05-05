@@ -35,10 +35,14 @@ function _recRow(r,showBean){
   const rcname=b?(countryName(b.countryId)||(b.country||'')):'';
   const beanLabel=b?(rcname?rcname+' / ':'')+b.name+roastSeqNum(r)+rProcStr:'不明の豆';
   const dateLabel=new Date(r.startTime).toLocaleDateString('ja-JP');
-  const hd=showBean
-    ?`<div class="rec-bean">${beanLabel}</div><div class="rec-date">${dateLabel}</div>`
-    :`<div class="rec-date" style="font-size:var(--fs-sm);color:var(--c-text);font-weight:600;">${dateLabel}</div>`;
-  return`<div class="rec" onclick="openRecordModal(${r.id})"><div class="rec-hd">${hd}</div><div class="rec-stats"><span class="rec-s">時間: <span>${Math.floor(r.duration/60)}分${r.duration%60}秒</span></span>${r.roastLevel?`<span class="rec-s">焙煎度: <span>${rlLabel(r.roastLevel)}</span></span>`:''}${bestStars?`<span class="rec-s">評価: <span>${'★'.repeat(bestStars)}</span></span>`:''}</div></div>`;
+  const statsItems=`<span class="rec-s">時間: <span>${Math.floor(r.duration/60)}分${r.duration%60}秒</span></span>${r.roastLevel?`<span class="rec-s">焙煎度: <span>${rlLabel(r.roastLevel)}</span></span>`:''}${bestStars?`<span class="rec-s">評価: <span>${'★'.repeat(bestStars)}</span></span>`:''}`;
+  if(showBean){
+    // 日付別: 豆名のみ（日付はグループヘッダーに出るため非表示）
+    return`<div class="rec" onclick="openRecordModal(${r.id})"><div class="rec-hd"><div class="rec-bean">${beanLabel}</div></div><div class="rec-stats">${statsItems}</div></div>`;
+  }else{
+    // 豆別: 日付＋statsを1行に並べる
+    return`<div class="rec" onclick="openRecordModal(${r.id})"><div class="rec-stats" style="margin-top:0;"><span class="rec-s" style="color:var(--c-text);font-weight:600;margin-right:4px;">${dateLabel}</span>${statsItems}</div></div>`;
+  }
 }
 function renderRecords(){
   const el=document.getElementById('records-list');if(!el)return;
