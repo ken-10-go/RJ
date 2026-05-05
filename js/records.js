@@ -14,16 +14,61 @@
 // ================================================================
 
 // ===== RECORDS =====
+let recordGroupMode='date';
+function setRecordGroup(mode){
+  recordGroupMode=mode;
+  ['date','bean'].forEach(m=>{
+    const btn=document.getElementById('rec-grp-'+m);if(!btn)return;
+    const active=m===mode;
+    btn.style.background=active?'var(--c-accent)':'';
+    btn.style.color=active?'#1a0f07':'';
+    btn.style.borderColor=active?'var(--c-accent)':'';
+  });
+  renderRecords();
+}
+function _recRow(r,showBean){
+  const b=S.beans.find(b=>b.id===r.beanId);
+  const tastes=S.tasteRecords.filter(t=>t.roastId===r.id);
+  const bestStars=tastes.length?Math.max(...tastes.map(t=>t.stars||0)):0;
+  const rProcs=b&&b.processIds&&b.processIds.length?processShortNFromIds(b.processIds):(b&&b.processes||[]);
+  const rProcStr=rProcs.length?' / '+rProcs.join('·'):'';
+  const rcname=b?(countryName(b.countryId)||(b.country||'')):'';
+  const beanLabel=b?(rcname?rcname+' / ':'')+b.name+roastSeqNum(r)+rProcStr:'不明の豆';
+  const dateLabel=new Date(r.startTime).toLocaleDateString('ja-JP');
+  const hd=showBean
+    ?`<div class="rec-bean">${beanLabel}</div><div class="rec-date">${dateLabel}</div>`
+    :`<div class="rec-date" style="font-size:var(--fs-sm);color:var(--c-text);font-weight:600;">${dateLabel}</div>`;
+  return`<div class="rec" onclick="openRecordModal(${r.id})"><div class="rec-hd">${hd}</div><div class="rec-stats"><span class="rec-s">時間: <span>${Math.floor(r.duration/60)}分${r.duration%60}秒</span></span>${r.roastLevel?`<span class="rec-s">焙煎度: <span>${rlLabel(r.roastLevel)}</span></span>`:''}${bestStars?`<span class="rec-s">評価: <span>${'★'.repeat(bestStars)}</span></span>`:''}</div></div>`;
+}
 function renderRecords(){
   const el=document.getElementById('records-list');if(!el)return;
   if(!S.roastRecords.length){el.innerHTML='<div class="empty">焙煎記録がありません</div>';return;}
-  el.innerHTML=S.roastRecords.slice().reverse().map(r=>{
-    const b=S.beans.find(b=>b.id===r.beanId);const t=S.tasteRecords.find(t=>t.roastId===r.id);
-    const rProcs=b&&b.processIds&&b.processIds.length?processShortNFromIds(b.processIds):(b&&b.processes||[]);
-    const rProcStr=rProcs.length?' / '+rProcs.join('·'):'';
-    const rcname=b?(countryName(b.countryId)||(b.country||'')):'';
-    return`<div class="rec" onclick="openRecordModal(${r.id})"><div class="rec-hd"><div class="rec-bean">${b?(rcname?rcname+' / ':'')+b.name+roastSeqNum(r)+rProcStr:'不明の豆'}</div><div class="rec-date">${new Date(r.startTime).toLocaleDateString('ja-JP')}</div></div><div class="rec-stats"><span class="rec-s">時間: <span>${Math.floor(r.duration/60)}分${r.duration%60}秒</span></span>${r.finalTemp?`<span class="rec-s">仕上がり: <span>${r.finalTemp}°C</span></span>`:''}${r.roastLevel?`<span class="rec-s">焙煎度: <span>${rlLabel(r.roastLevel)}</span></span>`:''}${r.yieldPct?`<span class="rec-s">歩留: <span>${r.yieldPct}%</span></span>`:''}${t?`<span class="rec-s">評価: <span>${'★'.repeat(t.stars)}</span></span>`:''}${r.washing?`<span class="rec-s">水洗: <span>済</span></span>`:''}</div></div>`;
-  }).join('');
+  const sorted=S.roastRecords.slice().sort((a,b)=>b.id-a.id);
+  let html='';
+  if(recordGroupMode==='date'){
+    const groups={};
+    sorted.forEach(r=>{
+      const dk=new Date(r.startTime).toLocaleDateString('ja-JP');
+      if(!groups[dk])groups[dk]=[];
+      groups[dk].push(r);
+    });
+    Object.entries(groups).forEach(([dk,recs])=>{
+      html+=`<div class="rec-group-hd">📅 ${dk}</div>`;
+      recs.forEach(r=>{html+=_recRow(r,true);});
+    });
+  }else{
+    // 豆別: 各豆の最新焙煎日時でソート
+    const beanIds=[...new Set(sorted.map(r=>r.beanId))];
+    beanIds.forEach(bid=>{
+      const recs=sorted.filter(r=>r.beanId===bid);
+      const b=S.beans.find(b=>b.id===bid);
+      const rcname=b?(countryName(b.countryId)||(b.country||'')):'';
+      const bLabel=b?(rcname?rcname+' / ':'')+b.name:'不明の豆';
+      html+=`<div class="rec-group-hd">☕ ${bLabel}（${recs.length}件）</div>`;
+      recs.forEach(r=>{html+=_recRow(r,false);});
+    });
+  }
+  el.innerHTML=html;
 }
 function openRecordModal(id){
   const r=S.roastRecords.find(r=>r.id===id);if(!r)return;

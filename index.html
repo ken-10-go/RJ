@@ -182,9 +182,10 @@ select.inp{cursor:pointer;}
 .rec-hd{display:flex;justify-content:space-between;align-items:center;}
 .rec-date{font-family:'Poppins',sans-serif;font-size:var(--fs-xs);color:var(--c-text-muted);font-weight:500;}
 .rec-bean{font-size:var(--fs-base);color:var(--c-text);font-weight:600;}
-.rec-stats{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
-.rec-s{font-family:'Poppins',sans-serif;font-size:var(--fs-xs);color:var(--c-text-muted);font-weight:500;}
+.rec-stats{display:flex;gap:8px;margin-top:5px;flex-wrap:nowrap;overflow:hidden;}
+.rec-s{font-family:'Poppins',sans-serif;font-size:var(--fs-xs);color:var(--c-text-muted);font-weight:500;white-space:nowrap;}
 .rec-s span{color:var(--c-accent);font-weight:700;}
+.rec-group-hd{padding:8px 2px 4px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--c-text-muted);letter-spacing:.06em;border-bottom:1px solid var(--border);margin-bottom:2px;}
 /* analysis */
 .a-stat{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6;}
 .a-lbl{font-size:var(--fs-sm);color:var(--c-text-muted);}
@@ -274,7 +275,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.35</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.36</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -471,7 +472,13 @@ select.inp{cursor:pointer;}
     </div>
 
     <!-- ===== 記録 ===== -->
-    <div id="tab-records" class="section"><div id="records-list" class="records-list"></div></div>
+    <div id="tab-records" class="section">
+      <div style="display:flex;gap:6px;padding:2px 0 10px;">
+        <button id="rec-grp-date" class="btn btn-sm" style="font-size:12px;background:var(--c-accent);color:#1a0f07;border-color:var(--c-accent);" onclick="setRecordGroup('date')">📅 日付別</button>
+        <button id="rec-grp-bean" class="btn btn-outline btn-sm" style="font-size:12px;" onclick="setRecordGroup('bean')">☕ 豆別</button>
+      </div>
+      <div id="records-list" class="records-list"></div>
+    </div>
 
     <!-- ===== 味わい ===== -->
     <div id="tab-taste" class="section">
