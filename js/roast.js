@@ -255,6 +255,8 @@ function doStartRoast(){
     },1000);
   }
   toast('焙煎を開始しました');
+  // 誤バック防止: ダミー履歴エントリを積む
+  history.pushState({roasting:true},'');
 }
 function toggleRoastPause(){if(!S.roastRunning)resumeRoast();else pauseRoast();}
 function toggleRoast(){if(!S.roastRunning)resumeRoast();else pauseRoast();}
@@ -719,3 +721,10 @@ function updateRoastChart(){
   if(cs&&cs.style.maxHeight&&cs.style.maxHeight!=='0px')cs.style.maxHeight=cs.scrollHeight+'px';
 }
 
+// 焙煎中の誤バック防止: popstate を検知してダミー履歴を積み直す
+window.addEventListener('popstate',()=>{
+  if(S.roastRunning){
+    history.pushState({roasting:true},'');
+    toast('焙煎中です。END ボタンで終了してください');
+  }
+});
