@@ -242,7 +242,22 @@ function loadApiKey(){}
 const LS_KEY='rj_offline_data';
 const LS_PENDING='rj_pending_sync';
 function saveLocal(){
-  try{localStorage.setItem(LS_KEY,JSON.stringify({version:4,savedAt:new Date().toISOString(),master:S.master,beans:S.beans,roastRecords:S.roastRecords,tasteRecords:S.tasteRecords}));localStorage.setItem(LS_PENDING,'1');}catch(e){console.warn('saveLocal:',e);}
+  try{
+    localStorage.setItem(LS_KEY,JSON.stringify({version:4,savedAt:new Date().toISOString(),master:S.master,beans:S.beans,roastRecords:S.roastRecords,tasteRecords:S.tasteRecords}));
+    localStorage.setItem(LS_PENDING,'1');
+  }catch(e){
+    if(e && (e.name==='QuotaExceededError'||e.code===22)){
+      // 容量不足: 写真を除いて再試行
+      try{
+        const beansNoPhoto=S.beans.map(b=>b.photo?{...b,photo:null}:b);
+        localStorage.setItem(LS_KEY,JSON.stringify({version:4,savedAt:new Date().toISOString(),master:S.master,beans:beansNoPhoto,roastRecords:S.roastRecords,tasteRecords:S.tasteRecords}));
+        localStorage.setItem(LS_PENDING,'1');
+        console.warn('saveLocal: 写真を除いて保存（容量不足）');
+        // ★ 写真は別キーで個別保存
+        S.beans.forEach(b=>{if(b.photo)try{localStorage.setItem('rj_photo_'+b.id,b.photo);}catch(e2){console.warn('写真の個別保存も失敗:',b.id);}});
+      }catch(e2){console.warn('saveLocal fallback failed:',e2);}
+    }else{console.warn('saveLocal:',e);}
+  }
 }
 function loadLocal(){
   try{
@@ -255,7 +270,11 @@ function loadLocal(){
       S.master.varieties=migrateMasterArr(data.master.varieties||[]);
       if(data.master.brews)S.master.brews=data.master.brews;
     }
-    if(data.beans)S.beans=data.beans;
+    if(data.beans){
+      S.beans=data.beans;
+      // 容量不足で個別保存されていた写真を復元
+      S.beans.forEach(b=>{if(!b.photo){const p=localStorage.getItem('rj_photo_'+b.id);if(p)b.photo=p;}});
+    }
     if(data.roastRecords)S.roastRecords=data.roastRecords;
     if(data.tasteRecords)S.tasteRecords=data.tasteRecords;
     return true;
@@ -584,6 +603,17 @@ async function loadFromDrive(){
         else if(strategy==='merge') S[collKey]=mergeRecords(localArr,res.data[driveKey]||[],true);
         else if(strategy==='local'||strategy==='noop'){/* ローカル維持 */}
         S[modKey]=res.modifiedTime||S[modKey]; // Drive modifiedTime を更新
+        // ★ 写真はローカルからのみ存在する場合があるため、常にローカル写真を補完
+        if(collKey==='beans'){
+          S.beans=S.beans.map(b=>{
+            if(b.photo)return b; // Drive側に写真あり → そのまま
+            const lb=localArr.find(x=>x.id===b.id);
+            if(lb&&lb.photo)return{...b,photo:lb.photo}; // ローカル写真を復元
+            // 個別保存キーも確認
+            const stored=localStorage.getItem('rj_photo_'+b.id);
+            return stored?{...b,photo:stored}:b;
+          });
+        }
       };
       applyStrategy(beansRes,localBeans,'beans',        'driveBeansMod','beans');
       applyStrategy(roastRes,localRoast,'roastRecords', 'driveRoastMod','roastRecords');
