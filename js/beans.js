@@ -119,9 +119,21 @@ function previewBeanPhoto(input){
   const file=input.files[0];if(!file)return;
   const r=new FileReader();
   r.onload=e=>{
-    const img=document.getElementById('b-photo-preview');img.src=e.target.result;img.style.display='block';
-    S.beanPhotoData=e.target.result;
-    const del=document.getElementById('b-photo-delete-btn');if(del)del.style.display='block';
+    const imgEl=new Image();
+    imgEl.onload=()=>{
+      const MAX=1024;
+      const scale=Math.min(1,MAX/Math.max(imgEl.width,imgEl.height));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.round(imgEl.width*scale);
+      canvas.height=Math.round(imgEl.height*scale);
+      canvas.getContext('2d').drawImage(imgEl,0,0,canvas.width,canvas.height);
+      const compressed=canvas.toDataURL('image/jpeg',0.70);
+      const preview=document.getElementById('b-photo-preview');
+      preview.src=compressed;preview.style.display='block';
+      S.beanPhotoData=compressed;
+      const del=document.getElementById('b-photo-delete-btn');if(del)del.style.display='block';
+    };
+    imgEl.src=e.target.result;
   };
   r.readAsDataURL(file);
 }
