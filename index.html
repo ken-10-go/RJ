@@ -215,7 +215,17 @@ select.inp{cursor:pointer;}
 }
 .footer-grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;margin-bottom:5px;}
 .footer-grid-4:last-child{margin-bottom:0;}
-.ctrl-footer{padding:13px 4px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:14px;text-transform:none;letter-spacing:.01em;font-weight:600;transition:all .2s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;}
+.ctrl-footer{border:none;border-radius:14px;padding:8px 4px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:transform .12s ease,filter .12s ease;position:relative;overflow:hidden;min-height:80px;-webkit-tap-highlight-color:transparent;font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;letter-spacing:0;line-height:1.2;text-align:center;}
+.ctrl-footer::before{content:'';position:absolute;top:0;left:0;right:0;height:40%;background:rgba(255,255,255,0.20);border-radius:14px 14px 50% 50%/14px 14px 16px 16px;pointer-events:none;}
+.ctrl-footer:active{transform:scale(0.96);filter:brightness(0.93);}
+.ctrl-footer svg{width:26px;height:26px;flex-shrink:0;}
+.rf-neutral{background:#f0ddb8;border:1.5px solid #d8b870;box-shadow:0 3px 0 #c0a060,0 4px 12px rgba(160,120,40,0.18);color:#5a3408;}
+.rf-start  {background:#72c472;border:1.5px solid #3d9c3d;box-shadow:0 3px 0 #3d9c3d,0 4px 14px rgba(60,150,60,0.22);color:#0e3a0e;}
+.rf-end    {background:#c85848;border:1.5px solid #a03828;box-shadow:0 3px 0 #a03828,0 4px 14px rgba(160,50,40,0.22);color:#fdf0d8;}
+.rf-pause  {background:#e8b830;border:1.5px solid #b88810;box-shadow:0 3px 0 #b88810,0 4px 14px rgba(190,140,10,0.25);color:#4a2e00;}
+.rf-resume {background:#52b8a0;border:1.5px solid #2a8870;box-shadow:0 3px 0 #2a8870,0 4px 14px rgba(40,140,110,0.22);color:#052e24;}
+.rf-1st    {background:#7a3828;border:1.5px solid #5a2010;box-shadow:0 3px 0 #4a1808,0 4px 14px rgba(100,40,20,0.30);color:#fdf0d8;}
+.rf-2nd    {background:#3a1e10;border:1.5px solid #2a1008;box-shadow:0 3px 0 #1a0804,0 4px 14px rgba(40,20,10,0.35);color:#fdf0d8;}
 /* ===== 焙煎タブ内折りたたみセクション ===== */
 .roast-collapse-hdr{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:8px 0;border-bottom:1px solid rgba(196,122,58,.12);margin-bottom:4px;}
 .roast-collapse-hdr-lbl{font-family:'DM Mono',monospace;font-size:var(--fs-sm);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.1em;}
@@ -275,7 +285,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.44</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.45</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -817,16 +827,47 @@ select.inp{cursor:pointer;}
   <!-- フッター（イベントボタン＋スタート/終了） -->
   <div class="ro-footer">
     <div class="footer-grid-4" style="margin-bottom:5px;">
-      <button id="ro-pause-btn" class="ctrl-footer" onclick="toggleRoastPause()" style="background:#dcfce7;border:1px solid #bbf7d0;color:#16a34a;">▶ スタート<br><span style="font-size:10px;opacity:.8;">開始</span></button>
-      <button class="ctrl-footer c0" onclick="markEventWithTemp('Charge',null)">Charge<br><span style="font-size:10px;opacity:.8;">投入</span></button>
-      <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack Start',1.0)">1st CR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
-      <button class="ctrl-footer c1" onclick="markEventWithTemp('1st Crack End',1.5)">1st CR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
+      <button id="ro-pause-btn" class="ctrl-footer rf-start" onclick="toggleRoastPause()">
+        <svg viewBox="0 0 26 26" fill="none"><polygon points="6,3 22,13 6,23" fill="#0e3a0e" opacity="0.85"/></svg>
+        <span>START</span>
+      </button>
+      <button class="ctrl-footer rf-neutral" onclick="markEventWithTemp('Charge',null)">
+        <svg viewBox="0 0 26 26" fill="none"><path d="M3 3 H23 L17 12 L17 23 L9 23 L9 12 Z" stroke="#5a3408" stroke-width="2" stroke-linejoin="round"/><circle cx="9" cy="7" r="1.4" fill="#5a3408"/><circle cx="13" cy="6" r="1.4" fill="#5a3408"/><circle cx="17" cy="7" r="1.4" fill="#5a3408"/></svg>
+        <span>Charge</span>
+        <span style="font-size:10px;opacity:.75;">投入</span>
+      </button>
+      <button class="ctrl-footer rf-1st" onclick="markEventWithTemp('1st Crack Start',1.0)">
+        <svg viewBox="0 0 26 26" fill="none"><path d="M13 24 Q6 20 7 13 Q8 8 11 7 Q9 11 13 13 Q12 9 16 5 Q21 10 19 16 Q18 22 13 24 Z" stroke="#fdf0d8" stroke-width="1.8" stroke-linejoin="round"/><polygon points="10,12 17,15 10,18" stroke="#fdf0d8" stroke-width="1.5" stroke-linejoin="round" fill="none"/></svg>
+        <span>1st Crack</span>
+        <span style="font-size:10px;opacity:.75;">START</span>
+      </button>
+      <button class="ctrl-footer rf-1st" onclick="markEventWithTemp('1st Crack End',1.5)">
+        <svg viewBox="0 0 26 26" fill="none"><path d="M13 24 Q6 20 7 13 Q8 8 11 7 Q9 11 13 13 Q12 9 16 5 Q21 10 19 16 Q18 22 13 24 Z" stroke="#fdf0d8" stroke-width="1.8" stroke-linejoin="round"/><rect x="10" y="11" width="6" height="6" rx="1.2" stroke="#fdf0d8" stroke-width="1.5"/></svg>
+        <span>1st Crack</span>
+        <span style="font-size:10px;opacity:.75;">END</span>
+      </button>
     </div>
     <div class="footer-grid-4">
-      <button class="ctrl-footer" onclick="openFinishModal()" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;">■ 終了<br><span style="font-size:10px;opacity:.8;">排出</span></button>
-      <button class="ctrl-footer c0" onclick="markEventWithTemp('Steam End',null)">Steam<br><span style="font-size:10px;opacity:.8;">End</span></button>
-      <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack Start',2.0)">2nd CR<br><span style="font-size:10px;opacity:.8;">開始</span></button>
-      <button class="ctrl-footer c2" onclick="markEventWithTemp('2nd Crack End',2.5)">2nd CR<br><span style="font-size:10px;opacity:.8;">終了</span></button>
+      <button class="ctrl-footer rf-end" onclick="openFinishModal()">
+        <svg viewBox="0 0 26 26" fill="none"><rect x="3" y="3" width="20" height="20" rx="3" fill="#fdf0d8" opacity="0.85"/></svg>
+        <span>END</span>
+        <span style="font-size:10px;opacity:.75;">排出</span>
+      </button>
+      <button class="ctrl-footer rf-neutral" onclick="markEventWithTemp('Steam End',null)">
+        <svg viewBox="0 0 26 26" fill="none"><path d="M8 17 Q7 13 8 9 Q9 6 8 3" stroke="#5a3408" stroke-width="1.7" stroke-linecap="round"/><path d="M13 17 Q12 13 13 9 Q14 6 13 3" stroke="#5a3408" stroke-width="1.7" stroke-linecap="round"/><path d="M18 17 Q17 13 18 9 Q19 6 18 3" stroke="#5a3408" stroke-width="1.7" stroke-linecap="round"/><line x1="4" y1="22" x2="22" y2="22" stroke="#5a3408" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>Steam</span>
+        <span style="font-size:10px;opacity:.75;">End</span>
+      </button>
+      <button class="ctrl-footer rf-2nd" onclick="markEventWithTemp('2nd Crack Start',2.0)">
+        <svg viewBox="0 0 26 26" fill="none"><path d="M13 25 Q5 20 6 12 Q7 7 10 6 Q8 11 13 13 Q11 8 16 4 Q22 10 20 16 Q19 23 13 25 Z" stroke="#fdf0d8" stroke-width="1.9" stroke-linejoin="round"/><path d="M13 20 Q10 18 11 15 Q13 16 14 14 Q16 17 15 19 Z" stroke="#fdf0d8" stroke-width="1.4" fill="none"/><polygon points="10,12 17,15 10,18" stroke="#fdf0d8" stroke-width="1.5" stroke-linejoin="round" fill="none"/></svg>
+        <span>2nd Crack</span>
+        <span style="font-size:10px;opacity:.75;">START</span>
+      </button>
+      <button class="ctrl-footer rf-2nd" onclick="markEventWithTemp('2nd Crack End',2.5)">
+        <svg viewBox="0 0 26 26" fill="none"><path d="M13 25 Q5 20 6 12 Q7 7 10 6 Q8 11 13 13 Q11 8 16 4 Q22 10 20 16 Q19 23 13 25 Z" stroke="#fdf0d8" stroke-width="1.9" stroke-linejoin="round"/><path d="M13 20 Q10 18 11 15 Q13 16 14 14 Q16 17 15 19 Z" stroke="#fdf0d8" stroke-width="1.4" fill="none"/><rect x="10" y="11" width="6" height="6" rx="1.2" stroke="#fdf0d8" stroke-width="1.5"/></svg>
+        <span>2nd Crack</span>
+        <span style="font-size:10px;opacity:.75;">END</span>
+      </button>
     </div>
   </div>
 </div>

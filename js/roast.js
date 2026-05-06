@@ -222,9 +222,9 @@ function showRoastOverlay(){
   const ivlRow=document.getElementById('ocr-interval-row');if(ivlRow)ivlRow.style.display='block';
   updateIntervalSelector();
   if(!S.roastRunning){
-    // 準備中状態：「▶ スタート」ボタン表示（カメラは手動起動）
+    // 準備中状態：「START」ボタン表示（カメラは手動起動）
     const pb=document.getElementById('ro-pause-btn');
-    if(pb){pb.innerHTML='▶ スタート<br><span style="font-size:10px;opacity:.8;">開始</span>';pb.style.background='#dcfce7';pb.style.borderColor='#bbf7d0';pb.style.color='#16a34a';}
+    if(pb){pb.className='ctrl-footer rf-start';pb.innerHTML='<svg viewBox="0 0 26 26" fill="none"><polygon points="6,3 22,13 6,23" fill="#0e3a0e" opacity="0.85"/></svg><span>START</span>';}
     const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='準備中';
     // 新焙煎（elapsed=0）のときチャートとタイムラインをリセット
     if(S.elapsed===0){
@@ -242,7 +242,7 @@ function hideRoastOverlay(){
 function doStartRoast(){
   S.roastRunning=true;
   const pb=document.getElementById('ro-pause-btn');
-  if(pb){pb.innerHTML='⏸ 停止<br><span style="font-size:10px;opacity:.8;">一時停止</span>';pb.style.background='#dcfce7';pb.style.borderColor='#bbf7d0';pb.style.color='#16a34a';}
+  if(pb){pb.className='ctrl-footer rf-pause';pb.innerHTML='<svg viewBox="0 0 26 26" fill="none"><rect x="4" y="3" width="7" height="20" rx="2.5" fill="#4a2e00" opacity="0.82"/><rect x="15" y="3" width="7" height="20" rx="2.5" fill="#4a2e00" opacity="0.82"/></svg><span>STOP</span>';}
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='焙煎中';
   S.timerInterval=setInterval(()=>{S.elapsed++;updateTimer();},1000);
   if(!roastChart)initRoastChart();
@@ -271,7 +271,7 @@ function pauseRoast(){
   // OCRカウントダウンも一時停止（APIリクエスト節約）
   if(ocrCDInterval){clearInterval(ocrCDInterval);ocrCDInterval=null;}
   const pb=document.getElementById('ro-pause-btn');
-  if(pb){pb.innerHTML='▶ 再開<br><span style="font-size:10px;opacity:.8;">再開</span>';pb.style.background='#dcfce7';pb.style.borderColor='#bbf7d0';pb.style.color='#16a34a';}
+  if(pb){pb.className='ctrl-footer rf-resume';pb.innerHTML='<svg viewBox="0 0 26 26" fill="none"><polygon points="6,3 22,13 6,23" fill="#052e24" opacity="0.85"/></svg><span>RESUME</span>';}
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='一時停止中';
   const td=document.getElementById('timer-status');if(td)td.textContent='一時停止中';
   const rb=document.getElementById('roast-btn');if(rb)rb.textContent='▶ 再開';
