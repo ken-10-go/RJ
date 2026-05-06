@@ -284,7 +284,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.49</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.50</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -885,6 +885,17 @@ select.inp{cursor:pointer;}
   <button onclick="location.reload(true)" style="background:#fff;color:#7c5c3e;border:none;border-radius:8px;padding:5px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">更新</button>
   <button onclick="document.getElementById('update-banner').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:20px;cursor:pointer;padding:0 2px;line-height:1;">✕</button>
 </div>
+<!-- アプリ終了確認モーダル（バックジェスチャー用） -->
+<div id="exit-confirm-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:24px 20px;width:280px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.25);">
+    <p style="font-size:16px;font-weight:700;color:#2a1810;margin-bottom:8px;">アプリを終了しますか？</p>
+    <p style="font-size:13px;color:#8b6f4d;margin-bottom:20px;">ホーム画面に戻ります</p>
+    <div style="display:flex;gap:10px;">
+      <button onclick="exitConfirmNo()" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #d0b080;background:#faf8f5;color:#5a3408;font-size:14px;font-weight:600;cursor:pointer;">キャンセル</button>
+      <button onclick="exitConfirmYes()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#dc2626;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">終了する</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="js/constants.js"></script>
@@ -898,5 +909,20 @@ select.inp{cursor:pointer;}
 <script src="js/init.js"></script>
 <!-- smoke_test: 開発時にコメントアウトを外して使用 -->
 <!-- <script src="js/smoke_test.js"></script> -->
+<script>
+// Service Worker 登録
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+// 終了確認モーダル
+function exitConfirmYes(){
+  document.getElementById('exit-confirm-overlay').style.display='none';
+  history.go(-1);
+}
+function exitConfirmNo(){
+  document.getElementById('exit-confirm-overlay').style.display='none';
+  history.pushState({rjSentinel:true},'');
+}
+</script>
 </body>
 </html>

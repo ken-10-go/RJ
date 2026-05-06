@@ -722,18 +722,17 @@ function updateRoastChart(){
 // 誤終了防止: ページロード時にセンチネル履歴を1つ積む
 history.pushState({rjSentinel:true},'');
 
-// popstate: 焙煎中→ブロック＋toast、焙煎外→終了確認ダイアログ
+// popstate: 焙煎中→ブロック＋toast、焙煎外→カスタム終了確認モーダル
 window.addEventListener('popstate',()=>{
   if(S.roastRunning){
-    // 焙煎中は即座に積み直してブロック（setTimeout で iOS タイミング対策）
-    setTimeout(()=>history.pushState({rjSentinel:true},''),0);
+    // 焙煎中は即座に積み直してブロック
+    history.pushState({rjSentinel:true},'');
     toast('焙煎中です。END ボタンで終了してください');
   } else {
-    // 焙煎外: 終了確認
-    if(!confirm('アプリを終了しますか？')){
-      // キャンセル → センチネルを積み直して留まる
-      setTimeout(()=>history.pushState({rjSentinel:true},''),0);
-    }
-    // OK → 何もしない（ブラウザが前ページへ戻る）
+    // センチネルを積み直してから確認モーダルを表示
+    // （モーダルで「終了する」→ history.go(-1)、「キャンセル」→ pushState で留まる）
+    history.pushState({rjSentinel:true},'');
+    const ov=document.getElementById('exit-confirm-overlay');
+    if(ov) ov.style.display='flex';
   }
 });
