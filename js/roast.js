@@ -244,7 +244,7 @@ function doStartRoast(){
   const pb=document.getElementById('ro-pause-btn');
   if(pb){pb.className='ctrl-footer rf-pause';pb.innerHTML='<svg viewBox="0 0 26 26" fill="none"><rect x="4" y="3" width="7" height="20" rx="2.5" fill="#4a2e00" opacity="0.82"/><rect x="15" y="3" width="7" height="20" rx="2.5" fill="#4a2e00" opacity="0.82"/></svg><span>STOP</span>';}
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='焙煎中';
-  S.timerInterval=setInterval(()=>{S.elapsed++;updateTimer();if(S.elapsed%5===0)saveActiveRoast();},1000);
+  S.timerInterval=setInterval(()=>{S.elapsed++;updateTimer();saveActiveRoast();},1000);
   if(!roastChart)initRoastChart();
   // カメラが既に起動中ならOCRカウントダウンを開始（停止中は手動起動）
   if(cameraStream&&!ocrCDInterval){
@@ -255,6 +255,7 @@ function doStartRoast(){
     },1000);
   }
   toast('焙煎を開始しました');
+  saveActiveRoast(); // 開始直後に即時保存
 }
 function toggleRoastPause(){if(!S.roastRunning)resumeRoast();else pauseRoast();}
 function toggleRoast(){if(!S.roastRunning)resumeRoast();else pauseRoast();}
@@ -275,6 +276,7 @@ function pauseRoast(){
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='一時停止中';
   const td=document.getElementById('timer-status');if(td)td.textContent='一時停止中';
   const rb=document.getElementById('roast-btn');if(rb)rb.textContent='▶ 再開';
+  saveActiveRoast(); // 一時停止時にも保存
 }
 function openFinishModal(){
   if(!S.currentRoast){toast('焙煎を開始してください');return;}
@@ -725,7 +727,7 @@ function updateRoastChart(){
 const ACTIVE_ROAST_KEY='rj_active_roast';
 
 function saveActiveRoast(){
-  if(!S.roastRunning||!S.currentRoast)return;
+  if(!S.currentRoast)return; // roastRunning は問わない（一時停止中も保存）
   try{
     localStorage.setItem(ACTIVE_ROAST_KEY,JSON.stringify({
       currentRoast:S.currentRoast,
