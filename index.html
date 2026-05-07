@@ -17,7 +17,7 @@
 <style>
 :root{--c-bg:#faf8f5;--c-surface:#ffffff;--c-text:#2a1810;--c-text-muted:#8b6f4d;--c-accent:#d97706;--c-accent-light:#fbbf24;--c-danger:#dc2626;--c-green:#059669;--border:rgba(192,132,86,0.15);--fs-base:14px;--fs-sm:14px;--fs-xs:12px;--fs-mono:13px;--nav-h:60px;--radius-card:16px;--shadow-sm:0 1px 3px rgba(0,0,0,0.08);--shadow-md:0 2px 8px rgba(0,0,0,0.12);--shadow-lg:0 8px 24px rgba(0,0,0,0.15);}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;overflow:hidden;}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
 body{font-family:'Poppins',sans-serif;background:var(--c-bg);color:var(--c-text);font-size:var(--fs-base);}
 #app{max-width:430px;margin:0 auto;background:var(--c-bg);height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;}
 .topbar{background:var(--c-bg);border-bottom:1px solid var(--border);padding:calc(14px + env(safe-area-inset-top,0px)) 18px 12px;flex-shrink:0;}
@@ -284,7 +284,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.54</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.55</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -917,8 +917,9 @@ if('serviceWorker' in navigator){
 // 終了確認モーダル
 function exitConfirmYes(){
   document.getElementById('exit-confirm-overlay').style.display='none';
-  _exitConfirmed=true; // 次のナビゲーションイベントをスルーさせる
-  history.back();      // アプリを終了
+  // overscroll-behavior:none でスワイプバックは無効。
+  // popstate 経由で来た場合は sentinel を消費済みなので、もう一度バックでアプリ終了。
+  history.back();
 }
 function exitConfirmNo(){
   document.getElementById('exit-confirm-overlay').style.display='none';

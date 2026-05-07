@@ -720,42 +720,19 @@ function updateRoastChart(){
 }
 
 // ── 誤終了防止 ──────────────────────────────────────────
-// センチネルを積む（両パス共通）
-// → バックジェスチャーを「同一ドキュメント内の traverse」にするために必須
-//    sentinel がないと cross-document 扱いになり e.cancelable=false でキャンセル不可
+// CSS overscroll-behavior:none (index.html の html,body に設定済み) で
+// Android Chrome のスワイプバックジェスチャーそのものを無効化している。
+// 物理バックボタン対応として popstate も残す（フォールバック）。
 history.pushState({rjSentinel:true},'');
-
-let _exitConfirmed=false;
-
-if('navigation' in window){
-  // ── Navigation API (Android Chrome 102+) ──────────────────
-  // e.preventDefault() で traverse をキャンセル（sentinel があるので same-document）
-  // 「終了する」後は sentinel を消費してから navigate を 1 回スルーさせる
-  navigation.addEventListener('navigate',e=>{
-    if(e.navigationType!=='traverse') return;
-    if(_exitConfirmed){_exitConfirmed=false;return;}
-    if(!e.cancelable) return;
-    e.preventDefault();
-    if(S.roastRunning){
-      toast('焙煎中です。END ボタンで終了してください');
-    } else {
+window.addEventListener('popstate',()=>{
+  if(S.roastRunning){
+    setTimeout(()=>history.pushState({rjSentinel:true},''),0);
+    toast('焙煎中です。END ボタンで終了してください');
+  } else {
+    setTimeout(()=>{
+      history.pushState({rjSentinel:true},'');
       const ov=document.getElementById('exit-confirm-overlay');
       if(ov) ov.style.display='flex';
-    }
-  });
-} else {
-  // ── History API fallback (iOS Safari 等) ──────────────────
-  window.addEventListener('popstate',()=>{
-    if(_exitConfirmed){_exitConfirmed=false;return;}
-    if(S.roastRunning){
-      setTimeout(()=>history.pushState({rjSentinel:true},''),0);
-      toast('焙煎中です。END ボタンで終了してください');
-    } else {
-      setTimeout(()=>{
-        history.pushState({rjSentinel:true},'');
-        const ov=document.getElementById('exit-confirm-overlay');
-        if(ov) ov.style.display='flex';
-      },0);
-    }
-  });
-}
+    },0);
+  }
+});
