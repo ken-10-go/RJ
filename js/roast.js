@@ -722,16 +722,29 @@ function updateRoastChart(){
 // 誤終了防止: ページロード時にセンチネル履歴を1つ積む
 history.pushState({rjSentinel:true},'');
 
-// popstate: 焙煎中→ブロック＋toast、焙煎外→終了確認モーダル
-// 【重要】焙煎外ではここでセンチネルを積まない
-//   → 「終了する」ならモーダルを閉じるだけで次回スワイプが自然終了
-//   → 「キャンセル」なら exitConfirmNo() でセンチネルを復元
+// 「終了する」確定フラグ: true のとき次の popstate をスルーする
+let _exitConfirmed=false;
+
+// popstate ハンドラ
+// Android Chrome では popstate 内の同期 pushState が無視されるため必ず setTimeout(0) で遅延する
 window.addEventListener('popstate',()=>{
+  if(_exitConfirmed){
+    // 「終了する」確定後の popstate → スルーしてアプリを終了させる
+    _exitConfirmed=false;
+    return;
+  }
   if(S.roastRunning){
-    history.pushState({rjSentinel:true},'');
+    // 焙煎中: 即座にセンチネルを積み直してブロック
+    setTimeout(()=>history.pushState({rjSentinel:true},''),0);
     toast('焙煎中です。END ボタンで終了してください');
   } else {
-    const ov=document.getElementById('exit-confirm-overlay');
-    if(ov) ov.style.display='flex';
+    // 焙煎外: センチネルを積み直してからモーダル表示
+    // → 「終了する」は history.back() でセンチネルを消費してアプリ終了
+    // → 「キャンセル」はそのまま（センチネルは積まれ済み）
+    setTimeout(()=>{
+      history.pushState({rjSentinel:true},'');
+      const ov=document.getElementById('exit-confirm-overlay');
+      if(ov) ov.style.display='flex';
+    },0);
   }
 });
