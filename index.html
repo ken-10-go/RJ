@@ -284,7 +284,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.59</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.60</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -880,6 +880,16 @@ select.inp{cursor:pointer;}
   <button onclick="restoreRoastOverlay()" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap;">戻る ▲</button>
 </div>
 
+<!-- 焙煎再開バナー -->
+<div id="resume-roast-banner" style="display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:10001;background:#3a1f0d;color:#fff;padding:10px 14px;box-sizing:border-box;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);">
+  <span style="font-size:18px;">☕</span>
+  <div style="flex:1;min-width:0;">
+    <div style="font-size:12px;font-family:'Poppins',sans-serif;font-weight:700;">前回の焙煎を再開しますか？</div>
+    <div id="resume-roast-info" style="font-size:11px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+  </div>
+  <button onclick="resumeSavedRoast()" style="background:#d97706;border:none;color:#fff;border-radius:8px;padding:5px 12px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;">再開</button>
+  <button onclick="discardSavedRoast()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">破棄</button>
+</div>
 <div id="update-banner" style="display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:10000;background:#7c5c3e;color:#fff;padding:10px 16px;box-sizing:border-box;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.3);">
   <span style="flex:1;font-size:13px;font-family:'Poppins',sans-serif;">🆕 新しいバージョン（<span id="update-banner-ver"></span>）があります</span>
   <button onclick="doAppUpdate()" style="background:#fff;color:#7c5c3e;border:none;border-radius:8px;padding:5px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">更新</button>

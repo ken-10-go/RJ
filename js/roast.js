@@ -244,7 +244,7 @@ function doStartRoast(){
   const pb=document.getElementById('ro-pause-btn');
   if(pb){pb.className='ctrl-footer rf-pause';pb.innerHTML='<svg viewBox="0 0 26 26" fill="none"><rect x="4" y="3" width="7" height="20" rx="2.5" fill="#4a2e00" opacity="0.82"/><rect x="15" y="3" width="7" height="20" rx="2.5" fill="#4a2e00" opacity="0.82"/></svg><span>STOP</span>';}
   const sl=document.getElementById('ro-status-lbl');if(sl)sl.textContent='焙煎中';
-  S.timerInterval=setInterval(()=>{S.elapsed++;updateTimer();},1000);
+  S.timerInterval=setInterval(()=>{S.elapsed++;updateTimer();if(S.elapsed%5===0)saveActiveRoast();},1000);
   if(!roastChart)initRoastChart();
   // カメラが既に起動中ならOCRカウントダウンを開始（停止中は手動起動）
   if(cameraStream&&!ocrCDInterval){
@@ -311,6 +311,7 @@ function finishRoast(){
   const dtr=S.firstCrackTime!==null&&S.elapsed>0?parseFloat(((S.elapsed-S.firstCrackTime)/S.elapsed*100).toFixed(1)):null;
   pushUndo();
   S.roastRecords.push({...S.currentRoast,endTime:new Date().toISOString(),duration:S.elapsed,tempData:[...S.tempData],timeData:[...S.timeData],events:[...S.events],finalTemp:S.tempData.length?S.tempData[S.tempData.length-1]:null,roastLevel:rl,weightBefore:wb,weightAfter:wa,yieldPct,dtr,memo:'',updatedAt:new Date().toISOString()});
+  clearActiveRoast();
   S.currentRoast=null;S.elapsed=0;S.tempData=[];S.timeData=[];S.events=[];S.firstCrackTime=null;
   renderEventChips();
   const rtd=document.getElementById('ro-timer');if(rtd)rtd.textContent='00:00';
@@ -331,6 +332,7 @@ function discardRoast(){
   if(ocrCDInterval){clearInterval(ocrCDInterval);ocrCDInterval=null;}
   const ivlRow=document.getElementById('ocr-interval-row');if(ivlRow)ivlRow.style.display='none';
   stopCameraOCR();
+  clearActiveRoast();
   S.currentRoast=null;S.elapsed=0;S.tempData=[];S.timeData=[];S.events=[];S.firstCrackTime=null;
   renderEventChips();
   ocrIntervalSec=OCR_PHASE_INTERVALS.preheat;
@@ -719,15 +721,69 @@ function updateRoastChart(){
   if(cs&&cs.style.maxHeight&&cs.style.maxHeight!=='0px')cs.style.maxHeight=cs.scrollHeight+'px';
 }
 
-// ── スワイプバック完全無効化 ──────────────────────────────
-// 起動時にセンチネルを5つ積む（バッファ）。
-// popstate ごとに同期で3つ積み直す（setTimeout なし: Android のジェスチャーコミット前に実行）。
+// ── 焙煎状態 自動保存 / 復元 ────────────────────────────
+const ACTIVE_ROAST_KEY='rj_active_roast';
 
-(()=>{for(let i=0;i<5;i++)history.pushState({rjSentinel:true},'');})();
-window.addEventListener('popstate',()=>{
-  // 同期呼び出しで即座に積み直す
-  history.pushState({rjSentinel:true},'');
-  history.pushState({rjSentinel:true},'');
-  history.pushState({rjSentinel:true},'');
-  if(S.roastRunning) toast('焙煎中です。END ボタンで終了してください');
-});
+function saveActiveRoast(){
+  if(!S.roastRunning||!S.currentRoast)return;
+  try{
+    localStorage.setItem(ACTIVE_ROAST_KEY,JSON.stringify({
+      currentRoast:S.currentRoast,
+      elapsed:S.elapsed,
+      tempData:[...S.tempData],
+      timeData:[...S.timeData],
+      events:[...S.events],
+      firstCrackTime:S.firstCrackTime,
+      savedAt:new Date().toISOString()
+    }));
+  }catch(e){}
+}
+
+function clearActiveRoast(){
+  localStorage.removeItem(ACTIVE_ROAST_KEY);
+}
+
+function checkActiveRoast(){
+  try{
+    const raw=localStorage.getItem(ACTIVE_ROAST_KEY);
+    if(!raw)return;
+    const saved=JSON.parse(raw);
+    if(!saved||!saved.currentRoast)return;
+    // 12時間以上前なら破棄
+    if(Date.now()-new Date(saved.savedAt).getTime()>12*3600*1000){clearActiveRoast();return;}
+    const banner=document.getElementById('resume-roast-banner');
+    if(!banner)return;
+    const bean=S.beans.find(b=>b.id===saved.currentRoast.beanId);
+    const name=bean?bean.name:'豆';
+    const mm=Math.floor(saved.elapsed/60).toString().padStart(2,'0');
+    const ss=(saved.elapsed%60).toString().padStart(2,'0');
+    document.getElementById('resume-roast-info').textContent=name+' — '+mm+':'+ss+' 経過';
+    banner._savedRoast=saved;
+    banner.style.display='flex';
+  }catch(e){}
+}
+
+function resumeSavedRoast(){
+  const banner=document.getElementById('resume-roast-banner');
+  if(!banner||!banner._savedRoast)return;
+  const saved=banner._savedRoast;
+  banner.style.display='none';
+  clearActiveRoast();
+  // 状態を復元
+  S.currentRoast=saved.currentRoast;
+  S.elapsed=saved.elapsed;
+  S.tempData=saved.tempData||[];
+  S.timeData=saved.timeData||[];
+  S.events=saved.events||[];
+  S.firstCrackTime=saved.firstCrackTime;
+  // 一時停止状態でオーバーレイを開く（ユーザーが RESUME ボタンで再開）
+  showRoastOverlay();
+  toast('焙煎データを復元しました。RESUMEで再開できます');
+}
+
+function discardSavedRoast(){
+  const banner=document.getElementById('resume-roast-banner');
+  if(banner)banner.style.display='none';
+  clearActiveRoast();
+  toast('前回の焙煎データを破棄しました');
+}

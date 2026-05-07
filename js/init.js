@@ -54,3 +54,4 @@ if(S.driveToken)loadFromDrive();
 setOcrMode(ocrMode);
 loadGeminiKeyStatus();
 // 自動チェックなし — バージョン表示タップで手動確認
+safeCall(checkActiveRoast,'checkActiveRoast');
