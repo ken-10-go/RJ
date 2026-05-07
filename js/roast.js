@@ -720,18 +720,22 @@ function updateRoastChart(){
 }
 
 // ── 誤終了防止 ──────────────────────────────────────────
-// 戦略: Navigation API (Chrome 102+) を優先。未対応ブラウザは History API fallback。
+// センチネルを積む（両パス共通）
+// → バックジェスチャーを「同一ドキュメント内の traverse」にするために必須
+//    sentinel がないと cross-document 扱いになり e.cancelable=false でキャンセル不可
+history.pushState({rjSentinel:true},'');
 
-let _exitConfirmed=false; // 「終了する」確定フラグ
+let _exitConfirmed=false;
 
 if('navigation' in window){
-  // ── Navigation API (Android Chrome / Pixel) ──────────────
-  // traverse = バック/フォワードジェスチャー
-  // e.preventDefault() で実際のナビゲーションをキャンセルできる
+  // ── Navigation API (Android Chrome 102+) ──────────────────
+  // e.preventDefault() で traverse をキャンセル（sentinel があるので same-document）
+  // 「終了する」後は sentinel を消費してから navigate を 1 回スルーさせる
   navigation.addEventListener('navigate',e=>{
     if(e.navigationType!=='traverse') return;
-    if(_exitConfirmed){_exitConfirmed=false;return;} // 終了確定後はスルー
-    e.preventDefault(); // ナビゲーションをキャンセル
+    if(_exitConfirmed){_exitConfirmed=false;return;}
+    if(!e.cancelable) return;
+    e.preventDefault();
     if(S.roastRunning){
       toast('焙煎中です。END ボタンで終了してください');
     } else {
@@ -740,8 +744,7 @@ if('navigation' in window){
     }
   });
 } else {
-  // ── History API fallback (iOS Safari 等) ─────────────────
-  history.pushState({rjSentinel:true},'');
+  // ── History API fallback (iOS Safari 等) ──────────────────
   window.addEventListener('popstate',()=>{
     if(_exitConfirmed){_exitConfirmed=false;return;}
     if(S.roastRunning){
