@@ -719,31 +719,13 @@ function updateRoastChart(){
   if(cs&&cs.style.maxHeight&&cs.style.maxHeight!=='0px')cs.style.maxHeight=cs.scrollHeight+'px';
 }
 
-// ── 誤終了防止 ──────────────────────────────────────────
-// popstate をすべてキャッチしてセンチネルを積み直す。
-// 「終了する」後は _exitConfirmed=true にして次の popstate だけスルーさせる。
-//
-// 動作フロー:
-//   スワイプ → popstate → sentinel 積み直し → [焙煎中] toast / [通常] モーダル
-//   「終了する」→ flag set → スワイプ → popstate → flag で素通り → アプリ終了
-//   「キャンセル」→ sentinel は既に積まれているので何もしない
+// ── スワイプバック完全無効化 ──────────────────────────────
+// popstate を常にキャッチしてセンチネルを積み直す → スワイプバック無効。
+// アプリ終了は「最近使ったアプリ」から行う。
+// 焙煎中のみ toast を表示。
 
 history.pushState({rjSentinel:true},'');
-let _exitConfirmed=false;
-
 window.addEventListener('popstate',()=>{
-  if(_exitConfirmed){
-    _exitConfirmed=false;
-    return; // このスワイプはスルーしてアプリを終了させる
-  }
-  if(S.roastRunning){
-    setTimeout(()=>history.pushState({rjSentinel:true},''),0);
-    toast('焙煎中です。END ボタンで終了してください');
-  } else {
-    setTimeout(()=>{
-      history.pushState({rjSentinel:true},'');
-      const ov=document.getElementById('exit-confirm-overlay');
-      if(ov) ov.style.display='flex';
-    },0);
-  }
+  setTimeout(()=>history.pushState({rjSentinel:true},''),0);
+  if(S.roastRunning) toast('焙煎中です。END ボタンで終了してください');
 });
