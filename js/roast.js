@@ -720,12 +720,14 @@ function updateRoastChart(){
 }
 
 // ── スワイプバック完全無効化 ──────────────────────────────
-// popstate を常にキャッチしてセンチネルを積み直す → スワイプバック無効。
-// アプリ終了は「最近使ったアプリ」から行う。
-// 焙煎中のみ toast を表示。
+// 起動時にセンチネルを5つ積む（バッファ）。
+// popstate ごとに同期で3つ積み直す（setTimeout なし: Android のジェスチャーコミット前に実行）。
 
-history.pushState({rjSentinel:true},'');
+(()=>{for(let i=0;i<5;i++)history.pushState({rjSentinel:true},'');})();
 window.addEventListener('popstate',()=>{
-  setTimeout(()=>history.pushState({rjSentinel:true},''),0);
+  // 同期呼び出しで即座に積み直す
+  history.pushState({rjSentinel:true},'');
+  history.pushState({rjSentinel:true},'');
+  history.pushState({rjSentinel:true},'');
   if(S.roastRunning) toast('焙煎中です。END ボタンで終了してください');
 });
