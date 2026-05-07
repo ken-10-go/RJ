@@ -284,7 +284,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.57</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.58</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -882,7 +882,7 @@ select.inp{cursor:pointer;}
 
 <div id="update-banner" style="display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:10000;background:#7c5c3e;color:#fff;padding:10px 16px;box-sizing:border-box;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.3);">
   <span style="flex:1;font-size:13px;font-family:'Poppins',sans-serif;">🆕 新しいバージョン（<span id="update-banner-ver"></span>）があります</span>
-  <button onclick="location.reload(true)" style="background:#fff;color:#7c5c3e;border:none;border-radius:8px;padding:5px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">更新</button>
+  <button onclick="doAppUpdate()" style="background:#fff;color:#7c5c3e;border:none;border-radius:8px;padding:5px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">更新</button>
   <button onclick="document.getElementById('update-banner').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:20px;cursor:pointer;padding:0 2px;line-height:1;">✕</button>
 </div>
 <div class="toast" id="toast"></div>
@@ -903,7 +903,16 @@ select.inp{cursor:pointer;}
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
-// 終了確認モーダル
+// アップデート: SW とキャッシュをすべて削除してからリロード
+async function doAppUpdate(){
+  if('serviceWorker' in navigator){
+    const regs=await navigator.serviceWorker.getRegistrations();
+    for(const r of regs) await r.unregister();
+    const keys=await caches.keys();
+    for(const k of keys) await caches.delete(k);
+  }
+  location.reload(true);
+}
 </script>
 </body>
 </html>
