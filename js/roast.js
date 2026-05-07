@@ -719,32 +719,40 @@ function updateRoastChart(){
   if(cs&&cs.style.maxHeight&&cs.style.maxHeight!=='0px')cs.style.maxHeight=cs.scrollHeight+'px';
 }
 
-// 誤終了防止: ページロード時にセンチネル履歴を1つ積む
-history.pushState({rjSentinel:true},'');
+// ── 誤終了防止 ──────────────────────────────────────────
+// 戦略: Navigation API (Chrome 102+) を優先。未対応ブラウザは History API fallback。
 
-// 「終了する」確定フラグ: true のとき次の popstate をスルーする
-let _exitConfirmed=false;
+let _exitConfirmed=false; // 「終了する」確定フラグ
 
-// popstate ハンドラ
-// Android Chrome では popstate 内の同期 pushState が無視されるため必ず setTimeout(0) で遅延する
-window.addEventListener('popstate',()=>{
-  if(_exitConfirmed){
-    // 「終了する」確定後の popstate → スルーしてアプリを終了させる
-    _exitConfirmed=false;
-    return;
-  }
-  if(S.roastRunning){
-    // 焙煎中: 即座にセンチネルを積み直してブロック
-    setTimeout(()=>history.pushState({rjSentinel:true},''),0);
-    toast('焙煎中です。END ボタンで終了してください');
-  } else {
-    // 焙煎外: センチネルを積み直してからモーダル表示
-    // → 「終了する」は history.back() でセンチネルを消費してアプリ終了
-    // → 「キャンセル」はそのまま（センチネルは積まれ済み）
-    setTimeout(()=>{
-      history.pushState({rjSentinel:true},'');
+if('navigation' in window){
+  // ── Navigation API (Android Chrome / Pixel) ──────────────
+  // traverse = バック/フォワードジェスチャー
+  // e.preventDefault() で実際のナビゲーションをキャンセルできる
+  navigation.addEventListener('navigate',e=>{
+    if(e.navigationType!=='traverse') return;
+    if(_exitConfirmed){_exitConfirmed=false;return;} // 終了確定後はスルー
+    e.preventDefault(); // ナビゲーションをキャンセル
+    if(S.roastRunning){
+      toast('焙煎中です。END ボタンで終了してください');
+    } else {
       const ov=document.getElementById('exit-confirm-overlay');
       if(ov) ov.style.display='flex';
-    },0);
-  }
-});
+    }
+  });
+} else {
+  // ── History API fallback (iOS Safari 等) ─────────────────
+  history.pushState({rjSentinel:true},'');
+  window.addEventListener('popstate',()=>{
+    if(_exitConfirmed){_exitConfirmed=false;return;}
+    if(S.roastRunning){
+      setTimeout(()=>history.pushState({rjSentinel:true},''),0);
+      toast('焙煎中です。END ボタンで終了してください');
+    } else {
+      setTimeout(()=>{
+        history.pushState({rjSentinel:true},'');
+        const ov=document.getElementById('exit-confirm-overlay');
+        if(ov) ov.style.display='flex';
+      },0);
+    }
+  });
+}
