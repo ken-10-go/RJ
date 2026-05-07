@@ -50,6 +50,7 @@ function updateUndoBtn(){
 let activeMultiSelect=null;
 
 // ===== NAV =====
+let _switchingFromHistory=false;
 function switchTab(t){
   const names=['beans','roast','records','taste','analysis','drive'];
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',names[i]===t));
@@ -67,7 +68,22 @@ function switchTab(t){
   if(t==='drive')updateDriveUI();
   if(t==='beans'){renderBeanForm();initFilterButtons();renderBeans();}
   closeAllDropdowns();
+  // タブ履歴をHistoryに積む（popstateから呼ばれた場合は積まない）
+  if(!_switchingFromHistory) history.pushState({rjTab:t},'');
 }
+// 初期タブをHistoryに記録（replaceStateで現在のエントリを上書き）
+history.replaceState({rjTab:'beans'},'');
+// popstate: ブラウザバックでタブを戻す
+window.addEventListener('popstate',e=>{
+  if(e.state&&e.state.rjTab){
+    _switchingFromHistory=true;
+    switchTab(e.state.rjTab);
+    _switchingFromHistory=false;
+  } else {
+    // 履歴がなくなった場合は sentinel を積み直す（アプリ終了防止）
+    history.pushState({rjTab:'beans'},'');
+  }
+});
 // ===== MODAL SWIPE TO CLOSE =====
 function initModalSwipe(overlayId,closeFn){
   const overlay=document.getElementById(overlayId);
