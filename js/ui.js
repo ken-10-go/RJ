@@ -200,11 +200,16 @@ function toggleVariety(id){
   else S.beanSelectedVarietyIds.push(id);
   renderVarietyDropdown();
 }
+// マスタ連番IDヘルパー（タイムスタンプIDを避け、常に max+1 を返す）
+function nextMasterId(type){
+  const arr=S.master[type]||[];
+  return arr.length?Math.max(...arr.map(r=>r.id))+1:1;
+}
 function addVarietyOption(){
   const inp=document.getElementById('variety-add-inp');
   const v=inp.value.trim();if(!v)return;
   let row=S.master.varieties.find(r=>r.name===v&&r.enabled!==false);
-  if(!row){row={id:Date.now(),name:v,enabled:true};S.master.varieties.push(row);masterDirtyTypes.add('varieties');}
+  if(!row){row={id:nextMasterId('varieties'),name:v,enabled:true};S.master.varieties.push(row);masterDirtyTypes.add('varieties');}
   if(!S.beanSelectedVarietyIds.includes(row.id))S.beanSelectedVarietyIds.push(row.id);
   inp.value='';
   renderVarietyDropdown();
@@ -233,7 +238,7 @@ function selectCountry(id){
 function addCountry(){
   const v=document.getElementById('b-country-free').value.trim();if(!v)return;
   let row=S.master.countries.find(r=>r.name===v&&r.enabled!==false);
-  if(!row){row={id:Date.now(),name:v,enabled:true};S.master.countries.push(row);masterDirtyTypes.add('countries');}
+  if(!row){row={id:nextMasterId('countries'),name:v,enabled:true};S.master.countries.push(row);masterDirtyTypes.add('countries');}
   S.beanSelectedCountryId=row.id;
   document.getElementById('b-country-free').value='';
   renderCountryDropdown();closeAllDropdowns();
@@ -253,7 +258,7 @@ function addProcess(){
   const v=document.getElementById('b-process-free').value.trim();if(!v)return;
   const sn=document.getElementById('b-process-shortn').value.trim();
   let row=S.master.processes.find(r=>r.name===v&&r.enabled!==false);
-  if(!row){row={id:Date.now(),name:v,shortN:sn||undefined,enabled:true};S.master.processes.push(row);masterDirtyTypes.add('processes');}
+  if(!row){row={id:nextMasterId('processes'),name:v,shortN:sn||undefined,enabled:true};S.master.processes.push(row);masterDirtyTypes.add('processes');}
   else if(sn&&!row.shortN){row.shortN=sn;masterDirtyTypes.add('processes');}
   if(!S.beanSelectedProcessIds.includes(row.id))S.beanSelectedProcessIds.push(row.id);
   document.getElementById('b-process-free').value='';

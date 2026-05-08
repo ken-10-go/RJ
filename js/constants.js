@@ -47,7 +47,7 @@ function toMasterRows(names){return names.map((name,i)=>({id:i+1,name,enabled:tr
 // 旧形式（文字列配列）を新形式に変換（後方互換）
 function migrateMasterArr(arr){
   if(!arr||!arr.length)return[];
-  if(typeof arr[0]==='string')return arr.map((name,i)=>({id:Date.now()+i,name,enabled:true}));
+  if(typeof arr[0]==='string')return arr.map((name,i)=>({id:i+1,name,enabled:true}));
   return arr;
 }
 // enabled=true のマスタの name 一覧を返すヘルパー
