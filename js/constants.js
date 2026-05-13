@@ -73,25 +73,29 @@ function migrateExistingData(){
       });
       if(JSON.stringify(converted)!==JSON.stringify(b.roastLevels)){b.roastLevels=converted;changed=true;}
     }
-    // ② country: マスタにない国名を追加
-    if(b.country&&!masterNames('countries').includes(b.country)){
-      S.master.countries.push({id:Date.now()+(Math.random()*1000|0),name:b.country,enabled:true});
-      masterDirtyTypes.add('countries');changed=true;
+    // ②③④ Phase 1ビーンのみ: マスタにない名前を追加
+    // countryId が設定済み（Phase 2移行済み）のBeanはスキップ
+    if(b.countryId===undefined){
+      // ② country: マスタにない国名を追加
+      if(b.country&&!masterNames('countries').includes(b.country)){
+        S.master.countries.push({id:Date.now()+(Math.random()*1000|0),name:b.country,enabled:true});
+        masterDirtyTypes.add('countries');changed=true;
+      }
+      // ③ processes: マスタにない精製方法を追加
+      (b.processes||[]).forEach(p=>{
+        if(p&&!masterNames('processes').includes(p)){
+          S.master.processes.push({id:Date.now()+(Math.random()*1000|0),name:p,enabled:true});
+          masterDirtyTypes.add('processes');changed=true;
+        }
+      });
+      // ④ varieties: マスタにない品種を追加
+      (b.varieties||[]).forEach(v=>{
+        if(v&&!masterNames('varieties').includes(v)){
+          S.master.varieties.push({id:Date.now()+(Math.random()*1000|0),name:v,enabled:true});
+          masterDirtyTypes.add('varieties');changed=true;
+        }
+      });
     }
-    // ③ processes: マスタにない精製方法を追加
-    (b.processes||[]).forEach(p=>{
-      if(p&&!masterNames('processes').includes(p)){
-        S.master.processes.push({id:Date.now()+(Math.random()*1000|0),name:p,enabled:true});
-        masterDirtyTypes.add('processes');changed=true;
-      }
-    });
-    // ④ varieties: マスタにない品種を追加
-    (b.varieties||[]).forEach(v=>{
-      if(v&&!masterNames('varieties').includes(v)){
-        S.master.varieties.push({id:Date.now()+(Math.random()*1000|0),name:v,enabled:true});
-        masterDirtyTypes.add('varieties');changed=true;
-      }
-    });
   });
   if(changed){
     saveLocal();
