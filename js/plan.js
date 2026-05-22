@@ -161,8 +161,10 @@ async function _fetchPlanAiAdvice(orderedItems,sessionDate){
     const procs=bean.processIds&&bean.processIds.length?processNamesFromIds(bean.processIds):(bean.processes||[]);
     return`${idx+1}. ${bean.name}（${country}、${procs.join('/')||'精製不明'}）${item.amount}g → ${levelLabel}`;
   }).filter(Boolean);
+  // キャッシュキー: 豆ID・焙煎度・量の組み合わせ（日付は含めない → 同じ計画なら再利用）
+  const cacheKey='plan_'+orderedItems.map(i=>`${i.beanId}:${i.roastLevelVal}:${i.amount}`).join(',');
   const prompt=`コーヒー焙煎のセッション計画について、専門的なアドバイスを日本語で100字以内で教えてください。\n\n焙煎予定:\n${lines.join('\n')}\n\nポイント: 焙煎順序の妥当性、各豆の注意点、機器の温度管理について簡潔にコメントしてください。`;
-  const result=await callGeminiForAnalysis(prompt);
+  const result=await callGeminiForAnalysis(prompt,cacheKey);
   const el=document.getElementById('plan-ai-content');
   if(el)el.innerHTML=result?`<div style="line-height:1.7;font-size:var(--fs-sm);">${result.replace(/\n/g,'<br>')}</div>`:'<span style="color:var(--c-text-muted);">AIアドバイスを取得できませんでした</span>';
 }
@@ -287,8 +289,34 @@ function getPlanSessionWarnings(orderedItems){
   return warnings;
 }
 
+// ===== AI キャッシュ =====
+const AI_CACHE_KEY='rj_ai_cache';
+
+function _getAiCache(key){
+  try{
+    const cache=JSON.parse(localStorage.getItem(AI_CACHE_KEY)||'{}');
+    return cache[key]??null;
+  }catch(e){return null;}
+}
+
+function _setAiCache(key,value){
+  try{
+    const cache=JSON.parse(localStorage.getItem(AI_CACHE_KEY)||'{}');
+    cache[key]=value;
+    // キャッシュが100件を超えたら古いキーを削除（先頭から）
+    const keys=Object.keys(cache);
+    if(keys.length>100)keys.slice(0,keys.length-100).forEach(k=>delete cache[k]);
+    localStorage.setItem(AI_CACHE_KEY,JSON.stringify(cache));
+  }catch(e){console.warn('AI cache write error:',e);}
+}
+
 // ===== Gemini API =====
-async function callGeminiForAnalysis(prompt){
+async function callGeminiForAnalysis(prompt,cacheKey){
+  // キャッシュヒット
+  if(cacheKey){
+    const cached=_getAiCache(cacheKey);
+    if(cached)return cached;
+  }
   const key=typeof getGeminiKey==='function'?getGeminiKey():null;
   if(!key)return null;
   try{
@@ -299,6 +327,8 @@ async function callGeminiForAnalysis(prompt){
                             generationConfig:{maxOutputTokens:256}})}
     );
     const d=await res.json();
-    return d.candidates?.[0]?.content?.parts?.[0]?.text??null;
+    const text=d.candidates?.[0]?.content?.parts?.[0]?.text??null;
+    if(text&&cacheKey)_setAiCache(cacheKey,text);
+    return text;
   }catch(e){console.warn('Gemini API error:',e);return null;}
 }

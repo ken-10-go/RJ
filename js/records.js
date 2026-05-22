@@ -278,8 +278,10 @@ function onEvalRoastSelect(){
 async function _fetchEvalAiComment(r,result){
   const b=S.beans.find(b=>b.id===r.beanId);
   const beanName=b?b.name:'不明';
+  // キャッシュキー: 焙煎記録IDとスコアの組み合わせ（記録編集後にスコアが変わったら再取得）
+  const cacheKey=`eval_${r.id}_${result.total}`;
   const prompt=`焙煎記録のスコアは${result.total}/100点（${getRoastScoreLabel(result.total).label}）です。豆: ${beanName}。内訳: ${result.breakdown.map(x=>x.label+x.score+'点').join(', ')}。この焙煎の改善点を日本語で50字以内で教えてください。`;
-  const text=await callGeminiForAnalysis(prompt);
+  const text=await callGeminiForAnalysis(prompt,cacheKey);
   const el=document.getElementById('eval-ai-content');
   if(el)el.innerHTML=text?`<div style="line-height:1.7;">${text.replace(/\n/g,'<br>')}</div>`:'<span style="color:var(--c-text-muted);">コメントを取得できませんでした</span>';
 }
