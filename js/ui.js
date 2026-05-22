@@ -52,7 +52,7 @@ let activeMultiSelect=null;
 // ===== NAV =====
 let _switchingFromHistory=false;
 function switchTab(t){
-  const names=['beans','roast','records','taste','analysis','drive'];
+  const names=['beans','roast','records','taste','analysis','plan','drive'];
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',names[i]===t));
   const prev=document.querySelector('.section.active');
   if(prev)prev.classList.remove('active');
@@ -65,6 +65,7 @@ function switchTab(t){
   if(t==='analysis')renderAnalysis();
   if(t==='roast'){updateBeanSelect();updateRoastLevelHint();}
   if(t==='taste'){updateTasteSelect();renderRadarChart();renderRadarSliders();}
+  if(t==='plan')renderPlan();
   if(t==='drive')updateDriveUI();
   if(t==='beans'){renderBeanForm();initFilterButtons();renderBeans();}
   closeAllDropdowns();

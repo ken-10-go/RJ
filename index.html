@@ -284,7 +284,7 @@ select.inp{cursor:pointer;}
       <div class="topbar-title"><img src="assets/goto_coffee_banner.svg" alt="Goto Coffee Shaka²" style="height:60px;display:block;"></div>
       <div style="display:flex;align-items:center;gap:10px;height:60px;">
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:100%;padding:4px 0;">
-          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.64</span>
+          <span id="app-version" onclick="checkForUpdate(true)" title="タップしてアップデートを確認" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;border-bottom:1px dashed var(--c-text-muted);white-space:nowrap;">v2.65</span>
           <div class="drive-status" style="font-size:11px;white-space:nowrap;"><div class="drive-dot" id="drive-dot"></div><span id="drive-status-txt" style="color:var(--c-text-muted);">未接続</span></div>
         </div>
         <button id="undo-btn" onclick="undo()" style="background:#fef3c7;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--c-text-muted);cursor:pointer;opacity:0.4;white-space:nowrap;">↩ UNDO</button>
@@ -311,6 +311,10 @@ select.inp{cursor:pointer;}
     <button class="tab" onclick="switchTab('analysis')">
       <span class="tab-icon"><svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24"><line x1="4" y1="24" x2="24" y2="24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="5" y="15" width="4" height="9" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="12" y="9" width="4" height="15" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="19" y="12" width="4" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/></svg></span>
       <span class="tab-lbl">分析</span>
+    </button>
+    <button class="tab" onclick="switchTab('plan')">
+      <span class="tab-icon"><svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24"><rect x="4" y="4" width="20" height="20" rx="2.5" stroke="currentColor" stroke-width="1.8"/><line x1="9" y1="10" x2="19" y2="10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="9" y1="14" x2="19" y2="14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="9" y1="18" x2="15" y2="18" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+      <span class="tab-lbl">計画</span>
     </button>
     <button class="tab" onclick="switchTab('drive')">
       <span class="tab-icon"><svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="14" cy="14" r="4" stroke="currentColor" stroke-width="1.6"/><path d="M14 3 L15.2 6.2 L18.5 5.5 L18.5 8.8 L21.8 9.8 L20 12.6 L23 14 L20 15.4 L21.8 18.2 L18.5 19.2 L18.5 22.5 L15.2 21.8 L14 25 L12.8 21.8 L9.5 22.5 L9.5 19.2 L6.2 18.2 L8 15.4 L5 14 L8 12.6 L6.2 9.8 L9.5 8.8 L9.5 5.5 L12.8 6.2 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
@@ -567,15 +571,66 @@ select.inp{cursor:pointer;}
 
     <!-- ===== 分析 ===== -->
     <div id="tab-analysis" class="section">
-      <div class="card"><div class="card-title">焙煎サマリー</div><div id="analysis-stats"></div></div>
-      <div class="card"><div class="card-title">豆別焙煎回数</div><div class="chart-wrap"><canvas id="analysis-chart" height="180"></canvas></div></div>
-      <div class="card">
-        <div class="card-title">温度カーブ比較</div>
-        <div class="label" style="margin-bottom:6px;">比較する記録を選択</div>
-        <div id="compare-checks" style="margin-bottom:10px;max-height:160px;overflow-y:auto;"></div>
-        <div class="chart-wrap"><canvas id="compare-chart" height="200"></canvas></div>
+      <!-- サブタブバー -->
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+        <button class="btn btn-outline" id="asubtab-btn-eval" onclick="switchAnalysisSubtab('eval')">焙煎評価</button>
+        <button class="btn btn-outline" id="asubtab-btn-session" onclick="switchAnalysisSubtab('session')">セッション評価</button>
+        <button class="btn btn-outline" id="asubtab-btn-trend" onclick="switchAnalysisSubtab('trend')">傾向分析</button>
       </div>
-      <div class="card"><div class="card-title">AIによる焙煎分析</div><button class="btn btn-primary" onclick="runAI()">Claudeに分析を依頼する ↗</button></div>
+      <!-- 焙煎評価 -->
+      <div id="analysis-subtab-eval">
+        <div class="card">
+          <div class="label">焙煎記録を選択</div>
+          <select class="inp" id="eval-roast-select" onchange="onEvalRoastSelect()">
+            <option value="">-- 記録を選択 --</option>
+          </select>
+          <div id="eval-result" style="margin-top:12px;"></div>
+        </div>
+      </div>
+      <!-- セッション評価 -->
+      <div id="analysis-subtab-session" style="display:none">
+        <div class="card">
+          <div class="label">セッション日を選択</div>
+          <select class="inp" id="session-date-select" onchange="onSessionDateSelect()">
+            <option value="">-- 日付を選択 --</option>
+          </select>
+          <div id="session-result" style="margin-top:12px;"></div>
+        </div>
+      </div>
+      <!-- 傾向分析（既存コンテンツ） -->
+      <div id="analysis-subtab-trend" style="display:none">
+        <div class="card"><div class="card-title">焙煎サマリー</div><div id="analysis-stats"></div></div>
+        <div class="card"><div class="card-title">豆別焙煎回数</div><div class="chart-wrap"><canvas id="analysis-chart" height="180"></canvas></div></div>
+        <div class="card">
+          <div class="card-title">温度カーブ比較</div>
+          <div class="label" style="margin-bottom:6px;">比較する記録を選択</div>
+          <div id="compare-checks" style="margin-bottom:10px;max-height:160px;overflow-y:auto;"></div>
+          <div class="chart-wrap"><canvas id="compare-chart" height="200"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 計画 ===== -->
+    <div id="tab-plan" class="section">
+      <!-- 入力フェーズ -->
+      <div id="plan-form-phase">
+        <div class="card">
+          <div class="card-title">焙煎セッション計画</div>
+          <div class="label">セッション日</div>
+          <input type="date" class="inp" id="plan-date">
+          <div class="label" style="margin-top:12px;">焙煎リスト
+            <span style="font-size:var(--fs-xs);color:var(--c-text-muted);margin-left:8px;">豆 / 投入量(g) / 焙煎度</span>
+          </div>
+          <div id="plan-rows"></div>
+          <button class="btn btn-outline" onclick="addPlanRow()" style="margin-top:8px;width:100%;">+ 豆を追加</button>
+          <button class="btn btn-primary" onclick="generatePlanAdvice()" style="margin-top:10px;width:100%;">アドバイスを取得 →</button>
+        </div>
+      </div>
+      <!-- アドバイスフェーズ -->
+      <div id="plan-advice-phase" style="display:none">
+        <button class="btn btn-outline" onclick="backToPlanForm()" style="margin-bottom:10px;">← 編集に戻る</button>
+        <div id="plan-advice-content"></div>
+      </div>
     </div>
 
     <!-- ===== Drive ===== -->
@@ -904,6 +959,7 @@ select.inp{cursor:pointer;}
 <script src="js/ocr.js"></script>
 <script src="js/taste.js"></script>
 <script src="js/records.js"></script>
+<script src="js/plan.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/init.js"></script>
 <!-- smoke_test: 開発時にコメントアウトを外して使用 -->

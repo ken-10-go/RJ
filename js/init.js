@@ -31,7 +31,7 @@ const REQUIRED_FNS=[
   'saveBean','editBean','deleteBean','renderRecords','saveTaste',
   'loadLocal','saveLocal','loadDriveStorage','updateDriveUI','autoSync',
   'toast','switchTab','updateBeanSelect','updateTasteSelect',
-  'migrateUpdatedAt',
+  'migrateUpdatedAt','renderPlan',
 ];
 REQUIRED_FNS.forEach(name=>{
   if(typeof window[name]!=='function')

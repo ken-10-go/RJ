@@ -183,6 +183,24 @@ function closeRecordModal(){document.getElementById('record-modal').classList.re
 
 // ===== ANALYSIS =====
 function renderAnalysis(){
+  switchAnalysisSubtab('eval');
+}
+
+function switchAnalysisSubtab(name){
+  ['eval','session','trend'].forEach(n=>{
+    const pane=document.getElementById('analysis-subtab-'+n);
+    if(pane)pane.style.display=n===name?'':'none';
+    const btn=document.getElementById('asubtab-btn-'+n);
+    if(btn){btn.style.fontWeight=n===name?'700':'400';
+             btn.style.borderColor=n===name?'var(--c-accent)':'var(--border)';}
+  });
+  if(name==='eval')   renderRoastEvalSubtab();
+  if(name==='session')renderSessionEvalSubtab();
+  if(name==='trend')  renderTrendSubtab();
+}
+
+// ----- 傾向分析（旧コンテンツ） -----
+function renderTrendSubtab(){
   const ar=S.roastRecords.filter(r=>!r.deleted);
   const ab=S.beans.filter(b=>!b.deleted);
   const at=S.tasteRecords.filter(t=>!t.deleted);
@@ -190,25 +208,247 @@ function renderAnalysis(){
   renderAnalysisChart();renderCompareSection();
 }
 function renderAnalysisChart(){
-  const ctx=document.getElementById('analysis-chart').getContext('2d');
+  const ctx=document.getElementById('analysis-chart');if(!ctx)return;
   if(analysisChart)analysisChart.destroy();
   const activeBeans=S.beans.filter(b=>!b.deleted);
   const labels=activeBeans.map(b=>b.name);const counts=activeBeans.map(b=>S.roastRecords.filter(r=>r.beanId===b.id&&!r.deleted).length);
-  analysisChart=new Chart(ctx,{type:'bar',data:{labels:labels.length?labels:['データなし'],datasets:[{label:'焙煎回数',data:counts.length?counts:[0],backgroundColor:'rgba(196,122,58,0.5)',borderColor:'#c47a3a',borderWidth:1}]},options:{responsive:true,plugins:{legend:{labels:{color:'#a07850',font:{size:10}}}},scales:{x:{ticks:{color:'#a07850',font:{size:9}},grid:{color:'rgba(196,122,58,0.08)'}},y:{ticks:{color:'#a07850',font:{size:9}},grid:{color:'rgba(196,122,58,0.08)'}}}}});
+  analysisChart=new Chart(ctx.getContext('2d'),{type:'bar',data:{labels:labels.length?labels:['データなし'],datasets:[{label:'焙煎回数',data:counts.length?counts:[0],backgroundColor:'rgba(196,122,58,0.5)',borderColor:'#c47a3a',borderWidth:1}]},options:{responsive:true,plugins:{legend:{labels:{color:'#a07850',font:{size:10}}}},scales:{x:{ticks:{color:'#a07850',font:{size:9}},grid:{color:'rgba(196,122,58,0.08)'}},y:{ticks:{color:'#a07850',font:{size:9}},grid:{color:'rgba(196,122,58,0.08)'}}}}});
 }
 function renderCompareSection(){
-  const el=document.getElementById('compare-checks');
+  const el=document.getElementById('compare-checks');if(!el)return;
   const activeRecs=S.roastRecords.filter(r=>!r.deleted);
   if(!activeRecs.length){el.innerHTML='<div style="color:var(--c-text-muted);font-size:var(--fs-sm);">焙煎記録がありません</div>';return;}
   el.innerHTML=activeRecs.slice().reverse().map(r=>{const b=S.beans.find(b=>b.id===r.beanId&&!b.deleted);return`<div class="compare-check"><input type="checkbox" id="cmp-${r.id}" value="${r.id}" onchange="updateCompareChart()"><label for="cmp-${r.id}" style="font-size:var(--fs-sm);color:var(--c-text);cursor:pointer;">${b?b.name:'不明'} (${new Date(r.startTime).toLocaleDateString('ja-JP')})</label></div>`;}).join('');
 }
 function updateCompareChart(){
   const checked=[...document.querySelectorAll('#compare-checks input:checked')].map(el=>parseInt(el.value));
-  const ctx=document.getElementById('compare-chart').getContext('2d');
+  const ctx=document.getElementById('compare-chart');if(!ctx)return;
   if(compareChart)compareChart.destroy();
   const colors=['#c47a3a','#5a8a3a','#7ab3f5','#e06040','#e8a040','var(--c-green)'];
   const datasets=checked.map((id,i)=>{const r=S.roastRecords.find(r=>r.id===id);const b=S.beans.find(b=>b.id===r.beanId);return{label:(b?b.name:'不明')+' ('+new Date(r.startTime).toLocaleDateString('ja-JP')+')',data:r.tempData,borderColor:colors[i%colors.length],backgroundColor:'transparent',borderWidth:2,pointRadius:1,tension:0.4,fill:false};});
   const labels=checked.length?S.roastRecords.find(r=>r.id===checked[0]).timeData.map(t=>ft(t)):[];
-  compareChart=new Chart(ctx,{type:'line',data:{labels,datasets},options:{responsive:true,plugins:{legend:{labels:{color:'#a07850',font:{size:9}}}},scales:{x:{ticks:{color:'#a07850',font:{size:8},maxTicksLimit:8},grid:{color:'rgba(196,122,58,0.08)'}},y:{ticks:{color:'#a07850',font:{size:8}},grid:{color:'rgba(196,122,58,0.08)'}}}}});
+  compareChart=new Chart(ctx.getContext('2d'),{type:'line',data:{labels,datasets},options:{responsive:true,plugins:{legend:{labels:{color:'#a07850',font:{size:9}}}},scales:{x:{ticks:{color:'#a07850',font:{size:8},maxTicksLimit:8},grid:{color:'rgba(196,122,58,0.08)'}},y:{ticks:{color:'#a07850',font:{size:8}},grid:{color:'rgba(196,122,58,0.08)'}}}}});
 }
+
+// ----- 焙煎評価 -----
+function renderRoastEvalSubtab(){
+  const sel=document.getElementById('eval-roast-select');if(!sel)return;
+  const activeRecs=S.roastRecords.filter(r=>!r.deleted).slice().sort((a,b)=>b.id-a.id);
+  sel.innerHTML='<option value="">-- 記録を選択 --</option>'+activeRecs.map(r=>{
+    const b=S.beans.find(b=>b.id===r.beanId);
+    const dateStr=new Date(r.startTime).toLocaleDateString('ja-JP');
+    return`<option value="${r.id}">${dateStr} — ${b?b.name:'不明'}</option>`;
+  }).join('');
+  document.getElementById('eval-result').innerHTML='';
+}
+
+function onEvalRoastSelect(){
+  const sel=document.getElementById('eval-roast-select');
+  const id=parseInt(sel.value);
+  const el=document.getElementById('eval-result');
+  if(!id){el.innerHTML='';return;}
+  const r=S.roastRecords.find(r=>r.id===id);
+  if(!r){el.innerHTML='';return;}
+  const result=scoreRoast(r);
+  const {label,color}=getRoastScoreLabel(result.total);
+  let html=`<div style="text-align:center;margin-bottom:16px;"><div style="font-size:2.4rem;font-weight:700;color:${color};">${result.total}</div><div style="font-size:var(--fs-sm);color:${color};font-weight:600;">${label} / 100点</div></div>`;
+  html+=`<div class="sync-info" style="margin-bottom:12px;">`;
+  result.breakdown.forEach(item=>{
+    html+=`<div class="sync-row"><span class="sync-label">${item.label}</span><span class="sync-val" style="color:${item.score>=16?'var(--c-green)':item.score>=10?'#f5a623':'#e55'};">${item.score}/20点 <span style="font-size:var(--fs-xs);color:var(--c-text-muted);">${item.note}</span></span></div>`;
+  });
+  html+=`</div>`;
+  if(result.tags.length){
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">`;
+    result.tags.forEach(tag=>{html+=`<span style="background:rgba(196,122,58,0.15);color:var(--c-accent);border-radius:12px;padding:3px 10px;font-size:var(--fs-xs);">${tag}</span>`;});
+    html+=`</div>`;
+  }
+  if(result.comments.length){
+    html+=`<div style="font-size:var(--fs-sm);color:var(--c-text);line-height:1.7;">${result.comments.join('<br>')}</div>`;
+  }
+  el.innerHTML=html;
+
+  // Gemini AI追記
+  const geminiKey=typeof getGeminiKey==='function'?getGeminiKey():null;
+  if(geminiKey){
+    el.innerHTML+=`<div id="eval-ai-section" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"><div style="font-weight:600;font-size:var(--fs-sm);margin-bottom:6px;">🤖 AIコメント</div><div id="eval-ai-content" style="color:var(--c-text-muted);font-size:var(--fs-sm);">生成中...</div></div>`;
+    _fetchEvalAiComment(r,result);
+  }
+}
+
+async function _fetchEvalAiComment(r,result){
+  const b=S.beans.find(b=>b.id===r.beanId);
+  const beanName=b?b.name:'不明';
+  const prompt=`焙煎記録のスコアは${result.total}/100点（${getRoastScoreLabel(result.total).label}）です。豆: ${beanName}。内訳: ${result.breakdown.map(x=>x.label+x.score+'点').join(', ')}。この焙煎の改善点を日本語で50字以内で教えてください。`;
+  const text=await callGeminiForAnalysis(prompt);
+  const el=document.getElementById('eval-ai-content');
+  if(el)el.innerHTML=text?`<div style="line-height:1.7;">${text.replace(/\n/g,'<br>')}</div>`:'<span style="color:var(--c-text-muted);">コメントを取得できませんでした</span>';
+}
+
+function scoreRoast(r){
+  const breakdown=[];
+  const tags=[];
+  const comments=[];
+  let total=0;
+
+  // 1. DTR
+  const dtr=r.dtr!=null?r.dtr:calcDTR(r);
+  let dtrScore=8,dtrNote='データなし';
+  if(dtr!=null){
+    if(dtr>=18&&dtr<=25){dtrScore=20;dtrNote=dtr+'%（良好）';}
+    else if(dtr>=15&&dtr<=28){dtrScore=14;dtrNote=dtr+'%（許容範囲）';}
+    else{dtrScore=8;dtrNote=dtr+'%（範囲外）';}
+    if(dtr<15)comments.push('DTRが短すぎます。発展時間を延ばすと風味が向上します。');
+    if(dtr>28)comments.push('DTRが長すぎます。発展時間が長いと焦げ味が出やすくなります。');
+  }
+  breakdown.push({label:'DTR（発展時間率）',score:dtrScore,note:dtrNote});
+  total+=dtrScore;
+
+  // 2. 重量減少率
+  let wlScore=8,wlNote='データなし';
+  if(r.yieldPct&&r.roastLevel){
+    const loss=100-r.yieldPct;
+    const [lo,hi]=getWeightLossRange(r.roastLevel);
+    if(loss>=lo&&loss<=hi){wlScore=20;wlNote=loss.toFixed(1)+'%（良好）';}
+    else{const d=Math.min(Math.abs(loss-lo),Math.abs(loss-hi));wlScore=Math.max(0,20-d*2|0);wlNote=loss.toFixed(1)+'%（目標'+lo+'-'+hi+'%）';}
+  }
+  breakdown.push({label:'重量減少率',score:wlScore,note:wlNote});
+  total+=wlScore;
+
+  // 3. 1ハゼ温度
+  const fc=r.events?.find(e=>e.label==='1st Crack Start'||e.label.includes('1ハゼ開始')||e.label.includes('1st crack'));
+  let fcTempScore=8,fcTempNote='データなし';
+  if(fc&&fc.temp){
+    const t=fc.temp;
+    if(t>=195&&t<=215){fcTempScore=20;fcTempNote=t+'°C（良好）';}
+    else{const d=Math.min(Math.abs(t-195),Math.abs(t-215));fcTempScore=Math.max(0,20-d|0);fcTempNote=t+'°C（目標195-215°C）';}
+  }
+  breakdown.push({label:'1ハゼ温度',score:fcTempScore,note:fcTempNote});
+  total+=fcTempScore;
+
+  // 4. 1ハゼタイミング
+  let fcTimeScore=8,fcTimeNote='データなし';
+  if(fc&&r.duration&&r.duration>0){
+    const ratio=fc.time/r.duration*100;
+    if(ratio>=65&&ratio<=80){fcTimeScore=20;fcTimeNote=ratio.toFixed(0)+'%（良好）';}
+    else{const d=Math.min(Math.abs(ratio-65),Math.abs(ratio-80));fcTimeScore=Math.max(0,20-d|0);fcTimeNote=ratio.toFixed(0)+'%（目標65-80%）';}
+  }
+  breakdown.push({label:'1ハゼタイミング',score:fcTimeScore,note:fcTimeNote});
+  total+=fcTimeScore;
+
+  // 5. 仕上がり温度
+  let ftScore=8,ftNote='データなし';
+  if(r.finalTemp&&r.roastLevel){
+    const [lo,hi]=getFinishTempRange(r.roastLevel);
+    const t=r.finalTemp;
+    if(t>=lo&&t<=hi){ftScore=20;ftNote=t+'°C（良好）';}
+    else{const d=Math.min(Math.abs(t-lo),Math.abs(t-hi));ftScore=Math.max(0,20-d|0);ftNote=t+'°C（目標'+lo+'-'+hi+'°C）';}
+  }
+  breakdown.push({label:'仕上がり温度',score:ftScore,note:ftNote});
+  total+=ftScore;
+
+  // タグ
+  if(total>=80)tags.push('良い焙煎');
+  if(dtrScore===20)tags.push('DTR最適');
+  if(wlScore===20)tags.push('歩留良好');
+  if(fcTempScore===20)tags.push('1ハゼ温度◎');
+  if(fcTimeScore===20)tags.push('タイミング良好');
+
+  return{total,breakdown,tags,comments};
+}
+
+function calcDTR(r){
+  const fc=r.events?.find(e=>e.label==='1st Crack Start'||e.label.includes('1ハゼ開始'));
+  if(!fc||!r.duration)return null;
+  return Math.round((r.duration-fc.time)/r.duration*1000)/10;
+}
+
+function getFinishTempRange(lv){
+  if(lv<=1.0)return[195,205];
+  if(lv<=1.2)return[197,207];
+  if(lv<=1.5)return[200,210];
+  if(lv<=1.7)return[205,215];
+  if(lv<=2.0)return[210,220];
+  if(lv<=2.2)return[215,225];
+  if(lv<=2.5)return[220,228];
+  return[224,235];
+}
+
+function getWeightLossRange(lv){
+  if(lv<=1.5)return[13,17];
+  if(lv<=2.0)return[15,19];
+  return[18,22];
+}
+
+function getRoastScoreLabel(score){
+  if(score>=80)return{label:'良好',color:'var(--c-green)'};
+  if(score>=60)return{label:'普通',color:'#f5a623'};
+  return{label:'要改善',color:'#e55'};
+}
+
+// ----- セッション評価 -----
+function renderSessionEvalSubtab(){
+  const sel=document.getElementById('session-date-select');if(!sel)return;
+  const dates=getSessionDates();
+  sel.innerHTML='<option value="">-- 日付を選択 --</option>'+dates.map(d=>`<option value="${d}">${d}</option>`).join('');
+  document.getElementById('session-result').innerHTML='';
+}
+
+function onSessionDateSelect(){
+  const sel=document.getElementById('session-date-select');
+  const date=sel.value;
+  const el=document.getElementById('session-result');
+  if(!date){el.innerHTML='';return;}
+  const recs=S.roastRecords.filter(r=>!r.deleted&&r.startTime&&r.startTime.startsWith(date));
+  if(!recs.length){el.innerHTML='<div style="color:var(--c-text-muted);">この日の焙煎記録はありません</div>';return;}
+  const {items,warnings}=evaluateSession(recs);
+  let html='';
+  // 各記録の評価
+  items.forEach((item,idx)=>{
+    const b=S.beans.find(b=>b.id===item.r.beanId);
+    const beanName=b?b.name:'不明';
+    const {total}=scoreRoast(item.r);
+    const {label,color}=getRoastScoreLabel(total);
+    html+=`<div class="sync-info" style="margin-bottom:10px;"><div class="sync-row"><span class="sync-label" style="font-weight:600;">${idx+1}. ${beanName}</span><span class="sync-val" style="color:${color};font-weight:700;">${total}点 (${label})</span></div>`;
+    if(item.tags.length){html+=`<div class="sync-row"><span class="sync-label">タグ</span><span class="sync-val">${item.tags.join(' · ')}</span></div>`;}
+    html+=`</div>`;
+  });
+  // セッション全体警告
+  if(warnings.length){
+    html+=`<div class="label" style="margin:12px 0 8px;">⚠ セッション評価</div>`;
+    warnings.forEach(w=>{
+      html+=`<div style="background:rgba(229,85,85,0.08);border:1px solid rgba(229,85,85,0.3);border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:var(--fs-sm);">${w}</div>`;
+    });
+  }
+  // セッション平均スコア
+  const avgScore=Math.round(items.reduce((a,item)=>a+scoreRoast(item.r).total,0)/items.length);
+  html=`<div style="text-align:center;margin-bottom:14px;"><div style="font-size:1.8rem;font-weight:700;color:${getRoastScoreLabel(avgScore).color};">${avgScore}</div><div style="font-size:var(--fs-sm);color:var(--c-text-muted);">セッション平均スコア</div></div>`+html;
+  el.innerHTML=html;
+}
+
+function getSessionDates(){
+  const dates=[...new Set(S.roastRecords.filter(r=>!r.deleted&&r.startTime).map(r=>r.startTime.slice(0,10)))];
+  return dates.sort((a,b)=>b.localeCompare(a));
+}
+
+function evaluateSession(records){
+  const items=records.map(r=>{
+    const result=scoreRoast(r);
+    return{r,tags:result.tags,score:result.total};
+  });
+  const warnings=[];
+  // 焙煎度の逆転チェック
+  const sorted=records.slice().sort((a,b)=>a.id-b.id);
+  for(let i=1;i<sorted.length;i++){
+    const prev=sorted[i-1],curr=sorted[i];
+    if(prev.roastLevel&&curr.roastLevel&&curr.roastLevel<prev.roastLevel){
+      const pb=S.beans.find(b=>b.id===prev.beanId);
+      const cb=S.beans.find(b=>b.id===curr.beanId);
+      warnings.push(`${pb?pb.name:'前の豆'}（深）→ ${cb?cb.name:'次の豆'}（浅）の順で焙煎。残熱の影響に注意`);
+    }
+  }
+  const avgScore=Math.round(items.reduce((a,i)=>a+i.score,0)/items.length);
+  if(avgScore<60)warnings.push('セッション平均スコアが低めです。各パラメータの見直しをおすすめします。');
+  return{items,warnings};
+}
+
 function runAI(){toast('分析機能は現在準備中です');}

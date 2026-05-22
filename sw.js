@@ -1,6 +1,6 @@
 // Service Worker — goto coffee roast manager
 // CACHE_NAME を更新するたびに古いキャッシュが自動削除されます
-const CACHE_NAME = 'rj-v2.64';
+const CACHE_NAME = 'rj-v2.65';
 
 const ASSETS = [
   './',
@@ -19,6 +19,7 @@ const ASSETS = [
   './js/ocr.js',
   './js/taste.js',
   './js/records.js',
+  './js/plan.js',
   './js/storage.js',
   './js/init.js',
 ];
