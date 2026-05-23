@@ -52,7 +52,7 @@ let activeMultiSelect=null;
 // ===== NAV =====
 let _switchingFromHistory=false;
 function switchTab(t){
-  const names=['beans','roast','records','taste','analysis','plan','drive'];
+  const names=['beans','plan','roast','records','taste','analysis','drive'];
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',names[i]===t));
   const prev=document.querySelector('.section.active');
   if(prev)prev.classList.remove('active');

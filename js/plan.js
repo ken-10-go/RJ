@@ -3,21 +3,14 @@
 // ================================================================
 // State   : planRows, planPhase
 // Public  : renderPlan, addPlanRow, removePlanRow,
-//           generatePlanAdvice, backToPlanForm
+//           generatePlanAdvice, backToPlanForm,
+//           saveCurrentPlan, applyPlan, deleteSavedPlan
 // Internal: renderPlanForm, renderPlanAdviceView, renderPlanRows,
-//           calcRoastOrder, getBeanPlanAdvice, estimateYield,
-//           getDefaultAdvice, getPlanSessionWarnings
+//           renderSavedPlansList, calcRoastOrder, getBeanPlanAdvice,
+//           estimateYield, getDetailedAdvice, getPlanSessionWarnings
 // ================================================================
 
-const PLAN_LEVELS=[
-  {label:'浅煎り',  val:1.2},
-  {label:'中浅煎り',val:1.5},
-  {label:'中煎り',  val:1.7},
-  {label:'中深煎り',val:2.0},
-  {label:'深煎り',  val:2.2},
-];
-
-let planRows=[];   // [{beanId, amount, roastLevelVal}]
+let planRows=[];      // [{beanId, amount, roastLevelVal}]
 let planPhase='form'; // 'form' | 'advice'
 
 // ===== PUBLIC =====
@@ -60,14 +53,64 @@ function backToPlanForm(){
   renderPlan();
 }
 
+// ===== 計画 保存・読み込み =====
+const PLANS_KEY='rj_plans';
+
+function loadSavedPlans(){
+  try{return JSON.parse(localStorage.getItem(PLANS_KEY)||'[]');}catch{return[];}
+}
+
+function saveCurrentPlan(){
+  if(!planRows.length){toast('豆を追加してから保存してください');return;}
+  const name=prompt('計画名を入力してください',new Date().toLocaleDateString('ja-JP'));
+  if(!name)return;
+  const dateEl=document.getElementById('plan-date');
+  const plans=loadSavedPlans();
+  plans.push({id:Date.now(),name,date:dateEl?dateEl.value:'',rows:planRows.map(r=>({...r}))});
+  if(plans.length>20)plans.splice(0,plans.length-20);
+  localStorage.setItem(PLANS_KEY,JSON.stringify(plans));
+  toast('計画を保存しました');
+  renderSavedPlansList();
+}
+
+function applyPlan(id){
+  const plan=loadSavedPlans().find(p=>p.id===id);
+  if(!plan)return;
+  planRows=plan.rows.map(r=>({...r}));
+  const dateEl=document.getElementById('plan-date');
+  if(dateEl)dateEl.value=plan.date||'';
+  renderPlanRows();
+  toast(`「${plan.name}」を読み込みました`);
+}
+
+function deleteSavedPlan(id){
+  if(!confirm('この計画を削除しますか？'))return;
+  const plans=loadSavedPlans().filter(p=>p.id!==id);
+  localStorage.setItem(PLANS_KEY,JSON.stringify(plans));
+  renderSavedPlansList();
+}
+
+function renderSavedPlansList(){
+  const el=document.getElementById('plan-saved-list');
+  if(!el)return;
+  const plans=loadSavedPlans();
+  if(!plans.length){el.innerHTML='';return;}
+  el.innerHTML='<div class="label" style="margin-bottom:6px;">保存済みの計画</div>'
+    +plans.slice().reverse().map(p=>
+      `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);">
+        <span style="flex:1;font-size:var(--fs-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}${p.date?' <span style="color:var(--c-text-muted);font-size:var(--fs-xs);">('+p.date+')</span>':''}</span>
+        <button class="btn btn-sm btn-outline" onclick="applyPlan(${p.id})">読み込む</button>
+        <button style="background:none;border:none;color:var(--c-danger);cursor:pointer;font-size:16px;padding:0 2px;" onclick="deleteSavedPlan(${p.id})">✕</button>
+      </div>`
+    ).join('');
+}
+
 // ===== INTERNAL =====
 
 function renderPlanForm(){
-  // セッション日の初期値（今日）
   const dateEl=document.getElementById('plan-date');
-  if(dateEl&&!dateEl.value){
-    dateEl.value=new Date().toISOString().slice(0,10);
-  }
+  if(dateEl&&!dateEl.value)dateEl.value=new Date().toISOString().slice(0,10);
+  renderSavedPlansList();
   renderPlanRows();
 }
 
@@ -76,22 +119,20 @@ function renderPlanRows(){
   if(!el)return;
   const activeBeans=S.beans.filter(b=>!b.deleted);
   if(!planRows.length){
-    el.innerHTML='<div style="color:var(--c-text-muted);font-size:var(--fs-sm);padding:8px 0;">豆がありません。「+ 豆を追加」で追加してください。</div>';
+    el.innerHTML='<div style="color:var(--c-text-muted);font-size:var(--fs-sm);padding:8px 0;">「+ 豆を追加」で焙煎する豆を追加してください。</div>';
     return;
   }
-  const beanOptions=activeBeans.map(b=>`<option value="${b.id}">${b.name}${countryName(b.countryId)?' ('+countryName(b.countryId)+')':''}</option>`).join('');
-  const levelOptions=PLAN_LEVELS.map(l=>`<option value="${l.val}">${l.label}</option>`).join('');
   el.innerHTML=planRows.map((row,i)=>`
-    <div style="display:grid;grid-template-columns:1fr 72px 100px 36px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-      <select class="inp" style="font-size:var(--fs-sm);padding:5px 8px;" onchange="planRows[${i}].beanId=parseInt(this.value)">
+    <div style="display:grid;grid-template-columns:1fr 64px 120px 32px;gap:5px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+      <select class="inp" style="font-size:var(--fs-sm);padding:4px 6px;" onchange="planRows[${i}].beanId=parseInt(this.value)">
         ${activeBeans.map(b=>`<option value="${b.id}"${b.id===row.beanId?' selected':''}>${b.name}${countryName(b.countryId)?' ('+countryName(b.countryId)+')':''}</option>`).join('')}
       </select>
-      <input type="number" class="inp" style="font-size:var(--fs-sm);padding:5px 8px;" value="${row.amount}" placeholder="g"
+      <input type="number" class="inp" style="font-size:var(--fs-sm);padding:4px 6px;" value="${row.amount}" placeholder="g"
         onchange="planRows[${i}].amount=parseFloat(this.value)||0">
-      <select class="inp" style="font-size:var(--fs-sm);padding:5px 8px;" onchange="planRows[${i}].roastLevelVal=parseFloat(this.value)">
-        ${PLAN_LEVELS.map(l=>`<option value="${l.val}"${l.val===row.roastLevelVal?' selected':''}>${l.label}</option>`).join('')}
+      <select class="inp" style="font-size:var(--fs-sm);padding:4px 6px;" onchange="planRows[${i}].roastLevelVal=parseFloat(this.value)">
+        ${ROAST_LEVELS.map(l=>`<option value="${l.val}"${l.val===row.roastLevelVal?' selected':''}>${rlLabel(l.val)}</option>`).join('')}
       </select>
-      <button onclick="removePlanRow(${i})" style="background:none;border:none;color:var(--c-danger);cursor:pointer;font-size:18px;padding:0;line-height:1;">✕</button>
+      <button onclick="removePlanRow(${i})" style="background:none;border:none;color:var(--c-danger);cursor:pointer;font-size:17px;padding:0;line-height:1;">✕</button>
     </div>`).join('');
 }
 
@@ -106,29 +147,27 @@ function renderPlanAdviceView(){
   const warnings=getPlanSessionWarnings(orderedItems);
 
   let html=`<div class="card"><div class="card-title">📋 焙煎セッション計画</div>`;
-  html+=`<div style="color:var(--c-text-muted);font-size:var(--fs-sm);margin-bottom:12px;">📅 ${sessionDate}</div>`;
+  html+=`<div style="color:var(--c-text-muted);font-size:var(--fs-sm);margin-bottom:12px;">📅 ${sessionDate} · ${orderedItems.length}種 · 合計${orderedItems.reduce((a,i)=>a+(i.amount||0),0)}g</div>`;
 
-  // 焙煎順序
   html+=`<div class="label" style="margin-bottom:8px;">推奨焙煎順序</div>`;
   orderedItems.forEach((item,idx)=>{
     const bean=S.beans.find(b=>b.id===item.beanId);
     if(!bean)return;
-    const levelLabel=PLAN_LEVELS.find(l=>l.val===item.roastLevelVal)?.label||'—';
+    const levelLabel=rlLabel(item.roastLevelVal);
     const advice=getBeanPlanAdvice(item.beanId,item.roastLevelVal);
     const est=estimateYield(item.beanId,item.roastLevelVal,item.amount);
     const country=countryName(bean.countryId)||(bean.country||'');
     const procs=bean.processIds&&bean.processIds.length?processShortNFromIds(bean.processIds):(bean.processes||[]);
-    html+=`<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;">
+    html+=`<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         <div style="font-weight:600;font-size:var(--fs-sm);">${idx+1}. ${bean.name}</div>
         <span style="font-size:var(--fs-xs);background:var(--c-accent);color:#1a0f07;border-radius:12px;padding:2px 8px;">${levelLabel}</span>
       </div>
-      <div style="font-size:var(--fs-xs);color:var(--c-text-muted);margin-bottom:6px;">${[country,...procs].filter(Boolean).join(' / ')} · ${item.amount}g → 仕上がり推定 ${est}g</div>
-      <div style="font-size:var(--fs-sm);color:var(--c-text);line-height:1.6;">${advice}</div>
+      <div style="font-size:var(--fs-xs);color:var(--c-text-muted);margin-bottom:8px;">${[country,...procs].filter(Boolean).join(' / ')} · ${item.amount}g → 仕上がり推定 ${est}g</div>
+      ${advice}
     </div>`;
   });
 
-  // 警告
   if(warnings.length){
     html+=`<div class="label" style="margin:12px 0 8px;">⚠ セッション注意事項</div>`;
     warnings.forEach(w=>{
@@ -138,7 +177,6 @@ function renderPlanAdviceView(){
 
   html+=`</div>`;
 
-  // Gemini AIアドバイス（非同期で追記）
   const geminiKey=typeof getGeminiKey==='function'?getGeminiKey():null;
   if(geminiKey){
     html+=`<div id="plan-ai-section" class="card"><div class="card-title">🤖 AIアドバイス</div><div id="plan-ai-content" style="color:var(--c-text-muted);font-size:var(--fs-sm);">生成中...</div></div>`;
@@ -146,24 +184,19 @@ function renderPlanAdviceView(){
 
   el.innerHTML=html;
 
-  // Gemini非同期呼び出し
-  if(geminiKey){
-    _fetchPlanAiAdvice(orderedItems,sessionDate);
-  }
+  if(geminiKey)_fetchPlanAiAdvice(orderedItems,sessionDate);
 }
 
 async function _fetchPlanAiAdvice(orderedItems,sessionDate){
   const lines=orderedItems.map((item,idx)=>{
     const bean=S.beans.find(b=>b.id===item.beanId);
     if(!bean)return null;
-    const levelLabel=PLAN_LEVELS.find(l=>l.val===item.roastLevelVal)?.label||'—';
     const country=countryName(bean.countryId)||(bean.country||'');
     const procs=bean.processIds&&bean.processIds.length?processNamesFromIds(bean.processIds):(bean.processes||[]);
-    return`${idx+1}. ${bean.name}（${country}、${procs.join('/')||'精製不明'}）${item.amount}g → ${levelLabel}`;
+    return`${idx+1}. ${bean.name}（${country}、${procs.join('/')||'精製不明'}）${item.amount}g → ${rlLabel(item.roastLevelVal)}`;
   }).filter(Boolean);
-  // キャッシュキー: 豆ID・焙煎度・量の組み合わせ（日付は含めない → 同じ計画なら再利用）
   const cacheKey='plan_'+orderedItems.map(i=>`${i.beanId}:${i.roastLevelVal}:${i.amount}`).join(',');
-  const prompt=`コーヒー焙煎のセッション計画について、専門的なアドバイスを日本語で100字以内で教えてください。\n\n焙煎予定:\n${lines.join('\n')}\n\nポイント: 焙煎順序の妥当性、各豆の注意点、機器の温度管理について簡潔にコメントしてください。`;
+  const prompt=`コーヒー焙煎のセッション計画について専門的なアドバイスを日本語で100字以内で教えてください。\n\n焙煎予定:\n${lines.join('\n')}\n\nポイント: 焙煎順序の妥当性、各豆の注意点、機器の温度管理。`;
   const result=await callGeminiForAnalysis(prompt,cacheKey);
   const el=document.getElementById('plan-ai-content');
   if(el)el.innerHTML=result?`<div style="line-height:1.7;font-size:var(--fs-sm);">${result.replace(/\n/g,'<br>')}</div>`:'<span style="color:var(--c-text-muted);">AIアドバイスを取得できませんでした</span>';
@@ -173,98 +206,156 @@ async function _fetchPlanAiAdvice(orderedItems,sessionDate){
 
 function calcRoastOrder(items){
   return [...items].sort((a,b)=>{
-    // Wet-Hulledは最後
-    const aWH=_hasWetHulled(a.beanId);
-    const bWH=_hasWetHulled(b.beanId);
+    const aWH=_hasWetHulled(a.beanId),bWH=_hasWetHulled(b.beanId);
     if(aWH!==bWH)return aWH?1:-1;
-    // 焙煎度昇順
     if(a.roastLevelVal!==b.roastLevelVal)return a.roastLevelVal-b.roastLevelVal;
-    // 同一レベル内ではゲイシャ優先
-    const aG=_hasGesha(a.beanId);
-    const bG=_hasGesha(b.beanId);
+    const aG=_hasGesha(a.beanId),bG=_hasGesha(b.beanId);
     if(aG!==bG)return aG?-1:1;
     return 0;
   });
 }
 
 function _hasWetHulled(beanId){
-  const bean=S.beans.find(b=>b.id===beanId);
-  if(!bean)return false;
+  const bean=S.beans.find(b=>b.id===beanId);if(!bean)return false;
   const names=bean.processIds&&bean.processIds.length?processNamesFromIds(bean.processIds):(bean.processes||[]);
   return names.some(n=>n.toLowerCase().includes('wet-hull')||n.toLowerCase().includes('スマトラ'));
 }
 
 function _hasGesha(beanId){
-  const bean=S.beans.find(b=>b.id===beanId);
-  if(!bean)return false;
+  const bean=S.beans.find(b=>b.id===beanId);if(!bean)return false;
   const names=bean.varietyIds&&bean.varietyIds.length?varietyNamesFromIds(bean.varietyIds):(bean.varieties||[]);
   return names.some(n=>n.toLowerCase().includes('gesha')||n.toLowerCase().includes('geisha')||n.includes('ゲイシャ'));
 }
 
 function getBeanPlanAdvice(beanId,targetLevelVal){
   const bean=S.beans.find(b=>b.id===beanId);
-  if(!bean)return 'データなし';
+  if(!bean)return '<div style="color:var(--c-text-muted);font-size:var(--fs-sm);">データなし</div>';
 
-  // 過去の焙煎記録から同一豆・同一焙煎度を検索
+  // 過去記録がある場合: 実績データ + 詳細アドバイス
   const pastRoasts=S.roastRecords.filter(r=>!r.deleted&&r.beanId===beanId&&r.roastLevel===targetLevelVal).sort((a,b)=>b.id-a.id);
 
+  let pastHtml='';
   if(pastRoasts.length){
     const r=pastRoasts[0];
     const parts=[];
-    if(r.duration)parts.push(`前回の焙煎時間: ${Math.floor(r.duration/60)}分${r.duration%60}秒`);
-    if(r.dtr!=null)parts.push(`DTR: ${r.dtr}%`);
-    if(r.yieldPct)parts.push(`歩留: ${r.yieldPct}%`);
+    if(r.duration)parts.push(`焙煎時間: <b>${Math.floor(r.duration/60)}分${r.duration%60}秒</b>`);
+    const dtr=r.dtr!=null?r.dtr:_calcDTRSimple(r);
+    if(dtr!=null)parts.push(`DTR: <b>${dtr}%</b>`);
+    if(r.yieldPct)parts.push(`歩留: <b>${r.yieldPct}%</b>`);
     const taste=S.tasteRecords.filter(t=>!t.deleted&&t.roastId===r.id).sort((a,b)=>b.id-a.id)[0];
-    if(taste&&taste.stars)parts.push(`評価: ${'★'.repeat(taste.stars)}`);
-    return parts.length?'過去データ: '+parts.join(' / '):getDefaultAdvice(bean,PLAN_LEVELS.find(l=>l.val===targetLevelVal)?.label||'—');
+    if(taste&&taste.stars)parts.push(`評価: <b>${'★'.repeat(taste.stars)}</b>`);
+    if(parts.length){
+      pastHtml=`<div style="font-size:var(--fs-xs);color:var(--c-text-muted);margin-bottom:6px;background:rgba(196,122,58,0.06);border-radius:4px;padding:5px 8px;">
+        📊 前回実績: ${parts.join(' / ')}</div>`;
+    }
   }
 
-  return getDefaultAdvice(bean,PLAN_LEVELS.find(l=>l.val===targetLevelVal)?.label||'—');
+  const detailHtml=getDetailedAdvice(bean,targetLevelVal);
+  return pastHtml+detailHtml;
+}
+
+function _calcDTRSimple(r){
+  const fc=r.events?.find(e=>e.label==='1st Crack Start'||e.label.includes('1ハゼ'));
+  if(!fc||!r.duration)return null;
+  return Math.round((r.duration-fc.time)/r.duration*1000)/10;
 }
 
 function estimateYield(beanId,targetLevelVal,amountG){
   if(!amountG)return 0;
-  // 過去データがあれば平均歩留まりを使う
   const pastRoasts=S.roastRecords.filter(r=>!r.deleted&&r.beanId===beanId&&r.yieldPct&&Math.abs((r.roastLevel||0)-targetLevelVal)<0.3);
   if(pastRoasts.length){
     const avgYield=pastRoasts.reduce((a,r)=>a+r.yieldPct,0)/pastRoasts.length;
     return Math.round(amountG*avgYield/100);
   }
-  // デフォルト推定：焙煎度別
-  let yieldPct=86;
-  if(targetLevelVal<=1.5)yieldPct=87;
-  else if(targetLevelVal<=2.0)yieldPct=84;
-  else yieldPct=81;
+  let yieldPct=targetLevelVal<=1.5?87:targetLevelVal<=2.0?84:81;
   return Math.round(amountG*yieldPct/100);
 }
 
-function getDefaultAdvice(bean,levelLabel){
+function getDetailedAdvice(bean,levelVal){
   const country=countryName(bean.countryId)||(bean.country||'');
   const procs=bean.processIds&&bean.processIds.length?processNamesFromIds(bean.processIds):(bean.processes||[]);
+  const varieties=bean.varietyIds&&bean.varietyIds.length?varietyNamesFromIds(bean.varietyIds):(bean.varieties||[]);
+
+  // 産地別チャージ温度・特性
+  const isEthiopia=country.includes('エチオピア');
+  const isKenya=country.includes('ケニア');
+  const isIndonesia=country.includes('インドネシア')||country.includes('スマトラ');
+  const isCentralAmerica=['グアテマラ','コロンビア','コスタリカ','エルサルバドル','ホンジュラス','ニカラグア','メキシコ','パナマ'].some(c=>country.includes(c));
+  const isYemen=country.includes('イエメン');
+  const isRwanda=country.includes('ルワンダ');
+  const isBrazil=country.includes('ブラジル');
+
+  // 精製別
   const isNatural=procs.some(p=>p.toLowerCase().includes('natural')||p.includes('ナチュラル'));
-  const isWashed=procs.some(p=>p.toLowerCase().includes('washed')||p.includes('ウォッシュド'));
-  const isEthiopia=country.includes('エチオピア')||country.includes('Ethiopia');
-  const isKenya=country.includes('ケニア')||country.includes('Kenya');
-  const isCentralAmerica=['グアテマラ','コロンビア','コスタリカ','エルサルバドル','ホンジュラス','ニカラグア','メキシコ'].some(c=>country.includes(c));
+  const isAnaerobic=procs.some(p=>p.toLowerCase().includes('anaerobic')||p.includes('アナエロビック'));
+  const isWetHulled=procs.some(p=>p.toLowerCase().includes('wet-hull')||p.includes('スマトラ'));
+  const isHoney=procs.some(p=>p.toLowerCase().includes('honey')||p.includes('ハニー'));
+  const isCarbonic=procs.some(p=>p.toLowerCase().includes('carbonic')||p.includes('カーボニック'));
 
-  const tips=[];
+  // 品種別
+  const isGesha=varieties.some(v=>v.toLowerCase().includes('gesha')||v.toLowerCase().includes('geisha')||v.includes('ゲイシャ'));
+  const isSL=varieties.some(v=>v.toUpperCase().includes('SL28')||v.toUpperCase().includes('SL34'));
+  const isPacamara=varieties.some(v=>v.toLowerCase().includes('pacamara')||v.includes('パカマラ'));
 
-  if(isNatural)tips.push('ナチュラルは発酵香が出やすいため、DTRを短めにコントロールするとクリーンに仕上がります');
-  if(isWashed&&isEthiopia)tips.push('エチオピアウォッシュドは花やかな酸味が特徴。浅煎りでは1ハゼ前後の温度上昇に注意');
-  if(isKenya)tips.push('ケニアは高密度の豆が多く、1ハゼが強め。温度上昇が緩やかになるよう調整を');
-  if(isCentralAmerica)tips.push('中米産は安定した品質。焙煎度に合わせた標準的なプロファイルで問題ありません');
+  // 焙煎度グループ
+  const isLight=levelVal<=1.5;   // ライト〜ミディアム
+  const isMedium=levelVal<=2.0;  // ハイ〜シティ
+  const isDark=levelVal>2.0;     // フルシティ以上
 
-  if(levelLabel==='浅煎り'||levelLabel==='中浅煎り')tips.push('浅煎り領域では1ハゼのタイミングを慎重に観察してください');
-  if(levelLabel==='深煎り')tips.push('深煎りでは2ハゼ後の排気に注意し、煙の管理を確実に');
+  // ===== 目標値 =====
+  const [ftLo,ftHi]=typeof getFinishTempRange==='function'?getFinishTempRange(levelVal):[200+levelVal*5,210+levelVal*5];
+  const estTime=isLight?'10〜12分':isMedium?'12〜14分':'14〜16分';
 
-  return tips.length?tips.join(' / '):levelLabel+'の標準プロファイルで焙煎してください。過去データがないため汎用アドバイスを表示しています。';
+  // チャージ温度（産地密度別）
+  let chargeTempRange='200〜210°C';
+  if(isKenya||isSL||isPacamara)chargeTempRange='215〜225°C'; // 高密度
+  else if(isEthiopia||isRwanda)chargeTempRange='210〜220°C'; // 中〜高密度
+  else if(isIndonesia||isWetHulled)chargeTempRange='190〜200°C'; // 水分多め
+  else if(isBrazil)chargeTempRange='195〜205°C'; // 低密度
+  else if(isYemen)chargeTempRange='210〜220°C';
+
+  // ===== フェーズ別アドバイス =====
+  // 前半（乾燥期〜メイラード）
+  let phase1='乾燥期（〜4分）: 中火で水分を飛ばす。';
+  if(isWetHulled)phase1='乾燥期（〜5分）: 水分が多いため弱火でゆっくり乾燥させる。煙に注意。';
+  else if(isNatural||isHoney)phase1='乾燥期（〜4分）: 残糖分が焦げやすいため、火力は控えめからスタート。';
+  else if(isAnaerobic||isCarbonic)phase1='乾燥期（〜4分）: 発酵由来の複雑な揮発成分が多い。低火力で丁寧に。';
+
+  // 中盤（メイラード〜1ハゼ）
+  const targetFCTime=isLight?'65〜75%':isMedium?'65〜75%':'60〜70%';
+  let phase2=`メイラード期から徐々に火力を上げ、1ハゼを焙煎時間の${targetFCTime}付近（目安 ${estTime.split('〜')[0]}強）に合わせる。`;
+  if(isKenya||isSL)phase2+=` ケニア・SL系は豆密度が高く1ハゼが鋭い。RORが急落しないよう熱量を安定させる。`;
+  else if(isEthiopia&&!isNatural)phase2+=` エチオピアウォッシュドは花やかな酸味が特徴。1ハゼ前の温度上昇をROR ${isLight?'8〜12':'10〜14'}°C/分程度に保つ。`;
+  else if(isGesha)phase2+=` ゲイシャ系は繊細で風味が飛びやすい。急激な火力アップは避け、穏やかな温度上昇を心がける。`;
+  if(isNatural)phase2+=` ナチュラルはメイラード反応が早く進みやすい。焙煎度が予想より深まらないよう注意。`;
+
+  // 後半（1ハゼ〜排出）
+  const targetDTR=isLight?'20〜25':'18〜22';
+  let phase3=`1ハゼ後はDTR ${targetDTR}% 目標で発展時間を管理。仕上がり温度 ${ftLo}〜${ftHi}°C で排出。`;
+  if(isDark)phase3+=` 2ハゼに向けて火力を落とし、RORをコントロール。排煙・換気を確保する。`;
+  if(isAnaerobic||isCarbonic)phase3+=` 発酵フレーバーを活かすには発展時間を短め（DTR 18〜20%）に抑えると効果的。`;
+  if(isGesha)phase3+=` ゲイシャは浅めの発展で独自の花果実フレーバーが引き立つ。`;
+
+  const rows=[
+    ['目標',`仕上がり ${ftLo}〜${ftHi}°C / 推定時間 ${estTime} / チャージ目安 ${chargeTempRange}`],
+    ['前半',phase1],
+    ['中盤',phase2],
+    ['後半',phase3],
+  ];
+
+  const tableHtml=rows.map(([h,v])=>
+    `<div style="display:grid;grid-template-columns:36px 1fr;gap:6px;padding:4px 0;border-bottom:1px solid rgba(196,122,58,0.1);">
+      <span style="font-size:var(--fs-xs);font-weight:700;color:var(--c-accent);white-space:nowrap;">${h}</span>
+      <span style="font-size:var(--fs-xs);color:var(--c-text);line-height:1.6;">${v}</span>
+    </div>`
+  ).join('');
+
+  return`<div style="font-size:var(--fs-xs);">${tableHtml}</div>`;
 }
 
 function getPlanSessionWarnings(orderedItems){
   const warnings=[];
-  if(orderedItems.length===0)return warnings;
-
-  // 深→浅の順序警告
+  if(!orderedItems.length)return warnings;
   for(let i=1;i<orderedItems.length;i++){
     if(orderedItems[i].roastLevelVal<orderedItems[i-1].roastLevelVal){
       const prev=S.beans.find(b=>b.id===orderedItems[i-1].beanId);
@@ -272,20 +363,12 @@ function getPlanSessionWarnings(orderedItems){
       warnings.push(`深煎り（${prev?prev.name:'前の豆'}）の後に浅煎り（${curr?curr.name:'次の豆'}）を焙煎します。ドラム内の残熱に注意してください。`);
     }
   }
-
-  // Wet-Hulledが最後でない場合の警告（calcRoastOrderで並び替え済みなので通常出ない）
-  const hasWH=orderedItems.some(item=>_hasWetHulled(item.beanId));
-  if(hasWH){
+  if(orderedItems.some(item=>_hasWetHulled(item.beanId))){
     warnings.push('スマトラ式（Wet-Hulled）の豆は水分が多いため、最後に焙煎するか機器の温度安定を確認してください。');
   }
-
-  // 総量警告
   const totalAmount=orderedItems.reduce((a,item)=>a+(item.amount||0),0);
   if(totalAmount>1000)warnings.push(`セッション総投入量が${totalAmount}gです。機器の容量を超えないよう確認してください。`);
-
-  // 多数の豆警告
-  if(orderedItems.length>=4)warnings.push(`${orderedItems.length}種類の豆を連続焙煎します。各バッチ間に適切な冷却時間を設けてください。`);
-
+  if(orderedItems.length>=4)warnings.push(`${orderedItems.length}種類の豆を連続焙煎します。各バッチ間に適切な冷却時間（10〜15分）を設けてください。`);
   return warnings;
 }
 
@@ -293,17 +376,13 @@ function getPlanSessionWarnings(orderedItems){
 const AI_CACHE_KEY='rj_ai_cache';
 
 function _getAiCache(key){
-  try{
-    const cache=JSON.parse(localStorage.getItem(AI_CACHE_KEY)||'{}');
-    return cache[key]??null;
-  }catch(e){return null;}
+  try{const cache=JSON.parse(localStorage.getItem(AI_CACHE_KEY)||'{}');return cache[key]??null;}catch{return null;}
 }
 
 function _setAiCache(key,value){
   try{
     const cache=JSON.parse(localStorage.getItem(AI_CACHE_KEY)||'{}');
     cache[key]=value;
-    // キャッシュが100件を超えたら古いキーを削除（先頭から）
     const keys=Object.keys(cache);
     if(keys.length>100)keys.slice(0,keys.length-100).forEach(k=>delete cache[k]);
     localStorage.setItem(AI_CACHE_KEY,JSON.stringify(cache));
@@ -312,19 +391,14 @@ function _setAiCache(key,value){
 
 // ===== Gemini API =====
 async function callGeminiForAnalysis(prompt,cacheKey){
-  // キャッシュヒット
-  if(cacheKey){
-    const cached=_getAiCache(cacheKey);
-    if(cached)return cached;
-  }
+  if(cacheKey){const cached=_getAiCache(cacheKey);if(cached)return cached;}
   const key=typeof getGeminiKey==='function'?getGeminiKey():null;
   if(!key)return null;
   try{
     const res=await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${key}`,
       {method:'POST',headers:{'Content-Type':'application/json'},
-       body:JSON.stringify({contents:[{parts:[{text:prompt}]}],
-                            generationConfig:{maxOutputTokens:256}})}
+       body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:256}})}
     );
     const d=await res.json();
     const text=d.candidates?.[0]?.content?.parts?.[0]?.text??null;

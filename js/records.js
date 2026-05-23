@@ -220,14 +220,103 @@ function renderCompareSection(){
   if(!activeRecs.length){el.innerHTML='<div style="color:var(--c-text-muted);font-size:var(--fs-sm);">焙煎記録がありません</div>';return;}
   el.innerHTML=activeRecs.slice().reverse().map(r=>{const b=S.beans.find(b=>b.id===r.beanId&&!b.deleted);return`<div class="compare-check"><input type="checkbox" id="cmp-${r.id}" value="${r.id}" onchange="updateCompareChart()"><label for="cmp-${r.id}" style="font-size:var(--fs-sm);color:var(--c-text);cursor:pointer;">${b?b.name:'不明'} (${new Date(r.startTime).toLocaleDateString('ja-JP')})</label></div>`;}).join('');
 }
+function makeCompareZonePlugin(recordsData){
+  return{
+    id:'compareZone',
+    beforeDatasetsDraw(chart){
+      try{
+        const ca=chart.chartArea,sc=chart.scales;
+        if(!ca||!sc||!sc.x)return;
+        const ctx=chart.ctx;
+        recordsData.forEach(({r})=>{
+          if(!r.events||!r.timeData||!r.timeData.length)return;
+          function getX(evTime){
+            let closest=-1,minDiff=Infinity;
+            r.timeData.forEach((t,i)=>{const d=Math.abs(t-evTime);if(d<minDiff){minDiff=d;closest=i;}});
+            if(closest<0)return null;
+            return sc.x.getPixelForValue(chart.data.labels[closest]);
+          }
+          function drawZone(startLabel,endLabel,color){
+            const s=r.events.find(e=>e.label===startLabel);if(!s)return;
+            const e=r.events.find(e=>e.label===endLabel);
+            const x1=getX(s.time);if(x1===null)return;
+            const x2=e?getX(e.time):ca.right;if(x2===null||x2<=x1)return;
+            ctx.save();ctx.fillStyle=color;
+            ctx.fillRect(x1,ca.top,x2-x1,ca.bottom-ca.top);
+            ctx.restore();
+          }
+          drawZone('1st Crack Start','1st Crack End','rgba(254,240,138,0.25)');
+          drawZone('2nd Crack Start','2nd Crack End','rgba(254,215,170,0.35)');
+        });
+      }catch(e){}
+    }
+  };
+}
+
 function updateCompareChart(){
   const checked=[...document.querySelectorAll('#compare-checks input:checked')].map(el=>parseInt(el.value));
   const ctx=document.getElementById('compare-chart');if(!ctx)return;
   if(compareChart)compareChart.destroy();
-  const colors=['#c47a3a','#5a8a3a','#7ab3f5','#e06040','#e8a040','var(--c-green)'];
-  const datasets=checked.map((id,i)=>{const r=S.roastRecords.find(r=>r.id===id);const b=S.beans.find(b=>b.id===r.beanId);return{label:(b?b.name:'不明')+' ('+new Date(r.startTime).toLocaleDateString('ja-JP')+')',data:r.tempData,borderColor:colors[i%colors.length],backgroundColor:'transparent',borderWidth:2,pointRadius:1,tension:0.4,fill:false};});
-  const labels=checked.length?S.roastRecords.find(r=>r.id===checked[0]).timeData.map(t=>ft(t)):[];
-  compareChart=new Chart(ctx.getContext('2d'),{type:'line',data:{labels,datasets},options:{responsive:true,plugins:{legend:{labels:{color:'#a07850',font:{size:9}}}},scales:{x:{ticks:{color:'#a07850',font:{size:8},maxTicksLimit:8},grid:{color:'rgba(196,122,58,0.08)'}},y:{ticks:{color:'#a07850',font:{size:8}},grid:{color:'rgba(196,122,58,0.08)'}}}}});
+  const colors=['#c47a3a','#5a8a3a','#7ab3f5','#e06040','#e8a040','#9b59b6'];
+  const datasets=[];
+  const recordsForZone=[];
+  const firstR=checked.length?S.roastRecords.find(r=>r.id===checked[0]):null;
+  const labels=firstR?firstR.timeData.map(t=>ft(t)):[];
+
+  checked.forEach((id,i)=>{
+    const r=S.roastRecords.find(r=>r.id===id);if(!r)return;
+    const b=S.beans.find(b=>b.id===r.beanId);
+    const color=colors[i%colors.length];
+    const beanLabel=(b?b.name:'不明')+' ('+new Date(r.startTime).toLocaleDateString('ja-JP')+')';
+
+    // 温度データセット
+    datasets.push({label:beanLabel,data:r.tempData,borderColor:color,backgroundColor:'transparent',borderWidth:2,pointRadius:1,tension:0.4,fill:false});
+
+    // イベントマーカーデータセット
+    const evData=r.tempData.map(()=>null);
+    const evRadius=r.tempData.map(()=>0);
+    const evBg=r.tempData.map(()=>'transparent');
+    const evStyle=r.tempData.map(()=>'circle');
+    (r.events||[]).forEach(ev=>{
+      let closest=-1,minDiff=Infinity;
+      r.timeData.forEach((t,j)=>{const d=Math.abs(t-ev.time);if(d<minDiff){minDiff=d;closest=j;}});
+      if(closest>=0){
+        evData[closest]=r.tempData[closest];
+        evRadius[closest]=7;
+        evBg[closest]=(typeof EVENT_STYLE!=='undefined'&&EVENT_STYLE[ev.label]||{color:'#9ca3af'}).color;
+        evStyle[closest]='triangle';
+      }
+    });
+    datasets.push({label:'_ev_'+id,data:evData,showLine:false,pointStyle:evStyle,pointRadius:evRadius,pointBackgroundColor:evBg,pointBorderColor:'#fff',pointBorderWidth:1.5});
+
+    recordsForZone.push({r});
+  });
+
+  compareChart=new Chart(ctx.getContext('2d'),{
+    type:'line',
+    data:{labels,datasets},
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{labels:{color:'#a07850',font:{size:9},filter:item=>!item.text.startsWith('_ev_')}},
+        tooltip:{callbacks:{label:ctx=>{
+          if(ctx.dataset.label.startsWith('_ev_')){
+            const rid=parseInt(ctx.dataset.label.replace('_ev_',''));
+            const r=S.roastRecords.find(r=>r.id===rid);
+            const t=r?.timeData[ctx.dataIndex];
+            const ev=r?.events?.find(e=>Math.abs(e.time-t)<5);
+            return ev?ev.label+' ('+ft(ev.time)+')':'';
+          }
+          return ctx.parsed.y!=null?ctx.parsed.y.toFixed(1)+'°C':'';
+        }}}
+      },
+      scales:{
+        x:{ticks:{color:'#a07850',font:{size:8},maxTicksLimit:8},grid:{color:'rgba(196,122,58,0.08)'}},
+        y:{ticks:{color:'#a07850',font:{size:8}},grid:{color:'rgba(196,122,58,0.08)'}}
+      }
+    },
+    plugins:[makeCompareZonePlugin(recordsForZone)]
+  });
 }
 
 // ----- 焙煎評価 -----
