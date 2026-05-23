@@ -352,9 +352,96 @@ function onEvalRoastSelect(){
     html+=`</div>`;
   }
   if(result.comments.length){
-    html+=`<div style="font-size:var(--fs-sm);color:var(--c-text);line-height:1.7;">${result.comments.join('<br>')}</div>`;
+    html+=`<div style="font-size:var(--fs-sm);color:var(--c-text);line-height:1.7;margin-bottom:12px;">${result.comments.join('<br>')}</div>`;
+  }
+  // 温度グラフ
+  if(r.tempData&&r.tempData.length){
+    html+=`<div style="margin-bottom:4px;font-size:var(--fs-xs);color:var(--c-text-muted);">温度カーブ</div><div class="chart-wrap"><canvas id="eval-chart" height="160"></canvas></div>`;
   }
   el.innerHTML=html;
+
+  // 温度グラフ描画（crZonePlugin 相当を inline で実装）
+  if(r.tempData&&r.tempData.length){
+    setTimeout(()=>{
+      const canvas=document.getElementById('eval-chart');
+      if(!canvas)return;
+      // イベントマーカーデータセット
+      const evData=r.tempData.map(()=>null);
+      const evRadius=r.tempData.map(()=>0);
+      const evBg=r.tempData.map(()=>'transparent');
+      const evStyle=r.tempData.map(()=>'circle');
+      (r.events||[]).forEach(ev=>{
+        let closest=-1,minDiff=Infinity;
+        r.timeData.forEach((t,i)=>{const d=Math.abs(t-ev.time);if(d<minDiff){minDiff=d;closest=i;}});
+        if(closest>=0){
+          evData[closest]=r.tempData[closest];
+          evRadius[closest]=8;
+          evBg[closest]=(typeof EVENT_STYLE!=='undefined'&&EVENT_STYLE[ev.label]||{color:'#9ca3af'}).color;
+          evStyle[closest]='triangle';
+        }
+      });
+      // 発展ゾーン plugin（crZonePlugin と同ロジック、このレコード用）
+      const evalZonePlugin={
+        id:'evalZone',
+        beforeDatasetsDraw(chart){
+          try{
+            const ca=chart.chartArea,sc=chart.scales;
+            if(!ca||!sc||!sc.x||!r.timeData.length)return;
+            const ctx2=chart.ctx;
+            function getX(evTime){
+              let closest=-1,minDiff=Infinity;
+              r.timeData.forEach((t,i)=>{const d=Math.abs(t-evTime);if(d<minDiff){minDiff=d;closest=i;}});
+              if(closest<0)return null;
+              return sc.x.getPixelForValue(chart.data.labels[closest]);
+            }
+            function drawZone(startLabel,endLabel,color){
+              const s=(r.events||[]).find(e=>e.label===startLabel);if(!s)return;
+              const e=(r.events||[]).find(e=>e.label===endLabel);
+              const x1=getX(s.time);if(x1===null)return;
+              const x2=e?getX(e.time):ca.right;if(x2===null||x2<=x1)return;
+              ctx2.save();ctx2.fillStyle=color;
+              ctx2.fillRect(x1,ca.top,x2-x1,ca.bottom-ca.top);
+              ctx2.restore();
+            }
+            drawZone('1st Crack Start','1st Crack End','rgba(254,240,138,0.35)');
+            drawZone('2nd Crack Start','2nd Crack End','rgba(254,215,170,0.45)');
+          }catch(e){}
+        }
+      };
+      new Chart(canvas.getContext('2d'),{
+        type:'line',
+        data:{
+          labels:r.timeData.map(t=>ft(t)),
+          datasets:[
+            {label:'温度',data:r.tempData,borderColor:'#c47a3a',backgroundColor:'rgba(196,122,58,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:true,yAxisID:'y'},
+            {label:'ROR',data:r.tempData.map((t,i)=>i===0?null:parseFloat((t-r.tempData[i-1]).toFixed(1))),borderColor:'#5a8a3a',borderWidth:1.5,pointRadius:1,tension:0.4,fill:false,yAxisID:'y1'},
+            {label:'イベント',data:evData,showLine:false,pointStyle:evStyle,pointRadius:evRadius,pointBackgroundColor:evBg,pointBorderColor:'#fff',pointBorderWidth:1.5,yAxisID:'y'},
+          ]
+        },
+        options:{
+          responsive:true,
+          plugins:{
+            legend:{labels:{color:'#a07850',font:{size:10},filter:item=>item.datasetIndex!==2}},
+            tooltip:{callbacks:{label:ctx=>{
+              if(ctx.datasetIndex===2){
+                const t=r.timeData[ctx.dataIndex];
+                const ev=(r.events||[]).find(e=>Math.abs(e.time-t)<5);
+                return ev?ev.label+' ('+ft(ev.time)+')':ctx.parsed.y.toFixed(1)+'°C';
+              }
+              if(ctx.datasetIndex===0)return ctx.parsed.y.toFixed(1)+'°C';
+              return 'ROR: '+(ctx.parsed.y!=null?ctx.parsed.y:'—');
+            }}}
+          },
+          scales:{
+            x:{ticks:{color:'#a07850',font:{size:8},maxTicksLimit:8},grid:{color:'rgba(196,122,58,0.08)'}},
+            y:{ticks:{color:'#a07850',font:{size:8}},grid:{color:'rgba(196,122,58,0.08)'},position:'left'},
+            y1:{ticks:{color:'#5a8a3a',font:{size:8}},grid:{display:false},position:'right'},
+          }
+        },
+        plugins:[evalZonePlugin]
+      });
+    },100);
+  }
 
   // Gemini AI追記
   const geminiKey=typeof getGeminiKey==='function'?getGeminiKey():null;
